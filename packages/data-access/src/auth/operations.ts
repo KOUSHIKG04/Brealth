@@ -6,14 +6,30 @@ import {
 } from "@startup/contracts";
 import type { OnboardingInput } from "@startup/contracts";
 import type { AppSupabaseClient } from "../client/createSupabaseClient";
+import { getAuthErrorMessage } from "./errorMessages";
+
+async function authRequest<TResponse extends { data: unknown; error: unknown }>(
+  request: PromiseLike<TResponse>,
+  fallback: string
+): Promise<TResponse["data"]> {
+  try {
+    const { data, error } = await request;
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    throw new Error(getAuthErrorMessage(error, fallback));
+  }
+}
 
 export async function sendPhoneOtp(client: AppSupabaseClient, phone: string) {
   const parsed = phoneSchema.parse(phone);
-  const { error } = await client.auth.signInWithOtp({
-    phone: parsed,
-    options: { shouldCreateUser: true },
-  });
-  if (error) throw error;
+  await authRequest(
+    client.auth.signInWithOtp({
+      phone: parsed,
+      options: { shouldCreateUser: true },
+    }),
+    "Could not send the code. Please try again."
+  );
 }
 
 export async function verifyPhoneOtp(
@@ -21,12 +37,14 @@ export async function verifyPhoneOtp(
   phone: string,
   token: string
 ) {
-  const { data, error } = await client.auth.verifyOtp({
-    phone: phoneSchema.parse(phone),
-    token: otpSchema.parse(token),
-    type: "sms",
-  });
-  if (error) throw error;
+  const data = await authRequest(
+    client.auth.verifyOtp({
+      phone: phoneSchema.parse(phone),
+      token: otpSchema.parse(token),
+      type: "sms",
+    }),
+    "Could not verify the code. Please try again."
+  );
   if (!data.session) throw new Error("Verification did not produce a session");
   return data.session;
 }
@@ -36,11 +54,13 @@ export async function signInWithDevPassword(
   email: string,
   password: string
 ) {
-  const { data, error } = await client.auth.signInWithPassword({
-    email: email.trim(),
-    password,
-  });
-  if (error) throw error;
+  const data = await authRequest(
+    client.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    }),
+    "Could not sign in. Check your details and try again."
+  );
   if (!data.session) throw new Error("Sign-in did not produce a session");
   return data.session;
 }
@@ -50,11 +70,13 @@ export async function signUpWithDevPassword(
   email: string,
   password: string
 ) {
-  const { data, error } = await client.auth.signUp({
-    email: email.trim().toLowerCase(),
-    password,
-  });
-  if (error) throw error;
+  const data = await authRequest(
+    client.auth.signUp({
+      email: email.trim().toLowerCase(),
+      password,
+    }),
+    "Could not create your account. Please try again."
+  );
   // With email confirmation enabled, Supabase creates the user without a
   // session. The user must confirm the email and then sign in.
   return data.session;

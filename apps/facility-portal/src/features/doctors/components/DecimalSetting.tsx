@@ -19,6 +19,7 @@ export function DecimalSetting({
   return (
     <Input
       id={id}
+      className="h-11 rounded-lg text-sm tabular-nums"
       type="text"
       inputMode="decimal"
       aria-label={label}

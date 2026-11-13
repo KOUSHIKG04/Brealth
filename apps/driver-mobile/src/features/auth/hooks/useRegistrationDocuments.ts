@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { DocumentsScreenProps } from "../types/documents-screen";
 import { useToastFeedback } from "@startup/mobile-ui";
 import { useState } from "react";
@@ -62,9 +63,7 @@ export function useRegistrationDocuments({
         files,
       });
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not submit documents."
-      );
+      setError(userErrorMessage(cause, "Could not submit documents."));
     } finally {
       setSubmitting(false);
     }

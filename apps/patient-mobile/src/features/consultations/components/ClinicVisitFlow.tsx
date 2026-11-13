@@ -38,6 +38,12 @@ export function ClinicVisitFlow({
       showsVerticalScrollIndicator={false}
     >
       <ScheduleSummary appointment={appointment} />
+      {item?.ticket_number != null && item.status === "confirmed" ? (
+        <Text>
+          Reserved token #{item.ticket_number}. Your booked time stays the same;
+          calling order may change after check-in.
+        </Text>
+      ) : null}
       {appointments.isLoading && live ? <Loader theme="patient" /> : null}
       {appointments.isError ? (
         <Card theme="patient" gap={12}>

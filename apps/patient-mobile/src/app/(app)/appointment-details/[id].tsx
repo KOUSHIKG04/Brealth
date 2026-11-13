@@ -94,6 +94,12 @@ export default function AppointmentDetailsRoute() {
                 <Detail label="Location" value={card.location} />
               ) : null}
               <Detail label="Consultation fee" value={card.fee} />
+              {item.visit_mode === "clinic" && item.ticket_number != null ? (
+                <Detail
+                  label="Reserved token"
+                  value={`#${item.ticket_number} · Calling order may change after check-in`}
+                />
+              ) : null}
               {item.home_visit_details?.instructions ? (
                 <Detail
                   label="Visit instructions"

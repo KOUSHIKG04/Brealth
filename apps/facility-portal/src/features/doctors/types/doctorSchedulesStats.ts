@@ -1,4 +1,6 @@
 export type DoctorSchedulesStatsProps = {
+  scheduledShifts: number;
+  departments: number;
   scheduleSummary: {
     total: number;
     available: number;

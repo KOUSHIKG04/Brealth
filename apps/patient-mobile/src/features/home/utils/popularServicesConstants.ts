@@ -1,11 +1,11 @@
 import type { PopularService } from "../types/home";
-import { Accessibility, Heart, Hospital, Pill } from "lucide-react-native";
+import { Accessibility, Heart, Microscope, Pill } from "lucide-react-native";
 
 export const defaultServices: readonly PopularService[] = [
   {
-    key: "hospital",
-    label: "Hospital & Beds",
-    icon: Hospital,
+    key: "lab",
+    label: "Book Lab Tests",
+    icon: Microscope,
     iconColor: "#F04F5F",
     backgroundColor: "#FFE3E5",
   },

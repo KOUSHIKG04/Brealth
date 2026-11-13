@@ -4,20 +4,20 @@ import { ModalSurface } from "../primitives/ModalSurface";
 import { Dropdown } from "../primitives/Dropdown";
 import { Header } from "./Header";
 import { NotificationCard } from "./NotificationCard";
-import type { NotificationDrawerProps } from "../types/notification";
+import type { NotificationDrawerProps, NotificationItem } from "../types/notification";
 import {
   createNotificationStyles,
   notificationPalette,
 } from "./NotificationDrawer.styles";
 import { useMobileThemeName } from "../theme/MobileThemeProvider";
 import { PullToRefresh } from "../primitives/PullToRefresh";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   BackHandler,
   Dimensions,
   Pressable,
-  ScrollView,
+  FlatList,
   StyleSheet,
   View,
 } from "react-native";
@@ -59,6 +59,18 @@ export function NotificationDrawer({
       (filter === "read" && item.read) ||
       (filter === "important" && item.important) ||
       (filter === "emergency" && item.emergency)
+  );
+  const renderNotification = useCallback(
+    ({ item }: { item: NotificationItem }) => (
+      <NotificationCard
+        theme={app}
+        item={item}
+        onPress={onNotificationPress}
+        onDelete={onDelete}
+        deleting={deletingId === item.id}
+      />
+    ),
+    [app, onNotificationPress, onDelete, deletingId]
   );
   const slideAnimRef = useRef<Animated.Value | null>(null);
   if (slideAnimRef.current === null) {
@@ -111,13 +123,16 @@ export function NotificationDrawer({
       ]);
     }
     animation.start(({ finished }) => {
-      if (active && finished && !visible) setShowModal(false);
+      if (active && finished && !visible) {
+        setShowModal(false);
+        onVisibilityChange?.(false);
+      }
     });
     return () => {
       active = false;
       animation.stop();
     };
-  }, [visible, showModal, slideAnim, fadeAnim]);
+  }, [visible, showModal, slideAnim, fadeAnim, onVisibilityChange]);
 
   const onCloseRef = useRef(onClose);
   useEffect(() => {
@@ -136,10 +151,6 @@ export function NotificationDrawer({
     return () => backHandler.remove();
   }, [visible]);
 
-  useEffect(() => {
-    onVisibilityChange?.(showModal);
-  }, [showModal, onVisibilityChange]);
-
   if (!showModal) return null;
 
   return (
@@ -147,6 +158,7 @@ export function NotificationDrawer({
       layout="custom"
       transparent
       visible={showModal}
+      onShow={() => onVisibilityChange?.(true)}
       animationType="none"
       onClose={onClose}
       statusBarTranslucent
@@ -216,7 +228,10 @@ export function NotificationDrawer({
             </Text>
           </View>
 
-          <ScrollView
+          <FlatList
+            data={filteredNotifications}
+            keyExtractor={(item) => item.id}
+            renderItem={renderNotification}
             alwaysBounceVertical={onRefresh ? true : undefined}
             refreshControl={
               onRefresh ? (
@@ -233,9 +248,8 @@ export function NotificationDrawer({
               { paddingBottom: Math.max(insets.bottom, 20) + 20 },
             ]}
             showsVerticalScrollIndicator={false}
-          >
-            {loading ? <Loader theme={app} /> : null}
-            {!loading && !loadFailed && filteredNotifications.length === 0 ? (
+            ListHeaderComponent={loading ? <Loader theme={app} /> : null}
+            ListEmptyComponent={!loading && !loadFailed ? (
               <Text
                 variant="body"
                 style={[styles.itemMessage, styles.emptyMessage]}
@@ -245,17 +259,7 @@ export function NotificationDrawer({
                   : "No notifications match this filter."}
               </Text>
             ) : null}
-            {filteredNotifications.map((item) => (
-              <NotificationCard
-                key={item.id}
-                theme={app}
-                item={item}
-                onPress={onNotificationPress}
-                onDelete={onDelete}
-                deleting={deletingId === item.id}
-              />
-            ))}
-          </ScrollView>
+          />
         </Animated.View>
       </View>
     </ModalSurface>

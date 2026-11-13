@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useState } from "react";
 import { View } from "react-native";
 import { router } from "expo-router";
@@ -75,9 +76,10 @@ function RecoveryAction({
       }
       error={
         mutation.error
-          ? typeof mutation.error === "object" && "message" in mutation.error
-            ? String(mutation.error.message)
-            : "Could not update this appointment. Refresh and retry."
+          ? userErrorMessage(
+              mutation.error,
+              "Could not update this appointment. Refresh and retry."
+            )
           : intent === "reschedule" && times.isError
             ? "Could not load available times."
             : undefined

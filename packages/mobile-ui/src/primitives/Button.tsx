@@ -37,6 +37,8 @@ export function Button({
 }: ButtonProps) {
   const themeColors = useMobileTheme(theme);
   const palette = getButtonPalette(variant, themeColors);
+  const raised =
+    variant === "primary" || variant === "secondary" || variant === "danger";
   const idleSize = useRef<{ width: number; height: number } | null>(null);
 
   return (
@@ -67,6 +69,41 @@ export function Button({
         return [
           styles.button,
           palette.container,
+          raised
+            ? {
+                boxShadow: [
+                  {
+                    offsetX: 0,
+                    offsetY: state.pressed ? 1 : 3,
+                    blurRadius: state.pressed ? 2 : 6,
+                    color: "rgba(0, 0, 0, 0.20)",
+                  },
+                  {
+                    offsetX: 0,
+                    offsetY: 0,
+                    spreadDistance: 1,
+                    color: palette.container.backgroundColor,
+                  },
+                  {
+                    offsetX: 0,
+                    offsetY: 0,
+                    spreadDistance: 1,
+                    color: "rgba(255, 255, 255, 0.40)",
+                    inset: true,
+                  },
+                  {
+                    offsetX: 0,
+                    offsetY: state.pressed ? 1 : 0,
+                    blurRadius: 6,
+                    spreadDistance: 2,
+                    color: state.pressed
+                      ? "rgba(0, 0, 0, 0.12)"
+                      : "rgba(255, 255, 255, 0.24)",
+                    inset: true,
+                  },
+                ],
+              }
+            : undefined,
           state.pressed && !disabled && !loading ? styles.pressed : undefined,
           disabled && !loading ? styles.disabled : undefined,
           loading && idleSize.current
@@ -173,6 +210,7 @@ const styles = StyleSheet.create({
   disabled: {
     backgroundColor: colors.disabledBackground,
     borderWidth: 0,
+    boxShadow: "none",
   },
   label: {
     fontFamily: fontFamilies.semibold,

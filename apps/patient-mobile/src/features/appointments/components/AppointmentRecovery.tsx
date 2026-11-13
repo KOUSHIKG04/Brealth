@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { ClinicAppointment } from "@startup/contracts";
 import { appointmentRecoveryView } from "@startup/contracts";
 import { AppointmentRecoveryDialog } from "@startup/mobile-ui";
@@ -81,10 +82,10 @@ export function AppointmentRecovery({
       loading={intent === "reschedule" && recovery.times.isLoading}
       error={
         recovery.mutation.error
-          ? typeof recovery.mutation.error === "object" &&
-            "message" in recovery.mutation.error
-            ? String(recovery.mutation.error.message)
-            : "Could not update this appointment. Refresh and try again."
+          ? userErrorMessage(
+              recovery.mutation.error,
+              "Could not update this appointment. Refresh and try again."
+            )
           : intent === "reschedule" && recovery.times.isError
             ? "Could not load available times."
             : undefined

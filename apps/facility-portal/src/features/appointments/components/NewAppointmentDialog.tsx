@@ -19,8 +19,14 @@ import {
 } from "@startup/web-ui/components/ui/dialog";
 import { Input } from "@startup/web-ui/components/ui/input";
 import { Label } from "@startup/web-ui/components/ui/label";
+import { Spinner } from "@startup/web-ui/components/ui/spinner";
+import { appointmentMoney } from "@startup/contracts";
+import { PaymentTermsDialog } from "./PaymentTermsDialog";
 
-export function NewAppointmentDialog({ onCreated }: NewAppointmentDialogProps) {
+export function NewAppointmentDialog({
+  onCreated,
+  triggerLabel = "New Appointment",
+}: NewAppointmentDialogProps) {
   const {
     open,
     setOpen,
@@ -48,233 +54,81 @@ export function NewAppointmentDialog({ onCreated }: NewAppointmentDialogProps) {
     showDialog,
     choosePractice,
     submit,
+    paymentMethod,
+    setPaymentMethod,
+    termsAccepted,
+    setTermsAccepted,
+    cashReceived,
+    setCashReceived,
+    paymentStage,
+    onDialogClosed,
   } = useNewAppointment({ onCreated });
+  const selectedSlot = slots.find((slot) => slot.windowId === windowId);
+  const paidVisit = Number(selectedSlot?.feeMinor ?? 0) > 0;
+  const paymentUnavailable =
+    paidVisit &&
+    (!clinicDay?.payment.enabled || !clinicDay.payment.can_collect);
   return (
     <>
       <Button
         type="button"
         onClick={() => void showDialog()}
-        className="flex items-center gap-1.5 rounded-lg bg-[#07595d] px-4 py-2 text-[13px] font-bold text-white shadow-xs hover:bg-[#064e52]"
+        disabled={pending || Boolean(paymentStage)}
+        className="bg-primary text-primary-foreground hover:bg-primary/90 flex h-10 min-h-10 items-center gap-2 rounded-lg px-4 py-0 text-sm font-medium"
       >
-        <Plus className="size-4 stroke-[2.5]" /> New Appointment
+        <Plus aria-hidden="true" className="size-4 stroke-2" /> {triggerLabel}
       </Button>
+      {paymentStage ? (
+        <p
+          role="status"
+          className="text-muted-foreground flex items-center gap-2 text-sm"
+        >
+          <Spinner />
+          {paymentStage}
+        </p>
+      ) : null}
       <Dialog
         open={open}
         onOpenChange={(next: boolean) => {
           if (!pending) setOpen(next);
         }}
       >
-        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto bg-white text-[#0f172a] sm:max-w-2xl">
-          <DialogTitle>New in-person appointment</DialogTitle>
+        <DialogContent
+          onCloseAutoFocus={() => onDialogClosed(false)}
+          className="bg-background text-foreground max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-2xl"
+        >
+          <DialogTitle className="text-lg font-semibold">
+            New in-person appointment
+          </DialogTitle>
           <DialogDescription>
-            Register a walk-in patient without an app account and reserve a
-            published clinic time.
+            Enter the patient’s details, collect payment and confirm a clinic
+            time. An app account is not required.
           </DialogDescription>
           <form onSubmit={submit} className="grid gap-4">
-            <div className="grid gap-2">
-              <Label htmlFor="walk-in-doctor">Doctor</Label>
-              <select
-                id="walk-in-doctor"
-                value={practiceId}
-                onChange={(event) => void choosePractice(event.target.value)}
-                disabled={loading || pending}
-                required
-                className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-3 text-sm"
-              >
-                <option value="">
-                  {loading ? "Loading doctors…" : "Choose a doctor"}
-                </option>
-                {practices.map((practice) => (
-                  <option key={practice.practiceId} value={practice.practiceId}>
-                    {practice.doctorName} · {practice.facilityName}
-                  </option>
-                ))}
-              </select>
-              {!loading && practices.length === 0 && (
-                <p className="text-sm text-[#64748b]">
-                  No verified doctors are available for this facility.
-                </p>
-              )}
-            </div>
-            {clinicDay ? (
-              <section
-                aria-label="Clinic schedule and capacity"
-                className="bg-muted/30 space-y-4 rounded-xl border p-4"
-              >
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold">
-                      Clinic schedule & capacity
-                    </h3>
-                    <p className="text-muted-foreground text-sm">
-                      Clinic hours{" "}
-                      {(
-                        clinicDay.clinic_time_blocks ?? [
-                          {
-                            start: clinicDay.clinic_start,
-                            end: clinicDay.clinic_end,
-                          },
-                        ]
-                      )
-                        .map(
-                          (block) =>
-                            `${block.start.slice(0, 5)}–${block.end.slice(0, 5)}`
-                        )
-                        .join(", ")}{" "}
-                      · {clinicDay.timezone}
-                    </p>
-                  </div>
-                  <div>
-                    <Label htmlFor="walk-in-day">Clinic date</Label>
-                    <Input
-                      id="walk-in-day"
-                      type="date"
-                      value={clinicDay.local_day}
-                      disabled={pending || loadingSlots}
-                      onChange={(event) => {
-                        if (event.target.value)
-                          void choosePractice(practiceId, event.target.value);
-                      }}
-                    />
-                  </div>
-                </div>
-                <dl className="grid grid-cols-3 gap-3 text-sm">
-                  <div>
-                    <dt className="text-muted-foreground">Total used</dt>
-                    <dd className="font-semibold">
-                      {clinicDay.total_used} / {clinicDay.total_limit}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">App bookings</dt>
-                    <dd className="font-semibold">
-                      {clinicDay.app_used} / {clinicDay.app_limit}
-                    </dd>
-                    <dd>{clinicDay.app_remaining} remaining</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground">Walk-ins</dt>
-                    <dd className="font-semibold">
-                      {clinicDay.walkin_used} / {clinicDay.walkin_limit}
-                    </dd>
-                    <dd>{clinicDay.walkin_remaining} remaining</dd>
-                  </div>
-                </dl>
-                {clinicDay.doctor_timeline?.length ? (
-                  <details>
-                    <summary className="cursor-pointer text-sm font-medium">
-                      Doctor’s full day
-                    </summary>
-                    <ul className="mt-3 space-y-2 text-sm">
-                      {clinicDay.doctor_timeline.map((block) => {
-                        const formatter = new Intl.DateTimeFormat("en-IN", {
-                          timeZone: clinicDay.timezone,
-                          hour: "numeric",
-                          minute: "2-digit",
-                        });
-                        const from = new Date(block.starts_at),
-                          until = new Date(block.ends_at);
-                        return (
-                          <li
-                            key={block.session_id}
-                            className="space-y-1 border-b py-2"
-                          >
-                            <p className="font-medium">
-                              {appointmentModeLabels[block.service_mode]}
-                              {block.practice_id !== practiceId
-                                ? " · Other practice"
-                                : ""}
-                            </p>
-                            <p>
-                              {formatter.format(from)}–{formatter.format(until)}
-                            </p>
-                            {block.travel_buffer_minutes > 0 ? (
-                              <p className="text-muted-foreground">
-                                Travel reserved{" "}
-                                {formatter.format(
-                                  new Date(
-                                    from.getTime() -
-                                      block.travel_buffer_minutes * 60000
-                                  )
-                                )}
-                                –{formatter.format(from)} and{" "}
-                                {formatter.format(until)}–
-                                {formatter.format(
-                                  new Date(
-                                    until.getTime() +
-                                      block.travel_buffer_minutes * 60000
-                                  )
-                                )}
-                              </p>
-                            ) : null}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                    <p className="text-muted-foreground mt-2 text-xs">
-                      Clinic patients can be registered only in clinic times.
-                      The doctor is unavailable for clinic consultations during
-                      online, home-visit and travel blocks.
-                    </p>
-                  </details>
-                ) : null}
-                {clinicDay.walkin_remaining === 0 ? (
-                  <p role="status" className="text-sm">
-                    No walk-in capacity remains. Update the editable quotas in
-                    Doctor Schedules or choose another date.
-                  </p>
-                ) : null}
-                <details>
-                  <summary className="cursor-pointer text-sm font-medium">
-                    All clinic times ({slots.length})
-                  </summary>
-                  <ul className="mt-3 grid max-h-48 grid-cols-1 gap-2 overflow-y-auto text-sm sm:grid-cols-2">
-                    {slots.map((slot) => (
-                      <li
-                        key={slot.windowId}
-                        className="flex items-center justify-between gap-2 border-b py-2"
-                      >
-                        <span>{slotLabel(slot)}</span>
-                        <span className="capitalize">{slot.state}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              </section>
-            ) : null}
-            <div className="grid gap-2">
-              <Label htmlFor="walk-in-slot">Clinic time</Label>
-              <select
-                id="walk-in-slot"
-                value={windowId}
-                onChange={(event) => setWindowId(event.target.value)}
-                disabled={!practiceId || loadingSlots || pending}
-                required
-                className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-3 text-sm"
-              >
-                <option value="">
-                  {loadingSlots ? "Loading times…" : "Choose a time"}
-                </option>
-                {slots.map((slot) => (
-                  <option
-                    key={slot.windowId}
-                    value={slot.windowId}
-                    disabled={
-                      slot.state !== "open" || !clinicDay?.walkin_remaining
-                    }
-                  >
-                    {slotLabel(slot)}
-                    {slot.state !== "open" ? ` · ${slot.state}` : ""}
-                  </option>
-                ))}
-              </select>
-              {practiceId && !loadingSlots && slots.length === 0 && (
-                <p className="text-sm text-[#64748b]">
-                  No open in-person slots. Publish clinic availability in Doctor
-                  Schedules.
-                </p>
-              )}
-            </div>
+            <WalkInDoctorSelector
+              practiceId={practiceId}
+              choosePractice={choosePractice}
+              loading={loading}
+              pending={pending}
+              practices={practices}
+            />{" "}
+            <ClinicScheduleCapacity
+              clinicDay={clinicDay}
+              slots={slots}
+              pending={pending}
+              loadingSlots={loadingSlots}
+              choosePractice={choosePractice}
+              practiceId={practiceId}
+            />{" "}
+            <ClinicTimeSelector
+              windowId={windowId}
+              setWindowId={setWindowId}
+              practiceId={practiceId}
+              loadingSlots={loadingSlots}
+              pending={pending}
+              slots={slots}
+              clinicDay={clinicDay}
+            />{" "}
             <div className="grid gap-2">
               <Label htmlFor="walk-in-name">Patient name</Label>
               <Input
@@ -365,6 +219,19 @@ export function NewAppointmentDialog({ onCreated }: NewAppointmentDialogProps) {
                 Patient is here: check in to the queue now
               </label>
             ) : null}
+            {paidVisit && clinicDay ? (
+              <ReceptionPaymentOptions
+                payment={clinicDay.payment}
+                fee={Number(selectedSlot?.feeMinor ?? 0)}
+                pending={pending}
+                paymentMethod={paymentMethod}
+                setPaymentMethod={setPaymentMethod}
+                termsAccepted={termsAccepted}
+                setTermsAccepted={setTermsAccepted}
+                cashReceived={cashReceived}
+                setCashReceived={setCashReceived}
+              />
+            ) : null}
             <Button
               type="submit"
               disabled={
@@ -372,15 +239,376 @@ export function NewAppointmentDialog({ onCreated }: NewAppointmentDialogProps) {
                 loadingSlots ||
                 !windowId ||
                 !clinicDay?.walkin_remaining ||
-                patientName.trim().length < 2
+                patientName.trim().length < 2 ||
+                paymentUnavailable ||
+                (paidVisit &&
+                  (!termsAccepted ||
+                    (paymentMethod === "cash" && !cashReceived)))
               }
               className="bg-[#07595d] text-white hover:bg-[#064e52]"
             >
-              {pending ? "Creating…" : "Create appointment"}
+              {pending
+                ? "Preparing booking…"
+                : !paidVisit
+                  ? "Book appointment"
+                  : paymentMethod === "cash"
+                    ? "Confirm cash & book"
+                    : "Pay & book appointment"}
             </Button>
           </form>
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function ReceptionPaymentOptions({
+  payment,
+  fee,
+  pending,
+  paymentMethod,
+  setPaymentMethod,
+  termsAccepted,
+  setTermsAccepted,
+  cashReceived,
+  setCashReceived,
+}: Pick<
+  NewAppointmentState,
+  | "pending"
+  | "paymentMethod"
+  | "setPaymentMethod"
+  | "termsAccepted"
+  | "setTermsAccepted"
+  | "cashReceived"
+  | "setCashReceived"
+> & {
+  payment: NonNullable<NewAppointmentState["clinicDay"]>["payment"];
+  fee: number;
+}) {
+  return (
+    <fieldset
+      disabled={pending}
+      className="border-border space-y-4 border-t pt-4"
+    >
+      <legend className="sr-only">Booking payment</legend>
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="text-sm font-medium">Consultation fee</p>
+        <p className="text-lg font-semibold tabular-nums">
+          {appointmentMoney(fee)}
+        </p>
+      </div>
+      {!payment.enabled || !payment.can_collect ? (
+        <p role="alert" className="text-destructive text-sm">
+          {!payment.enabled
+            ? "Payment collection is unavailable. Contact the facility administrator."
+            : "Ask a staff member with financial collection access to book this appointment."}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            type="radio"
+            name="reception-payment-method"
+            value="gateway"
+            className="accent-primary"
+            checked={paymentMethod === "gateway"}
+            onChange={() => setPaymentMethod("gateway")}
+          />
+          Razorpay
+        </label>
+        <label className="flex min-h-11 items-center gap-2">
+          <input
+            type="radio"
+            name="reception-payment-method"
+            value="cash"
+            className="accent-primary"
+            checked={paymentMethod === "cash"}
+            onChange={() => setPaymentMethod("cash")}
+          />
+          Cash received
+        </label>
+      </div>
+      {paymentMethod === "cash" ? (
+        <label className="flex items-start gap-2 text-sm leading-6">
+          <input
+            type="checkbox"
+            className="accent-primary mt-1 size-4"
+            checked={cashReceived}
+            onChange={(event) => setCashReceived(event.target.checked)}
+          />
+          I have received {appointmentMoney(fee)} in cash.
+        </label>
+      ) : null}
+      <PaymentTermsDialog text={payment.policy_text} />
+      <label className="flex items-start gap-2 text-sm leading-6">
+        <input
+          type="checkbox"
+          className="accent-primary mt-1 size-4"
+          checked={termsAccepted}
+          onChange={(event) => setTermsAccepted(event.target.checked)}
+        />
+        The patient agrees to the payment and refund terms.
+      </label>
+    </fieldset>
+  );
+}
+
+type NewAppointmentState = ReturnType<typeof useNewAppointment>;
+
+function ClinicScheduleCapacity({
+  clinicDay,
+  slots,
+  pending,
+  loadingSlots,
+  choosePractice,
+  practiceId,
+}: Pick<
+  NewAppointmentState,
+  | "clinicDay"
+  | "slots"
+  | "pending"
+  | "loadingSlots"
+  | "choosePractice"
+  | "practiceId"
+>) {
+  return (
+    <>
+      {clinicDay ? (
+        <section
+          aria-label="Clinic schedule and capacity"
+          className="bg-muted/30 space-y-4 rounded-xl border p-4"
+        >
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h3 className="font-semibold">Clinic schedule & capacity</h3>
+              <p className="text-muted-foreground text-sm">
+                Clinic hours{" "}
+                {(
+                  clinicDay.clinic_time_blocks ?? [
+                    {
+                      start: clinicDay.clinic_start,
+                      end: clinicDay.clinic_end,
+                    },
+                  ]
+                )
+                  .map(
+                    (block) =>
+                      `${block.start.slice(0, 5)}–${block.end.slice(0, 5)}`
+                  )
+                  .join(", ")}{" "}
+                · {clinicDay.timezone}
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="walk-in-day">Clinic date</Label>
+              <Input
+                id="walk-in-day"
+                type="date"
+                value={clinicDay.local_day}
+                disabled={pending || loadingSlots}
+                onChange={(event) => {
+                  if (event.target.value)
+                    void choosePractice(practiceId, event.target.value);
+                }}
+              />
+            </div>
+          </div>
+          <dl className="grid grid-cols-3 gap-3 text-sm">
+            <div>
+              <dt className="text-muted-foreground">Total used</dt>
+              <dd className="font-semibold">
+                {clinicDay.total_used} / {clinicDay.total_limit}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">App bookings</dt>
+              <dd className="font-semibold">
+                {clinicDay.app_used} / {clinicDay.app_limit}
+              </dd>
+              <dd>{clinicDay.app_remaining} remaining</dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Walk-ins</dt>
+              <dd className="font-semibold">
+                {clinicDay.walkin_used} / {clinicDay.walkin_limit}
+              </dd>
+              <dd>{clinicDay.walkin_remaining} remaining</dd>
+            </div>
+          </dl>
+          {clinicDay.doctor_timeline?.length ? (
+            <details>
+              <summary className="cursor-pointer text-sm font-medium">
+                Doctor’s full day
+              </summary>
+              <ul className="mt-3 space-y-2 text-sm">
+                {clinicDay.doctor_timeline.map((block) => {
+                  const formatter = new Intl.DateTimeFormat("en-IN", {
+                    timeZone: clinicDay.timezone,
+                    hour: "numeric",
+                    minute: "2-digit",
+                  });
+                  const from = new Date(block.starts_at),
+                    until = new Date(block.ends_at);
+                  return (
+                    <li
+                      key={block.session_id}
+                      className="space-y-1 border-b py-2"
+                    >
+                      <p className="font-medium">
+                        {appointmentModeLabels[block.service_mode]}
+                        {block.practice_id !== practiceId
+                          ? " · Other practice"
+                          : ""}
+                      </p>
+                      <p>
+                        {formatter.format(from)}–{formatter.format(until)}
+                      </p>
+                      {block.travel_buffer_minutes > 0 ? (
+                        <p className="text-muted-foreground">
+                          Travel reserved{" "}
+                          {formatter.format(
+                            new Date(
+                              from.getTime() -
+                                block.travel_buffer_minutes * 60000
+                            )
+                          )}
+                          –{formatter.format(from)} and{" "}
+                          {formatter.format(until)}–
+                          {formatter.format(
+                            new Date(
+                              until.getTime() +
+                                block.travel_buffer_minutes * 60000
+                            )
+                          )}
+                        </p>
+                      ) : null}
+                    </li>
+                  );
+                })}
+              </ul>
+              <p className="text-muted-foreground mt-2 text-xs">
+                Clinic patients can be registered only in clinic times. The
+                doctor is unavailable for clinic consultations during online,
+                home-visit and travel blocks.
+              </p>
+            </details>
+          ) : null}
+          {clinicDay.walkin_remaining === 0 ? (
+            <p role="status" className="text-sm">
+              No walk-in capacity remains. Update the editable quotas in Doctor
+              Schedules or choose another date.
+            </p>
+          ) : null}
+          <details>
+            <summary className="cursor-pointer text-sm font-medium">
+              All clinic times ({slots.length})
+            </summary>
+            <ul className="mt-3 grid max-h-48 grid-cols-1 gap-2 overflow-y-auto text-sm sm:grid-cols-2">
+              {slots.map((slot) => (
+                <li
+                  key={slot.windowId}
+                  className="flex items-center justify-between gap-2 border-b py-2"
+                >
+                  <span>{slotLabel(slot)}</span>
+                  <span className="capitalize">{slot.state}</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function ClinicTimeSelector({
+  windowId,
+  setWindowId,
+  practiceId,
+  loadingSlots,
+  pending,
+  slots,
+  clinicDay,
+}: Pick<
+  NewAppointmentState,
+  | "windowId"
+  | "setWindowId"
+  | "practiceId"
+  | "loadingSlots"
+  | "pending"
+  | "slots"
+  | "clinicDay"
+>) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor="walk-in-slot">Clinic time</Label>
+      <select
+        id="walk-in-slot"
+        value={windowId}
+        onChange={(event) => setWindowId(event.target.value)}
+        disabled={!practiceId || loadingSlots || pending}
+        required
+        className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-3 text-sm"
+      >
+        <option value="">
+          {loadingSlots ? "Loading times…" : "Choose a time"}
+        </option>
+        {slots.map((slot) => (
+          <option
+            key={slot.windowId}
+            value={slot.windowId}
+            disabled={slot.state !== "open" || !clinicDay?.walkin_remaining}
+          >
+            {slotLabel(slot)}
+            {slot.state !== "open" ? ` · ${slot.state}` : ""}
+          </option>
+        ))}
+      </select>
+      {practiceId && !loadingSlots && slots.length === 0 && (
+        <p className="text-sm text-[#64748b]">
+          No open in-person slots. Publish clinic availability in Doctor
+          Schedules.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function WalkInDoctorSelector({
+  practiceId,
+  choosePractice,
+  loading,
+  pending,
+  practices,
+}: Pick<
+  NewAppointmentState,
+  "practiceId" | "choosePractice" | "loading" | "pending" | "practices"
+>) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor="walk-in-doctor">Doctor</Label>
+      <select
+        id="walk-in-doctor"
+        value={practiceId}
+        onChange={(event) => void choosePractice(event.target.value)}
+        disabled={loading || pending}
+        required
+        className="border-input bg-background h-11 w-full rounded-lg border px-3 text-sm"
+      >
+        <option value="">
+          {loading ? "Loading doctors…" : "Choose a doctor"}
+        </option>
+        {practices.map((practice) => (
+          <option key={practice.practiceId} value={practice.practiceId}>
+            {practice.doctorName} · {practice.facilityName}
+          </option>
+        ))}
+      </select>
+      {!loading && practices.length === 0 && (
+        <p className="text-sm text-[#64748b]">
+          No verified doctors are available for this facility.
+        </p>
+      )}
+    </div>
   );
 }

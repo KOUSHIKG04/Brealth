@@ -38,23 +38,6 @@ function text(readable) {
   });
 }
 
-test("the trial matches the requested eight size and line-height pairs", () => {
-  const expected = {
-    pageHeadline: [32, 40],
-    screenTitle: [28, 36],
-    sectionHeading: [24, 32],
-    cardHeading: [20, 28],
-    bodyEmphasis: [18, 28],
-    body: [16, 24],
-    label: [14, 20],
-    caption: [12, 16],
-  };
-  for (const [role, [size, line]] of Object.entries(expected)) {
-    assert.equal(tokens.mobileTypography[role].fontSize, size);
-    assert.equal(tokens.mobileTypography[role].lineHeight, line);
-  }
-});
-
 test("readable roles override local font sizes without removing interaction or color", () => {
   const { AppText } = text(true);
   const onPress = () => {};

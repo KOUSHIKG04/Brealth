@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useToastFeedback } from "@startup/mobile-ui";
 import { useState } from "react";
 import { router } from "expo-router";
@@ -33,7 +34,7 @@ export function useLogin() {
       await signInWithDevPassword(supabase, email, password);
       router.replace("/setup");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not sign in.");
+      setError(userErrorMessage(cause, "Could not sign in."));
     } finally {
       setBusy(false);
     }
@@ -70,11 +71,7 @@ export function useLogin() {
       if (session) router.replace("/setup");
       else setConfirmationPending(true);
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not create your account."
-      );
+      setError(userErrorMessage(cause, "Could not create your account."));
     } finally {
       setBusy(false);
     }

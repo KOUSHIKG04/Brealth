@@ -42,6 +42,7 @@ function review({
   queueState = null,
   visitMode = "clinic",
   paymentPending = false,
+  clinicQueue,
 } = {}) {
   const state = [];
   let cursor = 0;
@@ -71,6 +72,7 @@ function review({
     facility_name: "Test clinic",
     public_code: "APT-LONG-12345678",
     queue_state: queueState,
+    clinic_queue: clinicQueue,
   };
   const react = {
     useState: (initial) => {
@@ -277,13 +279,10 @@ test("one Start consultation action calls the queue, uses its new version, and o
   const view = review({ status: "confirmed", queueState: "waiting" });
   const nodes = view.render();
   assert.equal(
-    nodes.find((node) => node.type === "Input"),
-    undefined
+    nodes.find((node) => node.type === "Input").props.label,
+    "Reason for hold"
   );
-  assert.equal(
-    nodes.find((node) => node.props.label === "Hold"),
-    undefined
-  );
+  assert.ok(nodes.find((node) => node.props.label === "Hold"));
   assert.match(JSON.stringify(nodes), /12345678/);
   assert.doesNotMatch(
     JSON.stringify(
@@ -306,6 +305,36 @@ test("one Start consultation action calls the queue, uses its new version, and o
   assert.equal(view.calls[1].expectedVersion, 8);
   assert.equal(view.routes[0].pathname, "/clinical-notes");
   assert.equal(view.routes[0].params.appointmentId, "booking");
+});
+
+test("server queue eligibility disables starting another waiting patient", () => {
+  const view = review({
+    status: "confirmed",
+    queueState: "waiting",
+    clinicQueue: { can_call: false, currently_serving: 7 },
+  });
+  assert.equal(
+    view.render().find((node) => node.props.label === "Start consultation")
+      .props.disabled,
+    true
+  );
+});
+
+test("late arrivals require explicit admission to a recovery opening", () => {
+  const view = review({
+    status: "confirmed",
+    queueState: "held",
+    clinicQueue: { late_review_required: true },
+  });
+  assert.ok(
+    view
+      .render()
+      .find((node) => node.props.label === "Admit to next available opening")
+  );
+  assert.equal(
+    view.render().find((node) => node.props.label === "Start consultation"),
+    undefined
+  );
 });
 
 test("record-visit and prescription routes hide the parent navbar while normal tabs retain it", () => {

@@ -1,6 +1,7 @@
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.0";
 import { normalizeMapPlace } from "./places.ts";
 import { placeSearchError } from "./errors.ts";
+import { logFailure, requestId } from "../_shared/log.ts";
 
 export default {
   fetch: withSupabase({ auth: "user" }, async (request, ctx) => {
@@ -101,7 +102,10 @@ export default {
         },
         { headers: { "cache-control": "no-store" } }
       );
-    } catch {
+    } catch (error) {
+      logFailure("search-map-places", "provider-request", error, {
+        request_id: requestId(request),
+      });
       return Response.json(
         { error: "Place search timed out. Try again." },
         { status: 502 }

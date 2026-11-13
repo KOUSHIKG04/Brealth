@@ -37,6 +37,47 @@ const fs = require("node:fs"),
 
 const exportsForSchedule = {};
 
+test("reschedule cutoff selections preserve exact saved minutes and the seven-day limit", () => {
+  const jsx = (type, props) => ({ type, props });
+  const { RescheduleCutoffPicker } = load(
+    "../src/features/schedule/components/RescheduleCutoffPicker.tsx",
+    {
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "react-native": { View: "View" },
+      "@startup/mobile-ui": { Dropdown: "Dropdown" },
+      "../../../components/DoctorScreen": { Label: "Label" },
+    }
+  );
+  let next;
+  const render = (value, disabled = false) =>
+    RescheduleCutoffPicker({
+      value,
+      disabled,
+      onChange: (value) => {
+        next = value;
+      },
+    }).props.children[1].props.children;
+  const controls = render(2 * 1440 + 3 * 60 + 17);
+  assert.deepEqual(
+    Array.from(controls, (control) => control.props.value),
+    ["2", "3", "17"]
+  );
+  controls[2].props.onValueChange("42");
+  assert.equal(next, 2 * 1440 + 3 * 60 + 42);
+  const maximum = render(10080);
+  assert.ok(
+    maximum[1].props.options
+      .filter((option) => option.value !== "0")
+      .every((option) => option.disabled)
+  );
+  assert.ok(
+    maximum[2].props.options
+      .filter((option) => option.value !== "0")
+      .every((option) => option.disabled)
+  );
+  assert.ok(render(0, true).every((control) => control.props.disabled));
+});
+
 const scheduleContracts = load(
   "../../../packages/contracts/src/doctor-schedule.ts",
   { zod: { z: require("zod") } }
@@ -131,12 +172,18 @@ test("saved sixty-minute consultations remain valid when increasing the booking 
   );
 });
 
-function scheduleView({ published = false } = {}) {
+function scheduleView({
+  published = false,
+  conflictPreview = null,
+  publishFailures = [],
+  latestPrefs = null,
+} = {}) {
   const state = [],
     memo = [],
     effects = [];
   let cursor = 0;
-  const publications = [];
+  const publications = [],
+    previews = [];
   const jsx = (type, props) => ({ type, props: props ?? {} });
   const prefs = {
     practice_id: "practice",
@@ -208,7 +255,10 @@ function scheduleView({ published = false } = {}) {
       useToastFeedback: () => {},
     },
     "@tanstack/react-query": {
-      useQueryClient: () => ({ setQueryData: () => {} }),
+      useQueryClient: () => ({
+        setQueryData: () => {},
+        invalidateQueries: async () => {},
+      }),
       useQuery: ({ queryKey }) => ({
         data:
           queryKey[0] === "my-practices"
@@ -218,10 +268,28 @@ function scheduleView({ published = false } = {}) {
               : queryKey[0] === "my-doctor-profile"
                 ? { booking_timezone: "Asia/Kolkata" }
                 : undefined,
+        refetch: async () => ({ data: latestPrefs ?? prefs }),
       }),
     },
     "@startup/data-access": {
+      previewMyDoctorSchedule: async (...args) => {
+        previews.push(args);
+        return (
+          conflictPreview ?? {
+            conflicts: [],
+            can_replace: true,
+            token: "preview",
+          }
+        );
+      },
+      listMyScheduleBusyBlocks: async () => [],
       publishMyDoctorSchedule: async (...args) => {
+        publications.push(args);
+        return { settings: prefs };
+      },
+      publishPreviewedDoctorSchedule: async (...args) => {
+        const failure = publishFailures.shift();
+        if (failure) throw Object.assign(new Error(failure), { code: failure });
         publications.push(args);
         return { settings: prefs };
       },
@@ -271,7 +339,7 @@ function scheduleView({ published = false } = {}) {
     return nodes;
   }
   render();
-  return { render, publications };
+  return { render, publications, previews, prefs };
 }
 
 test("initial setup previews a suggestion, applies it only on confirmation, and sends the chosen date", async () => {
@@ -360,4 +428,350 @@ test("doctor publishes split clinic blocks with the same saved appointment durat
   assert.equal(view.publications[0][3].clinicTimeBlocks.length, 2);
   assert.equal(view.publications[0][3].clinicTimeBlocks[1].start, "11:00");
   assert.equal(view.publications[0][3].slotMinutes, 60);
+});
+
+test("a schedule saved elsewhere is merged and published once without losing edits", async () => {
+  const latest = {
+    ...scheduleViewPrefs(),
+    row_version: "2",
+    online_fee_minor: 45000,
+  };
+  const view = scheduleView({
+    published: true,
+    publishFailures: ["PT409"],
+    latestPrefs: latest,
+  });
+  let nodes = view.render();
+  nodes
+    .find((node) => node.props.title === "Total clinic capacity")
+    .props.onChange(30);
+  nodes = view.render();
+  await nodes
+    .find((node) => node.props.label === "Publish Schedule")
+    .props.onPress();
+  assert.equal(view.publications.length, 1);
+  const [, , , settings, version] = view.publications[0];
+  assert.equal(settings.walkinDailyLimit, 30, "doctor edit kept");
+  assert.equal(settings.onlineFeeMinor, 45000, "other app edit adopted");
+  assert.equal(version, 2, "retried against the latest version");
+  assert.equal(view.previews.length, 2, "re-previewed after the merge");
+});
+
+test("the same setting changed in both apps keeps the doctor's value and does not publish", async () => {
+  const latest = {
+    ...scheduleViewPrefs(),
+    row_version: "2",
+    walkin_daily_limit: 40,
+  };
+  const view = scheduleView({
+    published: true,
+    publishFailures: ["PT409"],
+    latestPrefs: latest,
+  });
+  let nodes = view.render();
+  nodes
+    .find((node) => node.props.title === "Total clinic capacity")
+    .props.onChange(30);
+  nodes = view.render();
+  await nodes
+    .find((node) => node.props.label === "Publish Schedule")
+    .props.onPress();
+  assert.equal(view.publications.length, 0);
+  nodes = view.render();
+  assert.equal(
+    nodes.find((node) => node.props.title === "Total clinic capacity").props
+      .value,
+    30
+  );
+});
+
+test("an overlap that appears after the preview re-previews instead of failing", async () => {
+  const view = scheduleView({ published: true, publishFailures: ["PT410"] });
+  await view
+    .render()
+    .find((node) => node.props.label === "Publish Schedule")
+    .props.onPress();
+  assert.equal(view.previews.length, 2);
+  assert.equal(view.publications.length, 1);
+});
+
+function scheduleViewPrefs() {
+  return scheduleView().prefs;
+}
+
+const jsx = (type, props) => ({ type, props });
+
+function nodes(tree) {
+  if (!tree) return [];
+  if (Array.isArray(tree)) return tree.flatMap(nodes);
+  if (typeof tree !== "object") return [];
+  return [tree, ...nodes(tree.props?.children)];
+}
+
+const components = Object.fromEntries(
+  [
+    "Button",
+    "Chip",
+    "FadedScrollView",
+    "Input",
+    "Loader",
+    "Skeleton",
+    "ClockDurationPicker",
+    "ModalSurface",
+  ].map((name) => [name, name])
+);
+
+const base = {
+  "../components/ScheduleAdjustmentNotices": {
+    ScheduleAdjustmentNotices: "ScheduleAdjustmentNotices",
+  },
+  "../components/ScheduleConflictDialog": {
+    ScheduleConflictDialog: "ScheduleConflictDialog",
+  },
+  "react/jsx-runtime": { jsx, jsxs: jsx },
+  "react-native": { View: "View", Switch: "Switch", Pressable: "Pressable" },
+  "@startup/mobile-ui": components,
+  "../../../components/DoctorScreen": {
+    Heading: "Heading",
+    Label: "Label",
+    Panel: "Panel",
+    DoctorScreen: "DoctorScreen",
+    Choice: "Choice",
+  },
+  "../../../components/theme": { palette: {}, ui: {} },
+};
+
+for (const mode of ["clinic", "online", "home"]) {
+  test(`${mode} editor publishes through its own controller`, () => {
+    let receivedMode,
+      saves = 0;
+    const { ScheduleScreen } = load(
+      "../src/features/schedule/screens/ScheduleScreen.tsx",
+      {
+        ...base,
+        "../components/AppointmentRecoveryPolicy": {
+          AppointmentRecoveryPolicy: "AppointmentRecoveryPolicy",
+        },
+        "lucide-react-native": { Calendar: "Calendar", Check: "Check" },
+        "../../../components/DatePicker": { DatePicker: "DatePicker" },
+        "../components/NumberSetting": { NumberSetting: "NumberSetting" },
+        "../hooks/useScheduleEditor": {
+          useScheduleEditor({ mode }) {
+            receivedMode = mode;
+            return {
+              practices: { data: [], isLoading: false, isFetching: false },
+              doctorProfile: {},
+              associationRequests: {},
+              saved: {},
+              selectedPracticeId: "practice",
+              selectedPractice: { verified: true },
+              draft: { days: [0], autoAccept: false, homeVisits: false },
+              zone: "Asia/Kolkata",
+              busy: false,
+              suggestion: null,
+              suggestedTimes: [],
+              suggestedDuration: null,
+              availabilityDuration: null,
+              save() {
+                saves++;
+              },
+            };
+          },
+        },
+      }
+    );
+    const buttons = nodes(ScheduleScreen({ mode })).filter(
+      (node) =>
+        node.type === "Button" &&
+        /^(Publish|Save) Schedule$/.test(node.props.label)
+    );
+    assert.equal(receivedMode, mode);
+    assert.equal(buttons.length, 1);
+    assert.equal(buttons[0].props.label, "Publish Schedule");
+    assert.equal(buttons[0].props.disabled, false);
+    buttons[0].props.onPress();
+    assert.equal(saves, 1);
+  });
+  test(`${mode} charges editor hides other service fees`, () => {
+    const { ConsultationChargesPanel } = load(
+      "../src/features/schedule/components/ConsultationChargesPanel.tsx",
+      base
+    );
+    const inputs = nodes(
+      ConsultationChargesPanel({
+        mode,
+        draft: { clinicFee: "100", onlineFee: "200", homeFee: "300" },
+      })
+    ).filter((node) => node.type === "Input");
+    assert.equal(inputs.length, 1);
+    assert.equal(
+      inputs[0].props.value,
+      { clinic: "100", online: "200", home: "300" }[mode]
+    );
+  });
+}
+
+test("schedule overlap waits for confirmation and sends the reviewed token", async () => {
+  const preview = { token: "reviewed", conflicts: [{}], can_replace: true };
+  const view = scheduleView({ published: true, conflictPreview: preview });
+  await view
+    .render()
+    .find((node) => node.props.label === "Publish Schedule")
+    .props.onPress();
+  assert.equal(view.publications.length, 0);
+  const dialog = view
+    .render()
+    .find((node) => node.props.preview?.token === "reviewed");
+  await dialog.props.onConfirm();
+  assert.equal(view.publications.length, 1);
+  assert.equal(view.publications[0][6], "reviewed");
+});
+
+test("blocked overlap and cancel never publish or discard the draft", async () => {
+  const view = scheduleView({
+    published: true,
+    conflictPreview: { token: "blocked", conflicts: [{}], can_replace: false },
+  });
+  await view
+    .render()
+    .find((node) => node.props.label === "Publish Schedule")
+    .props.onPress();
+  let dialog = view
+    .render()
+    .find((node) => node.props.preview?.token === "blocked");
+  await dialog.props.onConfirm();
+  assert.equal(view.publications.length, 0);
+  dialog.props.onClose();
+  const tree = view.render();
+  assert.equal(
+    tree.find((node) => node.props.preview?.token === "blocked"),
+    undefined
+  );
+  assert.equal(tree.find((node) => node.type === "Duration").props.value, 60);
+});
+
+test("Doctor pause uses the keyboard-safe dialog and requires a reason before sending requests", () => {
+  let state = null;
+  const confirmations = [];
+  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const react = {
+    useState: () => [
+      state,
+      (next) => {
+        state = next;
+      },
+    ],
+  };
+  const preview = {
+    token: "booked-plan",
+    effective_from: "2026-11-02",
+    can_replace: false,
+    can_request: true,
+    conflicts: [
+      {
+        rule_id: "rule",
+        mode: "online",
+        facility_name: "Fixture",
+        days: [1],
+        start: "13:00",
+        end: "15:00",
+        remaining: [{ days: [1], start: "14:00", end: "15:00" }],
+        paused_remaining: [],
+        effective_from: "2026-11-02",
+        travel_buffer_minutes: 0,
+        booked_count: 1,
+        reason: "Review bookings",
+        bookings: [
+          {
+            id: "appointment",
+            patient_name: "Fixture patient",
+            booking_code: "APT-1",
+            starts_at: "2026-11-02T08:00:00Z",
+            ends_at: "2026-11-02T08:30:00Z",
+            timezone: "Asia/Kolkata",
+            payment_hold: false,
+          },
+        ],
+      },
+    ],
+  };
+  const flatten = (node) =>
+    Array.isArray(node)
+      ? node.flatMap(flatten)
+      : node && typeof node === "object"
+        ? [
+            node,
+            ...flatten(node.props?.children),
+            ...flatten(node.props?.actions),
+          ]
+        : [];
+
+  const { ScheduleConflictDialog } = load(
+    "../src/features/schedule/components/ScheduleConflictDialog.tsx",
+    {
+      react,
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "react-native": { View: "View", TextInput: "TextInput" },
+      "@startup/contracts": {
+        ...scheduleContracts,
+        formatDisplayDate: (value) => value,
+      },
+      "@startup/design-tokens": {
+        colors: { doctor: { border: "gray", text: "black" } },
+        spacing: { sm: 8, md: 16 },
+      },
+      "@startup/mobile-ui": { Button: "Button", AppDialog: "AppDialog" },
+      "../../../components/DoctorScreen": {
+        Heading: "Heading",
+        Label: "Label",
+      },
+    }
+  );
+  const render = (busy = false) =>
+    flatten(
+      ScheduleConflictDialog({
+        preview,
+        busy,
+        onClose() {},
+        onConfirm: (value) => confirmations.push(value),
+      })
+    );
+  assert.equal(render()[0].type, "AppDialog");
+  render()
+    .find(
+      (n) =>
+        n.type === "Button" &&
+        n.props.label === "Publish new schedule and pause affected blocks"
+    )
+    .props.onPress();
+  assert.equal(confirmations.length, 0);
+  assert.equal(
+    render().find(
+      (n) =>
+        n.type === "Button" &&
+        n.props.label === "Publish and send rescheduling requests"
+    ).props.disabled,
+    true
+  );
+  render()
+    .find((n) => n.type === "TextInput")
+    .props.onChangeText("Clinic hours changed");
+  const button = render().find(
+    (n) =>
+      n.type === "Button" &&
+      n.props.label === "Publish and send rescheduling requests"
+  );
+  assert.equal(button.props.disabled, false);
+  button.props.onPress();
+  assert.equal(
+    JSON.stringify(confirmations),
+    JSON.stringify([
+      { strategy: "pause", patientReason: "Clinic hours changed" },
+    ])
+  );
+  assert.ok(
+    render(true)
+      .filter((n) => n.type === "Button")
+      .every((n) => n.props.disabled)
+  );
 });

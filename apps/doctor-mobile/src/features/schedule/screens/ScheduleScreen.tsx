@@ -28,9 +28,14 @@ import { NumberSetting } from "../components/NumberSetting";
 import { useScheduleEditor } from "../hooks/useScheduleEditor";
 import { AppointmentRecoveryPolicy } from "../components/AppointmentRecoveryPolicy";
 
+import { ScheduleConflictDialog } from "../components/ScheduleConflictDialog";
+import { ScheduleAdjustmentNotices } from "../components/ScheduleAdjustmentNotices";
+import { ScheduleBusyBlocks } from "../components/ScheduleBusyBlocks";
+
 export function ScheduleScreen({ mode }: ScheduleScreenProps) {
   const {
     selectPractice,
+    setPracticeId,
     showScheduleHelp,
     setShowScheduleHelp,
     doctorProfile,
@@ -59,6 +64,13 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     suggestedTimes,
     update,
     save,
+    conflict,
+    busyBlocks,
+    busyOverlaps,
+    remoteChanged,
+    dismissConflict,
+    confirmConflict,
+    startFromSuggestedDate,
   } = useScheduleEditor({ mode });
   return (
     <DoctorScreen
@@ -99,6 +111,22 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
           {selectedPractice.verified ? "" : " · awaiting verification"}
         </Label>
       ) : null}
+      {remoteChanged ? (
+        <View accessibilityLiveRegion="polite">
+          <Label muted>
+            This schedule was updated in another app. Your edits are kept and
+            will be merged with that update when you publish.
+          </Label>
+        </View>
+      ) : null}
+      <ScheduleAdjustmentNotices onSelectPractice={setPracticeId} />
+      <ScheduleConflictDialog
+        preview={conflict}
+        busy={busy}
+        onClose={dismissConflict}
+        onConfirm={confirmConflict}
+        onStartFromSuggestedDate={startFromSuggestedDate}
+      />
       {saved.isLoading ? (
         <Skeleton theme="doctor" height={72} radius={12} />
       ) : null}
@@ -127,16 +155,17 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         onUpdate={update}
       />
       {mode === "home" ? (
-        <NumberSetting
-          title="Travel buffer before and after each block"
+        <ClockDurationPicker
+          theme="doctor"
+          label="Travel buffer before and after each block"
           value={draft.homeTravelBuffer ?? 0}
-          suffix="min"
           min={0}
           max={180}
           disabled={busy}
           onChange={(homeTravelBuffer) => update({ homeTravelBuffer })}
         />
       ) : null}
+      <ScheduleBusyBlocks blocks={busyBlocks} overlaps={busyOverlaps} />
       <ScheduleSection title="Appointment slots">
         <Label muted style={{ fontSize: 12 }}>
           {mode === "home"
@@ -372,7 +401,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
           doctorProfile.isError ||
           !selectedPracticeId
         }
-        onPress={() => void save()}
+        onPress={save}
       />
       {selectedPracticeId && saved.data ? (
         <AppointmentRecoveryPolicy

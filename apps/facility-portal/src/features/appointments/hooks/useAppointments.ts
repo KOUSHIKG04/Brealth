@@ -6,6 +6,7 @@ import type { IScannerControls } from "@zxing/browser";
 import { useRouter } from "next/navigation";
 import type { ClinicAppointment } from "@startup/contracts";
 import { appointmentRecoveryView } from "@startup/contracts";
+import { compareAppointmentQueue } from "../utils/appointmentOrder";
 import {
   changePortalAppointment,
   redeemPortalCheckinToken,
@@ -29,6 +30,7 @@ export function useAppointments({
   const [pending, startTransition] = React.useTransition();
   const [search, setSearch] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState("All");
+  const [showPaymentHolds, setShowPaymentHolds] = React.useState(false);
   const [now, setNow] = React.useState(() => Date.now());
   const [showScanner, setShowScanner] = React.useState(false);
   const [checkinToken, setCheckinToken] = React.useState("");
@@ -52,52 +54,59 @@ export function useAppointments({
       });
   }, [loadError]);
   React.useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    const timer = window.setInterval(() => {
+      setNow(Date.now());
+      if (document.visibilityState === "visible") router.refresh();
+    }, 30000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [router]);
 
   const displayedAppointments = React.useMemo(() => {
     const today = new Date();
 
-    return appointments.filter((item) => {
-      const start = new Date(item.starts_at);
-      const dayOffset = Math.floor(
-        (Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()) -
-          Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
-          86400000
-      );
+    return appointments
+      .filter((item) => {
+        const start = new Date(item.starts_at);
+        const dayOffset = Math.floor(
+          (Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()) -
+            Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
+            86400000
+        );
 
-      const periodMatch =
-        filterPeriod === "All" ||
-        (filterPeriod === "Today" && dayOffset === 0) ||
-        (filterPeriod === "Tomorrow" && dayOffset === 1) ||
-        (filterPeriod === "This Week" && dayOffset >= 0 && dayOffset < 7);
+        const periodMatch =
+          filterPeriod === "All" ||
+          (filterPeriod === "Today" && dayOffset === 0) ||
+          (filterPeriod === "Tomorrow" && dayOffset === 1) ||
+          (filterPeriod === "This Week" && dayOffset >= 0 && dayOffset < 7);
 
-      const statusMatch =
-        statusFilter === "All" ||
-        item.status === statusFilter.toLowerCase() ||
-        appointmentRecoveryView(item, now).staffStatus === statusFilter;
+        const statusMatch =
+          statusFilter === "All" ||
+          item.status === statusFilter.toLowerCase() ||
+          appointmentRecoveryView(item, now).staffStatus === statusFilter;
 
-      const needle = search.trim().toLowerCase();
+        const needle = search.trim().toLowerCase();
 
-      return (
-        periodMatch &&
-        statusMatch &&
-        (!needle ||
-          [
-            item.patient_name,
-            item.patient_public_code,
-            item.doctor_name,
-            item.service_name,
-            item.public_code,
-          ].some((value) => value.toLowerCase().includes(needle)))
-      );
-    });
-  }, [appointments, filterPeriod, search, statusFilter, now]);
+        return (
+          Boolean(item.confirmation_payment_pending) === showPaymentHolds &&
+          periodMatch &&
+          statusMatch &&
+          (!needle ||
+            [
+              item.patient_name,
+              item.patient_public_code,
+              item.doctor_name,
+              item.service_name,
+              item.public_code,
+            ].some((value) => value.toLowerCase().includes(needle)))
+        );
+      })
+      .sort(compareAppointmentQueue);
+  }, [appointments, filterPeriod, search, statusFilter, now, showPaymentHolds]);
 
   const appointmentsSummary = React.useMemo(
     () => ({
-      total: appointments.length,
+      total: appointments.filter((item) => !item.confirmation_payment_pending)
+        .length,
       confirmed: appointments.filter((item) => item.status === "confirmed")
         .length,
       pending: appointments.filter(
@@ -108,8 +117,10 @@ export function useAppointments({
           (item.request_expires_at === null ||
             new Date(item.request_expires_at).getTime() > now)
       ).length,
-      cancelled: appointments.filter((item) => item.status === "cancelled")
-        .length,
+      cancelled: appointments.filter(
+        (item) =>
+          item.status === "cancelled" && !item.confirmation_payment_pending
+      ).length,
     }),
     [appointments, now]
   );
@@ -220,7 +231,8 @@ export function useAppointments({
         else {
           toast.add({
             title: "Patient checked in",
-            description: "The doctor can now call them from the queue.",
+            description:
+              "Arrival recorded. The queue will show if reception review is needed.",
             type: "success",
           });
           setCheckinToken("");
@@ -290,6 +302,11 @@ export function useAppointments({
     search,
     setSearch,
     statusFilter,
+    showPaymentHolds,
+    setShowPaymentHolds,
+    paymentHoldCount: appointments.filter(
+      (item) => item.confirmation_payment_pending
+    ).length,
     setStatusFilter,
     now,
     showScanner,

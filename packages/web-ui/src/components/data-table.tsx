@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import type { DisplayTableRow } from "../types/dataTable";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useDataTable } from "../hooks/use-data-table";
 import type { DataTableProps } from "../types/dataTable";
 import { flexRender } from "@tanstack/react-table";
@@ -34,6 +37,11 @@ export function DataTable<TData, TValue>({
   emptyState,
   emptyMessage = "No results found.",
   className,
+  tableClassName,
+  cellClassName,
+  bare = false,
+  enableColumnResizing = false,
+  getRowId,
   pageCount,
   rowCount,
   pagination,
@@ -56,12 +64,69 @@ export function DataTable<TData, TValue>({
     sorting,
     onSortingChange,
     manualSorting,
+    getRowId,
+    enableColumnResizing,
   });
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fitted = useRef(false);
+  useEffect(() => {
+    if (!enableColumnResizing || !containerRef.current) return;
+    const fit = (width: number) => {
+      if (width <= 0 || fitted.current) return;
+      fitted.current = true;
+      const columns = table.getVisibleLeafColumns();
+      const total = table.getTotalSize();
+      if (width <= total) return;
+      table.setColumnSizing((previous) =>
+        Object.keys(previous).length
+          ? previous
+          : Object.fromEntries(
+              columns.map((column) => [
+                column.id,
+                Math.min(
+                  column.columnDef.maxSize ?? 640,
+                  Math.round((column.getSize() * width) / total)
+                ),
+              ])
+            )
+      );
+    };
+    fit(containerRef.current.clientWidth);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) =>
+      fit(entries[0].contentRect.width)
+    );
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [enableColumnResizing, table]);
+
   return (
-    <div className={cn("w-full space-y-3", className)}>
-      <div className="border-border bg-card overflow-hidden rounded-xl border shadow-2xs">
-        <Table className="w-full text-sm">
+    <div className={cn("w-full min-w-0 space-y-3", className)}>
+      <div
+        ref={containerRef}
+        className={cn(
+          "overflow-hidden",
+          !bare && "border-border bg-card rounded-xl border shadow-2xs"
+        )}
+      >
+        <Table
+          className={cn(
+            "w-full text-sm",
+            tableClassName,
+            enableColumnResizing && "min-w-0 table-fixed"
+          )}
+          style={
+            enableColumnResizing ? { width: table.getTotalSize() } : undefined
+          }
+        >
+          {enableColumnResizing ? (
+            <colgroup>
+              {table.getVisibleLeafColumns().map((column) => (
+                <col key={column.id} style={{ width: column.getSize() }} />
+              ))}
+            </colgroup>
+          ) : null}
           <TableHeader className="border-border bg-background border-b">
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow
@@ -75,34 +140,124 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      className="text-muted-foreground px-4 py-3 text-xs font-bold tracking-wider uppercase"
+                      className={cn(
+                        "text-muted-foreground relative px-4 py-3 text-xs",
+                        enableColumnResizing && "overflow-hidden",
+                        enableColumnResizing
+                          ? "font-medium whitespace-nowrap"
+                          : "font-bold tracking-wider uppercase"
+                      )}
                     >
-                      {header.isPlaceholder ? null : canSort ? (
-                        <button
-                          type="button"
-                          onClick={header.column.getToggleSortingHandler()}
-                          className="hover:text-foreground -ml-1 flex cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 transition-colors select-none"
-                        >
-                          <span>
+                      <div className="flex min-w-0 items-center gap-1.5 pr-2">
+                        {enableColumnResizing &&
+                        !header.isPlaceholder &&
+                        header.column.getCanResize() ? (
+                          <button
+                            type="button"
+                            role="separator"
+                            aria-orientation="vertical"
+                            aria-label={
+                              "Resize " +
+                              (typeof header.column.columnDef.header ===
+                              "string"
+                                ? header.column.columnDef.header
+                                : header.column.id) +
+                              " column"
+                            }
+                            aria-valuenow={header.column.getSize()}
+                            aria-valuemin={
+                              header.column.columnDef.minSize ?? 80
+                            }
+                            aria-valuemax={
+                              header.column.columnDef.maxSize ?? 640
+                            }
+                            title="Slide to resize; double-click to reset"
+                            className={cn(
+                              "hover:after:bg-primary focus-visible:ring-ring after:bg-border absolute inset-y-0 right-0 z-10 w-3 cursor-col-resize touch-none select-none after:absolute after:inset-y-0 after:right-0 after:w-px focus-visible:ring-2",
+                              header.column.getIsResizing() &&
+                                "after:bg-primary"
+                            )}
+                            onMouseDown={(event) => {
+                              event.stopPropagation();
+                              header.getResizeHandler()(event);
+                            }}
+                            onTouchStart={(event) => {
+                              event.stopPropagation();
+                              header.getResizeHandler()(event);
+                            }}
+                            onClick={(event) => event.stopPropagation()}
+                            onDoubleClick={() => header.column.resetSize()}
+                            onKeyDown={(event) => {
+                              const size = header.column.getSize(),
+                                min = header.column.columnDef.minSize ?? 80,
+                                max = header.column.columnDef.maxSize ?? 640;
+                              const next =
+                                event.key === "ArrowLeft"
+                                  ? size - 16
+                                  : event.key === "ArrowRight"
+                                    ? size + 16
+                                    : event.key === "Home"
+                                      ? min
+                                      : event.key === "End"
+                                        ? max
+                                        : null;
+                              if (next === null) return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                              table.setColumnSizing((previous) => ({
+                                ...previous,
+                                [header.column.id]: Math.max(
+                                  min,
+                                  Math.min(max, next)
+                                ),
+                              }));
+                            }}
+                          />
+                        ) : null}
+                        {header.isPlaceholder ? null : canSort ? (
+                          <button
+                            type="button"
+                            onClick={header.column.getToggleSortingHandler()}
+                            className="hover:text-foreground -ml-1 flex min-w-0 cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 transition-colors select-none"
+                          >
+                            <span
+                              className="truncate"
+                              title={
+                                typeof header.column.columnDef.header ===
+                                "string"
+                                  ? header.column.columnDef.header
+                                  : undefined
+                              }
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </span>
+                            {isSorted === "asc" ? (
+                              <ArrowUp className="text-primary size-3" />
+                            ) : isSorted === "desc" ? (
+                              <ArrowDown className="text-primary size-3" />
+                            ) : (
+                              <ArrowUpDown className="size-3 opacity-40 hover:opacity-100" />
+                            )}
+                          </button>
+                        ) : (
+                          <span
+                            className="min-w-0 truncate"
+                            title={
+                              typeof header.column.columnDef.header === "string"
+                                ? header.column.columnDef.header
+                                : undefined
+                            }
+                          >
                             {flexRender(
                               header.column.columnDef.header,
                               header.getContext()
                             )}
                           </span>
-                          {isSorted === "asc" ? (
-                            <ArrowUp className="text-primary size-3" />
-                          ) : isSorted === "desc" ? (
-                            <ArrowDown className="text-primary size-3" />
-                          ) : (
-                            <ArrowUpDown className="size-3 opacity-40 hover:opacity-100" />
-                          )}
-                        </button>
-                      ) : (
-                        flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )
-                      )}
+                        )}
+                      </div>
                     </TableHead>
                   );
                 })}
@@ -154,7 +309,11 @@ export function DataTable<TData, TValue>({
                   {row.getVisibleCells().map((cell) => (
                     <TableCell
                       key={cell.id}
-                      className="text-foreground px-4 py-3 align-middle"
+                      className={cn(
+                        "text-foreground px-4 py-3 align-middle",
+                        enableColumnResizing && "overflow-hidden",
+                        cellClassName
+                      )}
                     >
                       {flexRender(
                         cell.column.columnDef.cell,
@@ -278,4 +437,17 @@ export function DataTable<TData, TValue>({
       )}
     </div>
   );
+}
+
+export function createDisplayColumns(
+  headers: readonly (readonly [string, string, number?, number?])[]
+): ColumnDef<DisplayTableRow>[] {
+  return headers.map(([id, header, size, minSize], index) => ({
+    id,
+    header,
+    enableSorting: false,
+    ...(size === undefined ? {} : { size }),
+    ...(minSize === undefined ? {} : { minSize }),
+    cell: ({ row }) => row.original.cells[index],
+  }));
 }

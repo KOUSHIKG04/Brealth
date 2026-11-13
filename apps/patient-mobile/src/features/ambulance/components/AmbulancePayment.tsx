@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import {
   AppText,
   Button,
@@ -97,9 +98,10 @@ export function AmbulancePayment({ bookingId }: AmbulancePaymentProps) {
       )}
       {mutation.isError ? (
         <AppText accessibilityRole="alert">
-          {mutation.error instanceof Error
-            ? mutation.error.message
-            : "Could not update payment. Refresh before retrying."}
+          {userErrorMessage(
+            mutation.error,
+            "Could not update payment. Refresh before retrying."
+          )}
         </AppText>
       ) : null}
     </PaymentSummary>

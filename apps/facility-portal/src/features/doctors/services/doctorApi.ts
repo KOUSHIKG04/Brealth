@@ -31,6 +31,7 @@ export const doctorApi = {
       .parse(await response.json())
       .map((row) => ({
         id: row.id,
+        practiceId: row.practice_id,
         name: row.name,
         specialization: row.specialization,
         clinzoId: row.clinzo_id,

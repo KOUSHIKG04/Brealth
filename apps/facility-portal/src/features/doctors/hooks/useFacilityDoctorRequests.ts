@@ -1,5 +1,6 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
 import type { FacilityDoctorRequestsProps } from "../types/facilityDoctorRequests";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -52,7 +53,7 @@ export function useFacilityDoctorRequests({
     onError: (error) =>
       toast.add({
         title: "Could not update doctor request",
-        description: error.message,
+        description: userErrorMessage(error, "Try again."),
         type: "error",
       }),
   });

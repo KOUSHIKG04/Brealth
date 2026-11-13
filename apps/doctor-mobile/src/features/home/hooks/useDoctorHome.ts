@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useTimeGreeting } from "@startup/mobile-ui";
 import { useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -79,9 +80,7 @@ export function useDoctorHome() {
       await client.invalidateQueries({ queryKey: ["my-doctor-presence"] });
     } catch (cause) {
       setPresenceError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not update your presence."
+        userErrorMessage(cause, "Could not update your presence.")
       );
     } finally {
       presenceBusyRef.current = false;

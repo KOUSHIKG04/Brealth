@@ -1,7 +1,15 @@
+import { userErrorMessage } from "@startup/contracts";
 import { first, validPoint } from "../utils/mapPicker";
 import { emptyDetails } from "../utils/pickLocationConstants";
 import type { Point, PlaceDetails } from "../types/pick-location-screen";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Keyboard, Platform } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import Constants from "expo-constants";
@@ -161,14 +169,14 @@ export function useMapPicker() {
       if (mounted.current && request === operation.current)
         showToast({
           title: "Could not find address",
-          message: cause instanceof Error ? cause.message : "Try again.",
+          message: userErrorMessage(cause, "Try again."),
           type: "error",
         });
     } finally {
       if (mounted.current && request === operation.current) setSearching(false);
     }
   }
-  async function useDeviceLocation() {
+  async function locateDevice() {
     if (locating || searching) return;
     const request = ++operation.current;
     setLocating(true);
@@ -191,7 +199,7 @@ export function useMapPicker() {
       if (mounted.current && request === operation.current)
         showToast({
           title: "Could not find your location",
-          message: cause instanceof Error ? cause.message : "Try again.",
+          message: userErrorMessage(cause, "Try again."),
           type: "error",
         });
     } finally {
@@ -199,11 +207,20 @@ export function useMapPicker() {
     }
   }
 
+  const locateInitialPoint = useEffectEvent(() => {
+    if (!initialPoint) void locateDevice();
+  });
   useEffect(() => {
-    if (!initialPoint) void useDeviceLocation();
+    locateInitialPoint();
   }, []);
 
+  const reverseLatitude = point?.latitude;
+  const reverseLongitude = point?.longitude;
   useEffect(() => {
+    const point =
+      reverseLatitude == null || reverseLongitude == null
+        ? null
+        : { latitude: reverseLatitude, longitude: reverseLongitude };
     if (!point) return;
     const found = selectedPlace.current;
     if (
@@ -245,10 +262,10 @@ export function useMapPicker() {
             setAddressLabel("");
             showToast({
               title: "Could not fill this address",
-              message:
-                cause instanceof Error
-                  ? cause.message
-                  : "Retry the lookup or enter the address manually.",
+              message: userErrorMessage(
+                cause,
+                "Retry the lookup or enter the address manually."
+              ),
               type: "error",
             });
           }
@@ -261,7 +278,7 @@ export function useMapPicker() {
       active = false;
       clearTimeout(timer);
     };
-  }, [point?.latitude, point?.longitude, lookupVersion]);
+  }, [reverseLatitude, reverseLongitude, lookupVersion, showToast]);
 
   const onMapPoint = useCallback(
     (
@@ -349,7 +366,7 @@ export function useMapPicker() {
     onMapLoaded,
     chooseSearchResult,
     searchAddress,
-    useDeviceLocation,
+    locateDevice,
     onCameraMove,
     onMapClick,
     confirm,

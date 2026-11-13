@@ -1,6 +1,6 @@
 import type { AddressSheetProps } from "../types/address-sheet";
 import { useToastFeedback } from "@startup/mobile-ui";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useFocusEffect } from "expo-router";
 import { useDriverLocationDraft } from "../../locations/stores/locationDraft";
 import { Keyboard } from "react-native";
@@ -18,7 +18,7 @@ export function useDriverAddressSheet({
 }: AddressSheetProps) {
   const insets = useSafeAreaInsets();
   const { profile } = useMobileSession();
-  const [address, setAddress] = useState<PatientAddress>(value);
+  const [address, setAddress] = useState<PatientAddress>(value || emptyAddress);
   const [error, setError] = useState("");
   useToastFeedback({ error });
   const [attemptedConfirm, setAttemptedConfirm] = useState(false);
@@ -43,16 +43,6 @@ export function useDriverAddressSheet({
       onReopen();
     }, [chosen, clearChosen, onReopen])
   );
-
-  // Only a new confirmed address replaces the draft. Dismissing the drawer
-  // must not reset partially entered fields when it is opened again.
-  useEffect(() => {
-    setAddress(value || emptyAddress);
-    setAttemptedConfirm(false);
-  }, [value]);
-  useEffect(() => {
-    if (visible) setError("");
-  }, [visible]);
 
   function handleConfirm() {
     setAttemptedConfirm(true);

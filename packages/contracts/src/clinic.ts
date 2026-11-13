@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { uuidSchema } from "./validation";
 import { appointmentRecoverySchema } from "./appointment-recovery";
+import { portalAppointmentPaymentSummarySchema } from "./appointment-payments";
 
 export const clinicBookingSchema = z
   .object({
@@ -41,6 +42,17 @@ export const portalWalkInBookingSchema = z
 
 export type PortalWalkInBookingInput = z.infer<
   typeof portalWalkInBookingSchema
+>;
+
+export const portalPaidWalkInBookingSchema = portalWalkInBookingSchema.extend({
+  paymentMethod: z.enum(["gateway", "cash"]),
+  policyVersion: z.string().min(1),
+  termsAccepted: z.boolean(),
+  cashReceived: z.boolean(),
+});
+
+export type PortalPaidWalkInBookingInput = z.infer<
+  typeof portalPaidWalkInBookingSchema
 >;
 
 export const clinicCheckinTokenSchema = z.string().regex(/^[0-9a-f-]{72}$/);
@@ -222,6 +234,20 @@ export const revokeClinicUnavailabilitySchema = z
   .strict();
 
 export const clinicAppointmentSchema = z.object({
+  clinic_queue: z
+    .object({
+      planned_number: z.number().int().positive().nullable(),
+      position: z.number().int().positive().nullable(),
+      patients_ahead: z.number().int().nonnegative(),
+      currently_serving: z.number().int().positive().nullable(),
+      late_review_required: z.boolean().nullable(),
+      grace_minutes: z.number().int().nonnegative(),
+      can_call: z.boolean().nullable(),
+      estimated_start: z.string().nullable(),
+      estimated_end: z.string().nullable(),
+      updated_at: z.string(),
+    })
+    .nullish(),
   home_visit_details: z
     .object({
       address: z.string(),
@@ -233,6 +259,7 @@ export const clinicAppointmentSchema = z.object({
     })
     .nullish(),
   confirmation_payment_pending: z.boolean().optional(),
+  payment_summary: portalAppointmentPaymentSummarySchema.optional(),
   booking_payment_method: z.enum(["online", "reception"]).optional(),
   recovery: appointmentRecoverySchema.optional(),
   id: uuidSchema,

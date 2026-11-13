@@ -51,6 +51,10 @@ export function useLiveFacilityUpdates({
           kinds.has("appointments")
         ) {
           void queryClient.invalidateQueries(
+            { queryKey: ["schedule-adjustments"] },
+            { cancelRefetch: false }
+          );
+          void queryClient.invalidateQueries(
             { queryKey: ["facility-practice-schedule"] },
             { cancelRefetch: false }
           );
@@ -60,6 +64,10 @@ export function useLiveFacilityUpdates({
           );
           void queryClient.invalidateQueries(
             { queryKey: ["appointment-billing"] },
+            { cancelRefetch: false }
+          );
+          void queryClient.invalidateQueries(
+            { queryKey: ["portal-transactions"] },
             { cancelRefetch: false }
           );
           void queryClient.invalidateQueries(
@@ -78,9 +86,13 @@ export function useLiveFacilityUpdates({
             kinds.has("beds") ||
             kinds.has("schedule") ||
             kinds.has("profile")) &&
-          ["/", "/dashboard", "/appointments", "/doctor-schedules"].includes(
-            path.current
-          )
+          [
+            "/",
+            "/dashboard",
+            "/appointments",
+            "/doctor-schedules",
+            "/transactions",
+          ].includes(path.current)
         )
           router.refresh();
         changes.clear();

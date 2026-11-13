@@ -112,7 +112,9 @@ export const queueEntry = clinzo
     },
     (table) => [
       uniqueIndex("queue_entry_uq_1").on(table.appointment_id),
-      uniqueIndex("queue_entry_uq_2").on(table.queue_id, table.ticket_number),
+      uniqueIndex("queue_entry_uq_2")
+        .on(table.queue_id, table.ticket_number)
+        .where(sql.raw("state NOT IN ('cancelled','no_show')")),
       uniqueIndex("queue_entry_active_uq_1")
         .on(table.queue_id)
         .where(sql.raw("state IN ('called','in_service')")),

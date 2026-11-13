@@ -33,7 +33,7 @@
     "spacing:check": "node scripts/declaration-spacing.mjs --check",
     "spacing:fix": "node scripts/declaration-spacing.mjs --write",
     "typecheck": "turbo typecheck",
-    "test": "turbo test",
+    "test": "pnpm -r run --if-present test",
     "test:e2e": "pnpm --filter facility-portal exec playwright test",
     "test:e2e:ui": "pnpm --filter facility-portal exec playwright test --ui",
     "test:e2e:company-admin": "pnpm --filter company-admin test:e2e",

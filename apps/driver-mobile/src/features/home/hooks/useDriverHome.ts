@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
@@ -158,10 +159,10 @@ export function useDriverHome() {
         type: "success",
       });
     } catch (cause) {
-      const feedback =
-        cause instanceof Error
-          ? cause.message
-          : "Could not update availability.";
+      const feedback = userErrorMessage(
+        cause,
+        "Could not update availability."
+      );
       showToast({
         title: "Availability update failed",
         message: feedback,

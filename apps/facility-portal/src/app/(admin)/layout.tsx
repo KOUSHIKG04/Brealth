@@ -1,6 +1,6 @@
 import { LiveFacilityUpdates } from "@/features/dashboard";
 import { LogoutButton } from "@/features/auth";
-import type { ReactNode } from "react";
+import { Suspense, type ReactNode } from "react";
 import { AdminLayout } from "@/components/admin/admin-layout";
 import { requireApprovedFacility } from "@/server/auth/facilityAccess";
 import { createClient } from "@/lib/supabase/server";
@@ -18,7 +18,8 @@ export default async function AdminRouteLayout({
     data: { user },
   } = await client.auth.getUser();
   return (
-    <AdminLayout
+    <Suspense fallback={<p role="status" className="text-muted-foreground p-6 text-sm">Loading facility portal…</p>}>
+      <AdminLayout
       facilityName={access.facilities[0]?.facilityName ?? "Facility"}
       userName={user?.email ?? "Facility account"}
       logoutAction={<LogoutButton />}
@@ -27,6 +28,7 @@ export default async function AdminRouteLayout({
         facilityIds={access.facilities.map((facility) => facility.facilityId)}
       />
       {children}
-    </AdminLayout>
+      </AdminLayout>
+    </Suspense>
   );
 }

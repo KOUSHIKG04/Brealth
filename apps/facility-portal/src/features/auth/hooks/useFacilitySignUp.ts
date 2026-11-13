@@ -1,5 +1,6 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
 import { useState, type FormEvent } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
@@ -32,7 +33,7 @@ export function useFacilitySignUp() {
         "Check your email to confirm this account, then sign in and register your facility."
       );
     } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : "Sign-up failed.");
+      setMessage(userErrorMessage(cause, "Sign-up failed."));
     } finally {
       setBusy(false);
     }

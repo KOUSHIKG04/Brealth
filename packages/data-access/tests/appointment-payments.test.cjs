@@ -31,7 +31,7 @@ function load(file, extra = {}, cache = new Map()) {
     {
       exports,
       require: (name) =>
-        name === "npm:@supabase/server@1"
+        name === "npm:@supabase/server@1.9.0"
           ? { withSupabase: (_config, handler) => handler }
           : !name.startsWith(".")
             ? createRequire(absolute)(name)

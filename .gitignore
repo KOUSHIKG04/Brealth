@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+scripts/
 .pnp
 .pnp.*
 .yarn/*
@@ -8,12 +9,13 @@ node_modules/
 !.yarn/releases
 !.yarn/versions
 
-# Environment Variables
+# Environment files and credentials
 .env
 .env.*
 !.env.example
+*.pem
 
-# Build & Framework
+# Build and framework output
 .next/
 out/
 build/
@@ -23,129 +25,25 @@ dist/
 .vercel/
 .impeccable/
 
-# Testing
+# Test output (test source files remain visible to Git)
 coverage/
 test-results/
 playwright-report/
-tests/
 
-!packages/database/tests/
-packages/database/tests/*
-!packages/database/tests/*.test.ts
-
-# Scripts
-scripts/
-# !/scripts/
-# /scripts/*
-# !/scripts/declaration-spacing.mjs
-!scripts/run-e2e.mjs
-!apps/patient-mobile/scripts/
-apps/patient-mobile/scripts/*
-!apps/patient-mobile/scripts/capture-logs.mjs
-!apps/facility-portal/scripts/
-apps/facility-portal/scripts/*
-!apps/facility-portal/scripts/check-architecture.mjs
-!apps/facility-portal/scripts/check-architecture.test.mjs
-!apps/facility-portal/scripts/feature-structure.mjs
-!apps/facility-portal/scripts/load-test-module.mjs
-!apps/company-admin/scripts/
-apps/company-admin/scripts/*
-!apps/company-admin/scripts/run-e2e.mjs
-!apps/company-admin/scripts/check-architecture.mjs
-!packages/design-tokens/scripts/
-packages/design-tokens/scripts/*
-!packages/design-tokens/scripts/generate-theme.mjs
-
-# Documentation & Plans
+# Local documentation and planning notes
+# Already tracked files remain tracked.
 docs/
 plans/
 
-# TypeScript
+# TypeScript generated files
 *.tsbuildinfo
 next-env.d.ts
 
-# Debug Logs
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# Miscellaneous
+# Operating system files
 .DS_Store
-*.pem
-
-!apps/facility-portal/tests/
-apps/facility-portal/tests/*
-!apps/facility-portal/tests/unit/
-apps/facility-portal/tests/unit/*
-!apps/facility-portal/tests/unit/*.test.cjs
-!apps/facility-portal/tests/unit/*.test.mjs
-!apps/company-admin/tests/
-apps/company-admin/tests/*
-!apps/company-admin/tests/unit/
-apps/company-admin/tests/unit/*
-!apps/company-admin/tests/unit/*.test.mjs
-
-!apps/doctor-mobile/tests/
-apps/doctor-mobile/tests/*
-!apps/doctor-mobile/tests/appointment-review.test.cjs
-!apps/doctor-mobile/tests/live-recovery-sync.test.cjs
-!apps/doctor-mobile/tests/qr-scan.test.cjs
-!apps/doctor-mobile/tests/schedule-duration.test.cjs
-!apps/doctor-mobile/tests/feature-structure.test.cjs
-!apps/doctor-mobile/tests/service-schedule.test.cjs
-!apps/doctor-mobile/tests/address-lookup.test.cjs
-!apps/doctor-mobile/tests/consultation-flow.test.cjs
-!apps/patient-mobile/tests/
-apps/patient-mobile/tests/*
-!apps/patient-mobile/tests/verified-directory.test.cjs
-!apps/patient-mobile/tests/manual-refresh.test.cjs
-!apps/patient-mobile/tests/payment-booking-flow.test.cjs
-!apps/patient-mobile/tests/appointment-cards.test.cjs
-!apps/patient-mobile/tests/notifications.test.cjs
-!apps/patient-mobile/tests/keyboard-scroll.test.cjs
-!apps/patient-mobile/tests/booking-guide.test.cjs
-!apps/patient-mobile/tests/map-picker.test.cjs
-!apps/patient-mobile/tests/feature-structure.test.cjs
-!apps/patient-mobile/tests/feature-lifecycle.test.cjs
-!apps/patient-mobile/tests/expo-router-linking.test.cjs
-!apps/driver-mobile/tests/
-apps/driver-mobile/tests/*
-!apps/driver-mobile/tests/driver.test.mjs
-!apps/driver-mobile/tests/live-workflows.test.cjs
-!apps/driver-mobile/tests/feature-structure.test.cjs
-!packages/mobile-ui/tests/
-packages/mobile-ui/tests/*
-!packages/mobile-ui/tests/appointment-recovery.test.cjs
-!packages/mobile-ui/tests/notification-drawer.test.cjs
-!packages/mobile-ui/tests/consultation-call.test.cjs
-!packages/mobile-ui/tests/contracts.test.cjs
-!packages/mobile-ui/tests/pull-to-refresh.test.cjs
-!packages/mobile-ui/tests/toast.test.cjs
-!packages/mobile-ui/tests/greeting.test.cjs
-!packages/mobile-ui/tests/keyboard-aware-scroll.test.cjs
-!packages/mobile-ui/tests/mobile-typography.test.cjs
-!packages/mobile-ui/tests/geometry.test.cjs
-!packages/web-ui/tests/
-packages/web-ui/tests/*
-!packages/web-ui/tests/data-table.test.cjs
-!packages/data-access/tests/
-packages/data-access/tests/*
-!packages/data-access/tests/chat-live.test.cjs
-!packages/data-access/tests/clinic.test.cjs
-!packages/data-access/tests/appointment-payments.test.cjs
-!packages/data-access/tests/live-changes.test.cjs
-!packages/data-access/tests/map-search.test.cjs
-!packages/data-access/tests/mobile-session.test.mjs
-!packages/data-access/tests/secure-storage.test.mjs
-!packages/contracts/tests/
-packages/contracts/tests/*
-!packages/contracts/tests/notification-time.test.ts
-
-# Supabase transactional SQL fixtures (not pgTAP).
-!supabase/tests/
-supabase/tests/*
-!supabase/tests/README.md
-!supabase/tests/smoke/
-supabase/tests/smoke/*
-!supabase/tests/smoke/*.cli-smoke.sql

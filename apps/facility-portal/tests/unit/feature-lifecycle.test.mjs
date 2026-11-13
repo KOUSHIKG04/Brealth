@@ -89,9 +89,11 @@ test("live facility changes stay scoped, coalesce refreshes and unsubscribe", as
   await settle();
   assert.equal(refreshes, 1);
   assert.deepEqual(queries, [
+    ["schedule-adjustments"],
     ["facility-practice-schedule"],
     ["facility-recovery-policy"],
     ["appointment-billing"],
+    ["portal-transactions"],
     ["portal-reschedule-options"],
     ["doctors", "directory"],
   ]);
@@ -123,7 +125,7 @@ test("live facility changes stay scoped, coalesce refreshes and unsubscribe", as
   assert.equal(queries.length, 0);
 });
 
-function mapPicker() {
+function mapPicker({ failClick = false } = {}) {
   const host = hooks(),
     listeners = [],
     centers = [];
@@ -138,6 +140,8 @@ function mapPicker() {
       creations++;
     }
     addListener(event, callback) {
+      if (event === "click" && failClick)
+        throw new Error("Click listener failed");
       listeners.push({ event, callback });
       return {
         remove() {
@@ -154,7 +158,11 @@ function mapPicker() {
     "facilities/hooks/useFacilityLocationMap.ts",
     {
       react: host.react,
-      "../services/googleMaps": { loadMaps: () => maps },
+      "../services/googleMaps": {
+        loadMaps: () => maps,
+        createFacilityMap: load("facilities/services/googleMaps.ts")
+          .createFacilityMap,
+      },
     }
   );
   const api = runMapHook({
@@ -205,6 +213,18 @@ test("a map library resolving after unmount cannot create a map or listeners", a
   await settle();
   assert.equal(map.creations, 0);
   assert.equal(map.listeners.length, 0);
+});
+
+test("facility map releases its first listener when registering the second listener fails", async () => {
+  const map = mapPicker({ failClick: true });
+  const cleanup = map.effects[0]();
+  map.resolve();
+  await settle();
+  assert.equal(map.listeners.length, 1);
+  assert.equal(map.removed, 1);
+  cleanup();
+  assert.equal(map.removed, 1);
+  assert.equal(map.refs[1].current, null);
 });
 
 test("appointment scanner stops a late camera and clears its timer on unmount", async () => {
@@ -274,49 +294,52 @@ test("appointment reason modal cancels without writes, keeps failed drafts and s
   let response = new Promise((resolve) => {
     resolveWrite = resolve;
   });
-  const { useAppointments } = load("appointments/hooks/useAppointments.ts", {
-    react: {
-      useState(initial) {
-        const index = cursor++;
-        if (!(index in states))
-          states[index] = typeof initial === "function" ? initial() : initial;
-        return [
-          states[index],
-          (value) => {
-            states[index] =
-              typeof value === "function" ? value(states[index]) : value;
-          },
-        ];
-      },
-      useTransition: () => [
-        pending,
-        (callback) => {
-          pending = true;
-          tasks.push(
-            Promise.resolve(callback()).finally(() => {
-              pending = false;
-            })
-          );
+  const { useAppointments: runAppointmentsHook } = load(
+    "appointments/hooks/useAppointments.ts",
+    {
+      react: {
+        useState(initial) {
+          const index = cursor++;
+          if (!(index in states))
+            states[index] = typeof initial === "function" ? initial() : initial;
+          return [
+            states[index],
+            (value) => {
+              states[index] =
+                typeof value === "function" ? value(states[index]) : value;
+            },
+          ];
         },
-      ],
-      useRef: (current) => ({ current }),
-      useEffect() {},
-      useMemo: (callback) => callback(),
-      useCallback: (callback) => callback,
-    },
-    "next/navigation": { useRouter: () => ({ refresh: () => refreshes++ }) },
-    "@startup/web-ui/components/ui/toast": { toast: { add() {} } },
-    "@startup/contracts": { formatDisplayDate: (value) => String(value) },
-    "../server/actions": {
-      changePortalAppointment: async (input) => {
-        writes.push(JSON.parse(JSON.stringify(input)));
-        return response;
+        useTransition: () => [
+          pending,
+          (callback) => {
+            pending = true;
+            tasks.push(
+              Promise.resolve(callback()).finally(() => {
+                pending = false;
+              })
+            );
+          },
+        ],
+        useRef: (current) => ({ current }),
+        useEffect() {},
+        useMemo: (callback) => callback(),
+        useCallback: (callback) => callback,
       },
-    },
-  });
+      "next/navigation": { useRouter: () => ({ refresh: () => refreshes++ }) },
+      "@startup/web-ui/components/ui/toast": { toast: { add() {} } },
+      "@startup/contracts": { formatDisplayDate: (value) => String(value) },
+      "../server/actions": {
+        changePortalAppointment: async (input) => {
+          writes.push(JSON.parse(JSON.stringify(input)));
+          return response;
+        },
+      },
+    }
+  );
   const render = () => {
     cursor = 0;
-    return useAppointments({ appointments: [] });
+    return runAppointmentsHook({ appointments: [] });
   };
   const item = { id: "appointment", row_version: "7" };
   let api = render();

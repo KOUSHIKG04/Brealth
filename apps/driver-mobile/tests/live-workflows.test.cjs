@@ -10,6 +10,10 @@ const vm = require("node:vm");
 
 const ts = require("typescript");
 
+const {
+  withErrorDoubles,
+} = require("../../../packages/contracts/tests/support/errorTestDoubles.cjs");
+
 function load(file, mocks, globals = {}) {
   const absolute = path.resolve(__dirname, file);
   const exports = {};
@@ -23,6 +27,8 @@ function load(file, mocks, globals = {}) {
   vm.runInNewContext(code, {
     exports,
     require(name) {
+      const shared = withErrorDoubles(name, mocks);
+      if (shared) return shared;
       if (Object.hasOwn(mocks, name)) return mocks[name];
       if (!name.startsWith(".")) throw new Error(`Unmocked import: ${name}`);
       const target = path.resolve(path.dirname(absolute), name);

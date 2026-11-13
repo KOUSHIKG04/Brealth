@@ -33,13 +33,13 @@ export function NumberSetting({
       >
         {title}
       </label>
-      <div className="flex min-h-12 overflow-hidden rounded-xl border border-[#d2d2d2] bg-white">
+      <div className="border-input bg-background focus-within:ring-ring/50 flex min-h-11 overflow-hidden rounded-lg border focus-within:ring-2">
         <button
           type="button"
           aria-label={`Decrease ${title}`}
           disabled={disabled || current <= min}
           onClick={() => commit(current - 1)}
-          className="flex w-11 shrink-0 items-center justify-center border-r border-[#d2d2d2] text-[#008577] focus-visible:outline-2 focus-visible:outline-[#008577] disabled:opacity-30"
+          className="border-input flex w-11 shrink-0 items-center justify-center border-r text-[#008577] focus-visible:outline-2 focus-visible:outline-[#008577] disabled:opacity-30"
         >
           <Minus size={18} />
         </button>
@@ -65,14 +65,14 @@ export function NumberSetting({
             commit(Number.isFinite(parsed) ? parsed : value);
             setFocused(false);
           }}
-          className="h-11 min-w-0 flex-1 rounded-none border-0 text-center text-base shadow-none focus-visible:ring-0"
+          className="h-10.5 min-w-0 flex-1 rounded-none border-0 text-center text-sm tabular-nums shadow-none focus-visible:ring-0"
         />
         <button
           type="button"
           aria-label={`Increase ${title}`}
           disabled={disabled || current >= max}
           onClick={() => commit(current + 1)}
-          className="flex w-11 shrink-0 items-center justify-center border-l border-[#d2d2d2] text-[#008577] focus-visible:outline-2 focus-visible:outline-[#008577] disabled:opacity-30"
+          className="border-input flex w-11 shrink-0 items-center justify-center border-l text-[#008577] focus-visible:outline-2 focus-visible:outline-[#008577] disabled:opacity-30"
         >
           <Plus size={18} />
         </button>

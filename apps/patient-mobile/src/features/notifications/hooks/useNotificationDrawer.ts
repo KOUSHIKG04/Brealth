@@ -1,5 +1,6 @@
 import { useToastFeedback, type NotificationItem } from "@startup/mobile-ui";
 import { useCallback, useState } from "react";
+import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   dismissMyNotification,
@@ -54,27 +55,31 @@ export function useNotificationDrawer({
       return {
         id: item.id,
         title:
-          item.template_key === "appointment.check_in"
-            ? "Clinic check-in confirmed"
-            : item.template_key === "appointment.requested"
-              ? "Appointment requested"
-              : item.template_key === "appointment.auto_confirmed" ||
-                  item.template_key === "appointment.approve"
-                ? "Appointment confirmed"
-                : isAppointment
-                  ? "Appointment update"
-                  : isAmbulance
-                    ? "Ambulance trip update"
-                    : item.template_key.startsWith("verification.")
-                      ? "Verification update"
-                      : "Notification",
+          item.template_key === "appointment.reschedule_requested"
+            ? "Your doctor requested a new appointment time"
+            : item.template_key === "appointment.check_in"
+              ? "Clinic check-in confirmed"
+              : item.template_key === "appointment.requested"
+                ? "Appointment requested"
+                : item.template_key === "appointment.auto_confirmed" ||
+                    item.template_key === "appointment.approve"
+                  ? "Appointment confirmed"
+                  : isAppointment
+                    ? "Appointment update"
+                    : isAmbulance
+                      ? "Ambulance trip update"
+                      : item.template_key.startsWith("verification.")
+                        ? "Verification update"
+                        : "Notification",
         message:
-          item.template_key === "appointment.check_in" &&
-          typeof item.safe_parameters.booking_code === "string"
-            ? `Booking ${item.safe_parameters.booking_code} - Patient checked in`
-            : typeof status === "string"
-              ? `Status: ${status.replaceAll("_", " ")}`
-              : "You have a new update.",
+          item.template_key === "appointment.reschedule_requested"
+            ? `Doctor’s reason: ${typeof item.safe_parameters.reason === "string" ? item.safe_parameters.reason : "Clinic hours have changed."} Choose another time or contact the clinic. Your booking and payment stay in place until a separate decision is made.`
+            : item.template_key === "appointment.check_in" &&
+                typeof item.safe_parameters.booking_code === "string"
+              ? `Booking ${item.safe_parameters.booking_code} - Patient checked in`
+              : typeof status === "string"
+                ? `Status: ${status.replaceAll("_", " ")}`
+                : "You have a new update.",
         time: notificationTime(item.created_at),
         type: isAppointment ? ("appointment" as const) : ("general" as const),
         read: item.is_read,
@@ -93,8 +98,21 @@ export function useNotificationDrawer({
       if (item && !item.read) {
         markRead.mutate([id]);
       }
+      const notification = notificationsQuery.data?.find(
+        (entry) => entry.id === id
+      );
+      if (
+        notification?.template_key === "appointment.reschedule_requested" &&
+        typeof notification.safe_parameters.appointment_id === "string"
+      ) {
+        onClose();
+        router.push({
+          pathname: "/appointment-details/[id]",
+          params: { id: notification.safe_parameters.appointment_id },
+        });
+      }
     },
-    [notifications, markRead]
+    [notifications, markRead, notificationsQuery.data, onClose]
   );
 
   return {

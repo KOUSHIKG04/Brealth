@@ -2,6 +2,11 @@ import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
 import ts from "typescript";
+import { createRequire } from "node:module";
+
+const { withErrorDoubles } = createRequire(import.meta.url)(
+  "../../../packages/contracts/tests/support/errorTestDoubles.cjs"
+);
 
 export function loadTestModule(
   file,
@@ -30,6 +35,8 @@ export function loadTestModule(
       FormData,
       queueMicrotask,
       require(name) {
+        const shared = withErrorDoubles(name, mocks);
+        if (shared) return shared;
         if (Object.hasOwn(mocks, name)) return mocks[name];
         if (!name.startsWith(".") && !name.startsWith("@/"))
           throw new Error(`Unmocked import: ${name}`);

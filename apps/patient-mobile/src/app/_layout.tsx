@@ -1,3 +1,7 @@
+import "../services/monitoring";
+import type { ErrorBoundaryProps } from "expo-router";
+import { ErrorFallback } from "@startup/mobile-ui";
+import { reportError } from "@startup/data-access";
 import { AppText as Text } from "@startup/mobile-ui";
 import { LiveUpdatesBridge } from "../services/LiveUpdatesBridge";
 import { useEffect } from "react";
@@ -22,6 +26,15 @@ import { signOutWithPushCleanup } from "../features/notifications/services/devic
 import { useDeviceNotifications } from "../features/notifications/hooks/useDeviceNotifications";
 
 void SplashScreen.preventAutoHideAsync();
+
+// Contains render crashes anywhere below the root, reports them once and
+// offers recovery instead of closing the app.
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    reportError(error, { source: "render-boundary" });
+  }, [error]);
+  return <ErrorFallback theme="patient" onRetry={retry} />;
+}
 
 export const unstable_settings = { initialRouteName: "(app)" };
 

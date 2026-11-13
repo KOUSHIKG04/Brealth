@@ -43,7 +43,13 @@ export function AppointmentRecoveryActions({
         <Button
           theme="patient"
           variant="outline"
-          label={view.requiresApproval ? "Request reschedule" : "Reschedule"}
+          label={
+            item.recovery?.schedule_change?.pending
+              ? "Choose another time"
+              : view.requiresApproval
+                ? "Request reschedule"
+                : "Reschedule"
+          }
           style={buttonStyle}
           labelStyle={labelStyle}
           onPress={() => setIntent("reschedule")}

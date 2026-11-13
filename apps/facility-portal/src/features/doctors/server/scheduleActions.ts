@@ -1,5 +1,6 @@
 "use server";
 
+import { userErrorMessage } from "@startup/contracts";
 import "server-only";
 import { unstable_rethrow } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -8,11 +9,15 @@ import {
   doctorScheduleSettingsSchema,
   publishSelectedDoctorSlotsSchema,
   uuidSchema,
+  scheduleConflictDecisionSchema,
+  scheduleErrorCode,
+  scheduleErrorMessage,
 } from "@startup/contracts";
 import type {
   DoctorScheduleSettings,
   PublishSelectedDoctorSlotsInput,
   AddClinicUnavailabilityInput,
+  ScheduleConflictDecision,
 } from "@startup/contracts";
 import {
   getMySchedulePreferences,
@@ -22,6 +27,10 @@ import {
   saveMySchedulePreferences,
   publishSelectedDoctorSlots,
   publishMyDoctorSchedule,
+  publishPreviewedDoctorSchedule,
+  previewMyDoctorSchedule,
+  listMyScheduleBusyBlocks,
+  listMyScheduleAdjustments,
   listClinicUnavailability,
   addClinicUnavailability,
   revokeClinicUnavailability,
@@ -49,6 +58,13 @@ async function authorizedPractice(practiceId: string) {
   // This RPC checks owner/admin membership at the database boundary.
   const settings = await getMySchedulePreferences(client, practiceId);
   return { client, doctor, settings };
+}
+
+export async function loadFacilityScheduleAdjustments(practiceId: string) {
+  const { client } = await authorizedPractice(practiceId);
+  return (await listMyScheduleAdjustments(client)).filter(
+    (notice) => notice.practice_id === practiceId
+  );
 }
 
 export async function loadFacilityRecoveryPolicy(practiceId: string) {
@@ -89,10 +105,44 @@ export async function loadFacilityDoctorSchedule(
     unstable_rethrow(error);
     return {
       ok: false as const,
-      error:
-        error instanceof Error ? error.message : "Could not load schedule.",
+      error: userErrorMessage(error, "Could not load schedule."),
     };
   }
+}
+
+// Server Action errors lose their SQLSTATE in production, so schedule actions
+// return the stable code with safe copy instead of throwing.
+function scheduleFailure(error: unknown, fallback: string) {
+  return {
+    ok: false as const,
+    code: scheduleErrorCode(error),
+    error: scheduleErrorMessage(error, fallback),
+  };
+}
+
+function parsePublication(
+  practiceId: string,
+  mode: "clinic" | "online" | "home",
+  settings: DoctorScheduleSettings,
+  expectedVersion: number,
+  effectiveFrom?: string,
+  previewToken?: string
+) {
+  const value = doctorScheduleSettingsSchema.parse(settings);
+  uuidSchema.parse(practiceId);
+  z.enum(["clinic", "online", "home"]).parse(mode);
+  z.number().int().safe().nonnegative().parse(expectedVersion);
+  if (effectiveFrom) z.iso.date().parse(effectiveFrom);
+  if (previewToken)
+    z.string()
+      .regex(/^[a-f0-9]{32}$/)
+      .parse(previewToken);
+  return value;
+}
+
+function revalidateSchedulePaths() {
+  revalidatePath("/doctor-schedules");
+  revalidatePath("/appointments");
 }
 
 export async function publishFacilityDoctorSchedule(
@@ -100,13 +150,19 @@ export async function publishFacilityDoctorSchedule(
   mode: "clinic" | "online" | "home",
   settings: DoctorScheduleSettings,
   expectedVersion: number,
-  effectiveFrom?: string
+  effectiveFrom?: string,
+  previewToken?: string,
+  decision?: ScheduleConflictDecision
 ) {
   try {
-    const value = doctorScheduleSettingsSchema.parse(settings);
-    z.enum(["clinic", "online", "home"]).parse(mode);
-    z.number().int().safe().nonnegative().parse(expectedVersion);
-    if (effectiveFrom) z.iso.date().parse(effectiveFrom);
+    const value = parsePublication(
+      practiceId,
+      mode,
+      settings,
+      expectedVersion,
+      effectiveFrom,
+      previewToken
+    );
     const { client } = await authorizedPractice(practiceId);
     const publication = await publishMyDoctorSchedule(
       client,
@@ -114,26 +170,95 @@ export async function publishFacilityDoctorSchedule(
       mode,
       value,
       expectedVersion,
-      effectiveFrom
+      effectiveFrom,
+      previewToken,
+      decision ? scheduleConflictDecisionSchema.parse(decision) : undefined
     );
-    revalidatePath("/doctor-schedules");
-    revalidatePath("/appointments");
+    revalidateSchedulePaths();
     return { ok: true as const, ...publication };
   } catch (error) {
     unstable_rethrow(error);
-    return {
-      ok: false as const,
-      error:
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        error.code === "PT409"
-          ? "Schedule changed in another app. Refresh and review before publishing again."
-          : error instanceof Error
-            ? error.message
-            : "Could not publish schedule.",
-    };
+    return scheduleFailure(error, "Could not publish schedule.");
   }
+}
+
+/** Publishes a conflict-free preview; the backend rechecks it under locks. */
+export async function publishPreviewedFacilityDoctorSchedule(
+  practiceId: string,
+  mode: "clinic" | "online" | "home",
+  settings: DoctorScheduleSettings,
+  expectedVersion: number,
+  effectiveFrom: string,
+  previewToken: string
+) {
+  try {
+    const value = parsePublication(
+      practiceId,
+      mode,
+      settings,
+      expectedVersion,
+      effectiveFrom,
+      previewToken
+    );
+    const { client } = await authorizedPractice(practiceId);
+    const publication = await publishPreviewedDoctorSchedule(
+      client,
+      practiceId,
+      mode,
+      value,
+      expectedVersion,
+      effectiveFrom,
+      previewToken
+    );
+    revalidateSchedulePaths();
+    return { ok: true as const, ...publication };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not publish schedule.");
+  }
+}
+
+export async function previewFacilityDoctorSchedule(
+  practiceId: string,
+  mode: "clinic" | "online" | "home",
+  settings: DoctorScheduleSettings,
+  expectedVersion: number,
+  effectiveFrom: string
+) {
+  try {
+    const value = parsePublication(
+      practiceId,
+      mode,
+      settings,
+      expectedVersion,
+      effectiveFrom
+    );
+    const { client } = await authorizedPractice(practiceId);
+    const preview = await previewMyDoctorSchedule(
+      client,
+      practiceId,
+      mode,
+      value,
+      expectedVersion,
+      effectiveFrom
+    );
+    return { ok: true as const, preview };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not check the schedule. Try again.");
+  }
+}
+
+/** Other published blocks of this practice's doctor, for the editor hint. */
+export async function listFacilityDoctorBusyBlocks(
+  practiceId: string,
+  mode: "clinic" | "online" | "home",
+  effectiveFrom: string
+) {
+  z.enum(["clinic", "online", "home"]).parse(mode);
+  z.iso.date().parse(effectiveFrom);
+  const { client } = await authorizedPractice(practiceId);
+  return listMyScheduleBusyBlocks(client, practiceId, mode, effectiveFrom);
 }
 
 export async function addFacilityDoctorUnavailability(
@@ -149,10 +274,7 @@ export async function addFacilityDoctorUnavailability(
     unstable_rethrow(error);
     return {
       ok: false as const,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Could not add unavailable time.",
+      error: userErrorMessage(error, "Could not add unavailable time."),
     };
   }
 }
@@ -176,10 +298,7 @@ export async function removeFacilityDoctorUnavailability(
     unstable_rethrow(error);
     return {
       ok: false as const,
-      error:
-        error instanceof Error
-          ? error.message
-          : "Could not remove unavailable time.",
+      error: userErrorMessage(error, "Could not remove unavailable time."),
     };
   }
 }
@@ -203,18 +322,7 @@ export async function saveFacilityDoctorSchedule(
     return { ok: true as const, settings: saved };
   } catch (error) {
     unstable_rethrow(error);
-    return {
-      ok: false as const,
-      error:
-        typeof error === "object" &&
-        error !== null &&
-        "code" in error &&
-        error.code === "PT409"
-          ? "Schedule changed in another app. Refresh before saving again."
-          : error instanceof Error
-            ? error.message
-            : "Could not save schedule.",
-    };
+    return scheduleFailure(error, "Could not save schedule.");
   }
 }
 
@@ -233,8 +341,7 @@ export async function publishFacilityDoctorSlots(
     unstable_rethrow(error);
     return {
       ok: false as const,
-      error:
-        error instanceof Error ? error.message : "Could not publish slots.",
+      error: userErrorMessage(error, "Could not publish slots."),
     };
   }
 }

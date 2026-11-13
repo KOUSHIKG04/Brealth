@@ -1,6 +1,6 @@
 # CLINZO Driver
 
-Expo / React Native ambulance-partner app. Phone OTP, independent/invited driver onboarding and pending/verified access gates use the shared Supabase backend. The old sample dispatch, trip, chat and earnings implementations remain design previews in source; the active driver routes show backend verification status instead of presenting them as real trips. Set this app's `.env.local` from `.env.example`; see [mobile-backend-integration.md](../../plans/mobile-backend-integration.md) for setup and blockers.
+Expo / React Native ambulance-partner app. Phone sign-in, onboarding/review gates, availability, offers and trip workflows use shared backend operations. See [ARCHITECTURE.md](ARCHITECTURE.md) for current ownership and integration boundaries, and [mobile setup](../../plans/mobile-backend-integration.md) for environment configuration. Preview data and source implementation do not establish hosted deployment or device verification.
 
 ## Run
 

@@ -1,21 +1,24 @@
 "use server";
 
+import { userErrorMessage } from "@startup/contracts";
 import { revalidatePath } from "next/cache";
 import {
   clinicCheckinTokenSchema,
   clinicTransitionSchema,
-  portalWalkInBookingSchema,
+  portalPaidWalkInBookingSchema,
   setClinicAutoConfirmLimitSchema,
   uuidSchema,
 } from "@startup/contracts";
 import {
-  bookPortalWalkInAppointment,
+  preparePortalWalkInAppointment,
+  getPortalWalkInPaymentPolicy,
   listMyPractices,
   getPortalClinicDay,
   redeemClinicCheckinToken,
   setClinicAutoConfirmLimit,
   transitionClinicAppointment,
   listClinicAppointments,
+  listMyPracticeAppointments,
   listAppointmentRescheduleOptions,
   rescheduleAppointment,
   resolveAppointmentAttendance,
@@ -69,10 +72,10 @@ export async function changePortalAppointmentRecovery(
     return { error: null };
   } catch (error) {
     return {
-      error:
-        error && typeof error === "object" && "message" in error
-          ? String(error.message)
-          : "Could not update this appointment. Refresh and retry.",
+      error: userErrorMessage(
+        error,
+        "Could not update this appointment. Refresh and retry."
+      ),
     };
   }
 }
@@ -104,8 +107,10 @@ export async function loadPortalWalkInSlots(
   if (!practices.some((p) => p.practice_id === parsed.data && p.verified))
     throw new Error("Practice access required.");
   const day = await getPortalClinicDay(client, parsed.data, localDay);
+  const payment = await getPortalWalkInPaymentPolicy(client, parsed.data);
   return {
     ...day,
+    payment,
     slots: day.slots.map((slot) => ({
       windowId: slot.window_id,
       practiceServiceId: slot.practice_service_id,
@@ -119,10 +124,13 @@ export async function loadPortalWalkInSlots(
   };
 }
 
-export async function createPortalWalkInAppointment(
-  input: unknown
-): Promise<{ error: string | null }> {
-  const parsed = portalWalkInBookingSchema.safeParse(input);
+export async function createPortalWalkInAppointment(input: unknown): Promise<{
+  error: string | null;
+  appointmentId?: string;
+  requiresPayment?: boolean;
+  status?: string;
+}> {
+  const parsed = portalPaidWalkInBookingSchema.safeParse(input);
   if (!parsed.success)
     return {
       error: "Enter a patient name and choose an available clinic slot.",
@@ -133,11 +141,16 @@ export async function createPortalWalkInAppointment(
   if (authError || !claims)
     return { error: "Your session expired. Sign in again." };
   try {
-    await bookPortalWalkInAppointment(client, parsed.data);
+    const booking = await preparePortalWalkInAppointment(client, parsed.data);
     revalidatePath("/appointments");
     revalidatePath("/");
     revalidatePath("/dashboard");
-    return { error: null };
+    return {
+      error: null,
+      appointmentId: booking.appointment_id,
+      requiresPayment: booking.requires_payment,
+      status: booking.status,
+    };
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error
@@ -155,6 +168,11 @@ export async function createPortalWalkInAppointment(
       };
     if (code === "42501")
       return { error: "You do not have access to book this doctor." };
+    if (code === "PT409")
+      return {
+        error:
+          "Payment terms or this reservation changed. Refresh the form and try again.",
+      };
     return {
       error:
         "Could not create the appointment. Check your connection and try again.",
@@ -213,6 +231,46 @@ export async function changePortalAppointment(
       error: "Could not update this appointment. Refresh and try again.",
     };
   }
+}
+
+export async function finishPortalWalkInBooking(
+  appointmentId: string,
+  checkIn: boolean
+) {
+  await requireApprovedFacility();
+  const client = await createClient();
+  const id = uuidSchema.parse(appointmentId);
+  const item = (await listMyPracticeAppointments(client)).find(
+    (item) => item.id === id
+  );
+  if (
+    !item ||
+    item.source !== "reception_walk_in" ||
+    item.status !== "confirmed" ||
+    item.confirmation_payment_pending
+  )
+    throw new Error(
+      "Payment has not confirmed this appointment. Refresh payment status before retrying."
+    );
+  let checkedIn =
+    item.queue_state !== "awaiting_arrival" && item.queue_state !== null;
+  if (checkIn && !checkedIn) {
+    try {
+      await transitionClinicAppointment(client, {
+        appointmentId: id,
+        expectedVersion: Number(item.row_version),
+        action: "check_in",
+      });
+      checkedIn = true;
+    } catch {
+      // Payment remains successful when arrival needs reception review.
+    }
+  }
+  revalidatePath("/appointments");
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  revalidatePath("/");
+  return { checkedIn };
 }
 
 export async function redeemPortalCheckinToken(

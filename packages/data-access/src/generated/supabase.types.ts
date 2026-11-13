@@ -76,6 +76,14 @@ export type Database = {
         Returns: string[];
       };
       add_my_family_profile: { Args: { p_profile: Json }; Returns: string };
+      ambulance_provider_command: {
+        Args: { p_action: string; p_data: Json };
+        Returns: Json;
+      };
+      appointment_provider_command: {
+        Args: { p_action: string; p_data: Json };
+        Returns: Json;
+      };
       authorize_ambulance_hospital_lookup: { Args: never; Returns: boolean };
       authorize_map_place_lookup: { Args: never; Returns: boolean };
       book_clinic_appointment: {
@@ -88,6 +96,42 @@ export type Database = {
         };
         Returns: string;
       };
+      get_portal_walk_in_payment_policy: {
+        Args: { p_practice_id: string };
+        Returns: Json;
+      };
+      prepare_portal_walk_in_booking: {
+        Args: { p_input: Json };
+        Returns: Json;
+      };
+      book_portal_walk_in_appointment:
+        | {
+            Args: {
+              p_idempotency_key: string;
+              p_patient_name: string;
+              p_patient_phone: string;
+              p_practice_id: string;
+              p_practice_service_id: string;
+              p_reason: string;
+              p_window_id: string;
+            };
+            Returns: string;
+          }
+        | {
+            Args: {
+              p_check_in: boolean;
+              p_idempotency_key: string;
+              p_patient_age: number;
+              p_patient_gender: string;
+              p_patient_name: string;
+              p_patient_phone: string;
+              p_practice_id: string;
+              p_practice_service_id: string;
+              p_reason: string;
+              p_window_id: string;
+            };
+            Returns: string;
+          };
       can_read_online_visit: {
         Args: { p_appointment_id: string };
         Returns: boolean;
@@ -120,8 +164,30 @@ export type Database = {
         Returns: string;
       };
       complete_patient_profile: { Args: { p_profile: Json }; Returns: Json };
+      confirm_appointment_cash_refund: {
+        Args: { p_note: string; p_refund_id: string };
+        Returns: undefined;
+      };
       create_driver_invitation: {
         Args: { p_organization_id: string; p_phone: string };
+        Returns: string;
+      };
+      decide_appointment_recovery: {
+        Args: {
+          p_approve: boolean;
+          p_expected_version: number;
+          p_note: string;
+          p_request_id: string;
+        };
+        Returns: Json;
+      };
+      decide_appointment_refund: {
+        Args: {
+          p_approve: boolean;
+          p_expected_version: number;
+          p_note: string;
+          p_refund_id: string;
+        };
         Returns: string;
       };
       decide_my_facility_doctor_request: {
@@ -145,10 +211,20 @@ export type Database = {
         Args: { p_case_id: string; p_driver_details?: Json };
         Returns: Json;
       };
+      get_ambulance_billing: { Args: { p_booking_id: string }; Returns: Json };
+      get_appointment_billing: {
+        Args: { p_appointment_id: string };
+        Returns: Json;
+      };
+      get_appointment_booking_options: {
+        Args: { p_practice_service_id: string; p_window_id: string };
+        Returns: Json;
+      };
       get_company_facility_bed_declaration: {
         Args: { p_case_id: string };
         Returns: Json;
       };
+      get_company_payment_setup: { Args: never; Returns: Json };
       get_company_verification_case: {
         Args: { p_case_id: string };
         Returns: Json;
@@ -192,10 +268,15 @@ export type Database = {
         Args: { p_appointment_id: string };
         Returns: Json;
       };
+      get_portal_clinic_day: {
+        Args: { p_local_day?: string; p_practice_id: string };
+        Returns: Json;
+      };
       get_public_practice_bio: {
         Args: { p_practice_id: string; p_service_id: string };
         Returns: string;
       };
+      has_company_finance_access: { Args: never; Returns: boolean };
       has_my_doctor_claim: { Args: never; Returns: boolean };
       invite_doctor_to_my_facility: {
         Args: {
@@ -215,6 +296,10 @@ export type Database = {
       issue_consultation_prescription: {
         Args: { p_appointment_id: string; p_items: Json; p_timezone: string };
         Returns: string;
+      };
+      list_appointment_reschedule_options: {
+        Args: { p_appointment_id: string };
+        Returns: Json;
       };
       list_bed_type_catalog: { Args: never; Returns: Json };
       list_care_appointments: {
@@ -261,8 +346,13 @@ export type Database = {
       list_my_notifications: { Args: never; Returns: Json };
       list_my_patient_locations: { Args: never; Returns: Json };
       list_my_practices: { Args: never; Returns: Json };
+      list_my_schedule_adjustments: { Args: never; Returns: Json };
       list_online_messages: {
         Args: { p_appointment_id: string };
+        Returns: Json;
+      };
+      list_payout_entries: {
+        Args: { p_appointment_id?: string; p_before_id?: string };
         Returns: Json;
       };
       list_practice_clinic_slots: {
@@ -311,9 +401,57 @@ export type Database = {
         }[];
       };
       list_registered_care_facilities: { Args: never; Returns: Json };
+      manage_company_payments: {
+        Args: { p_action: string; p_data: Json };
+        Returns: Json;
+      };
       mark_my_notifications_read: {
         Args: { p_ids?: string[] };
         Returns: number;
+      };
+      payout_provider_command: {
+        Args: { p_action: string; p_data: Json };
+        Returns: Json;
+      };
+      prepare_ambulance_payment: {
+        Args: { p_booking_id: string; p_quote_id: string };
+        Returns: Json;
+      };
+      prepare_appointment_booking: {
+        Args: {
+          p_idempotency_key: string;
+          p_patient_id: string;
+          p_payment_method: string;
+          p_practice_service_id: string;
+          p_reason: string;
+          p_window_id: string;
+        };
+        Returns: Json;
+      };
+      prepare_appointment_payment: {
+        Args: { p_appointment_id: string; p_policy_version: string };
+        Returns: Json;
+      };
+      prepare_home_visit_booking: {
+        Args: {
+          p_idempotency_key: string;
+          p_location_id: string;
+          p_patient_id: string;
+          p_practice_service_id: string;
+          p_reason: string;
+          p_window_id: string;
+        };
+        Returns: Json;
+      };
+      preview_doctor_schedule_change: {
+        Args: {
+          p_effective_from: string;
+          p_expected_version: number;
+          p_mode: string;
+          p_practice_id: string;
+          p_settings: Json;
+        };
+        Returns: Json;
       };
       publish_clinic_session: {
         Args: {
@@ -388,6 +526,23 @@ export type Database = {
         };
         Returns: string;
       };
+      record_ambulance_cash: {
+        Args: {
+          p_booking_id: string;
+          p_expected_amount: number;
+          p_note: string;
+          p_quote_id: string;
+        };
+        Returns: string;
+      };
+      record_appointment_cash: {
+        Args: {
+          p_appointment_id: string;
+          p_expected_due: number;
+          p_note: string;
+        };
+        Returns: string;
+      };
       record_consultation_diagnosis: {
         Args: {
           p_appointment_id: string;
@@ -440,6 +595,21 @@ export type Database = {
         Args: { p_installation_id: string; p_token: string };
         Returns: string;
       };
+      release_appointment_booking: {
+        Args: { p_appointment_id: string };
+        Returns: undefined;
+      };
+      replace_doctor_schedule_conflicts: {
+        Args: {
+          p_effective_from: string;
+          p_expected_version: number;
+          p_mode: string;
+          p_practice_id: string;
+          p_preview_token: string;
+          p_settings: Json;
+        };
+        Returns: Json;
+      };
       request_ambulance_booking: {
         Args: {
           p_capability_code: string;
@@ -449,6 +619,24 @@ export type Database = {
           p_pickup_address: string;
           p_pickup_latitude: number;
           p_pickup_longitude: number;
+        };
+        Returns: string;
+      };
+      request_appointment_refund: {
+        Args: {
+          p_appointment_id: string;
+          p_expected_amount: number;
+          p_expected_deduction: number;
+          p_kind: string;
+          p_reason: string;
+        };
+        Returns: string;
+      };
+      request_appointment_review: {
+        Args: {
+          p_appointment_id: string;
+          p_expected_version: number;
+          p_reason: string;
         };
         Returns: string;
       };
@@ -485,6 +673,38 @@ export type Database = {
         Returns: string;
       };
       request_onboarding_sos: { Args: { p_details: Json }; Returns: string };
+      reschedule_appointment: {
+        Args: {
+          p_appointment_id: string;
+          p_expected_version: number;
+          p_idempotency_key: string;
+          p_reason: string;
+          p_target_window_id: string;
+        };
+        Returns: Json;
+      };
+      resolve_appointment_attendance: {
+        Args: {
+          p_appointment_id: string;
+          p_expected_version: number;
+          p_note: string;
+          p_outcome: string;
+        };
+        Returns: string;
+      };
+      resolve_doctor_schedule_conflicts: {
+        Args: {
+          p_effective_from: string;
+          p_expected_version: number;
+          p_mode: string;
+          p_patient_reason: string;
+          p_practice_id: string;
+          p_preview_token: string;
+          p_settings: Json;
+          p_strategy: string;
+        };
+        Returns: Json;
+      };
       resolve_expo_push_receipt: {
         Args: {
           p_delivered: boolean;
@@ -598,6 +818,28 @@ export type Database = {
         };
         Returns: string;
       };
+      set_appointment_recovery_policy:
+        | {
+            Args: {
+              p_expected_version: number;
+              p_max_self_reschedules: number;
+              p_online_grace_minutes: number;
+              p_practice_id: string;
+              p_reschedule_cutoff_minutes: number;
+            };
+            Returns: Json;
+          }
+        | {
+            Args: {
+              p_clinic_grace_minutes: number;
+              p_expected_version: number;
+              p_max_self_reschedules: number;
+              p_online_grace_minutes: number;
+              p_practice_id: string;
+              p_reschedule_cutoff_minutes: number;
+            };
+            Returns: Json;
+          };
       set_clinic_auto_confirm_limit: {
         Args: {
           p_expected_version: number;

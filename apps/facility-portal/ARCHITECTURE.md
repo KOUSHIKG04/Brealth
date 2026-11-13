@@ -1,5 +1,92 @@
 # Facility portal architecture
 
+## Reception payments and transactions
+
+`/transactions` composes `features/transactions` with the public appointment payment
+panel. The feature owns paginated transaction history, loaded-record search,
+method/status filters and retry states. Server Actions require an approved facility;
+the shared RPC restricts each transaction to an authorized financial manager. The
+sidebar uses the rupee icon. Receipts retain full selectable provider references;
+appointment references display their final eight characters.
+
+Reception registration offers Razorpay or cash already received. Paid visits first
+reserve capacity for up to ten minutes without confirmation or a queue entry.
+Razorpay opens after the registration dialog finishes closing; server-verified
+capture confirms the appointment, then reception can check the patient in. Cash
+receipt and booking confirmation commit atomically through the shared RPC. Closing
+checkout keeps only a resumable payment reservation. Free visits confirm directly.
+The existing cash collection remains available. Razorpay checkout loads on demand,
+uses server-created amounts/orders, requires patient terms consent and reports
+received money only after server verification/capture. Checkout runs outside the
+appointment dialog to avoid modal focus/pointer locks. Closing checkout
+reconciles status and preserves the reservation. No provider secret is sent to
+the browser. Existing refunds/payouts retain their owners.
+
+Payment/refund terms use an info dialog; cash and refund notes appear only in the
+selected action's confirmation dialog. Accepted percentages are formatted by the
+backend. Facility verification remains available after approval, showing the
+facility selector and document review instead of redirecting to Dashboard.
+
+The default appointment table excludes unfinished/ended payment holds; the
+separate Payment reservations view preserves their audit visibility. Summary totals
+exclude these holds. Payment labels come from authorized batched billing summaries,
+so a confirmed staff booking can clearly show Payment due. Rows sort by clinic date
+and numeric queue token before pagination; absent tokens sort last within the date.
+This presentation order does not replace backend call eligibility. Registration,
+verification, cash updates and live signals refresh transaction history.
+
+`20261031105135_facility_reception_checkout_and_transactions.sql` was applied to the
+linked test backend on 31 October 2026 after rollback verification of staff checkout,
+policy versions, order-attempt reuse, capture, cross-user access and stable pagination.
+Web changes are local source changes; hosted web deployment and visible provider
+checkout acceptance remain separate. Windows browser inspection stopped because
+the tool could not reliably identify the active URL.
+
+`20261031131143_reception_pay_before_confirmation.sql` was applied to the linked
+test backend on 31 October 2026. Hosted rollback checks cover unpaid/authorized
+holds, capture confirmation, cash acknowledgement/consent and receipt idempotency.
+Real provider checkout and hosted frontend deployment remain separate checks.
+The payment panel and terms/cash dialogs passed an isolated headless Edge check at
+1280px and 390px with the actual components/styles and synthetic cached billing.
+There was no horizontal overflow or browser runtime error; cash confirmation
+required both acknowledgement and a note. The authenticated dev-server page timed
+out, so these captures do not establish the full live Razorpay booking flow.
+
+## Smooth schedule updates
+
+`useFacilityDoctorSchedule` stores the merge base with its edits and uses the same
+contracts merge, checked publication, busy-block hint and suggested start date
+as Doctor mobile. Schedule Server Actions return `{ ok, code, error }` results
+instead of throwing, because production Server Action errors lose their SQLSTATE.
+`listFacilityDoctorBusyBlocks` and `publishPreviewedFacilityDoctorSchedule` keep
+the `authorizedPractice` boundary. The portal's former `utils/scheduleDraft.ts`
+was replaced by the shared `preferencesToScheduleSettings`. Local source changes
+only; the migration and browser behavior are unverified.
+
+## Schedule conflict review
+
+Doctor schedule editors use authorized preview and publication Server Actions.
+The shared backend returns conflicts and remaining hours; the dialog requires an
+explicit replacement confirmation. Replacement is transactional, permission-scoped
+and protected against stale previews and bookings arriving after review. Active
+reservations require explicit rescheduling requests; payment holds block replacement.
+Persistent notices in Manage Schedule/editor link to services needing new hours
+or review. Existing schedule live signals refresh these notices; publishing the
+affected service clears them. The migration was applied to the test project on 30 October 2026; hosted rollback
+checks passed. Browser acceptance remains separate.
+
+## Hybrid clinic queue
+
+Appointments consume the shared `clinic_queue` projection: reserved tokens, ready
+counts, current service, estimates and late-arrival review all use backend rules.
+Call controls respect server eligibility, and Resume explicitly admits reviewed
+late arrivals to an available opening. Clinic grace is editable beside existing
+recovery settings through the same authorized Server Action. Reception can use a
+currently open window after migration, while expired windows remain unavailable.
+Existing live invalidation and visible-page refresh update time-sensitive queue
+metadata. The test migration and hosted rollback checks passed on 30 October
+2026; browser/device workflow verification remains pending.
+
 Manage appointment displays a home visit's booked address, instructions and optional
 receiver contact from the shared authorized appointment projection. Home payment
 reservations use the existing awaiting-payment and approval controls. Hosted web
@@ -378,3 +465,81 @@ Edge Functions were deployed on 2026-10-24 with user approval. Marketplace/Route
 remain disabled/test and rates unconfigured.
 The SQL/mocked-provider checks do not establish authenticated browser behavior,
 native checkout or actual transfers. See the [payment guide](../../APPOINTMENT_RECOVERY_PAYMENTS.md).
+
+## Schedule changes with patient rescheduling
+
+The schedule dialog offers trimming or pausing affected other-service blocks.
+Affected bookings and the patient-facing reason are reviewed before a separate
+confirmation. Authorized Server Actions use the shared API; existing reservations
+remain unchanged and conflicting new slots stay unavailable until explicit
+resolution. Waiting notices open Appointments, while paused-service notices open
+the schedule. The test migrations are deployed and hosted rollback checks pass;
+browser acceptance remains unverified. No server was started for this change.
+
+## Schedule navigation
+
+The admin shell follows shadcn sidebar-07: an icon-collapsible sidebar with a rail,
+a persistent header toggle and route breadcrumbs, and an account dropdown. The
+existing logout action stays mounted in the footer. Mobile navigation uses the shared sidebar
+sheet and closes after selecting a link. No demo teams or billing actions are wired.
+
+The persistent admin sidebar groups Doctor Schedule and Doctor Management under
+Schedule, expanded by default. Doctor Schedule remains the calendar overview.
+Doctor Management shows a dedicated Manage schedule column for each verified
+doctor, using the
+practice ID returned by the roster API. It opens a Base UI shadcn drawer from the
+right. Service selection, schedule edits and leave controls remain inside the
+drawer; direct editor routes remain available for existing links.
+The extra `/doctor-schedules/manage` selection page has been removed.
+
+Facility access reads retry one transient connection failure while preserving
+authorization checks. The root error boundary offers a recoverable Try again
+action when a service remains unavailable; raw backend objects are not shown.
+
+Doctor Management has Doctors and Notifications tabs. The sidebar Notifications
+entry opens `/doctor-management?tab=notifications`; tab selection stays in the URL
+and the sidebar highlights the selected destination. Association requests and
+sent invitations appear only in Notifications; its panel remains mounted while
+hidden to preserve the existing request listener and rejection drafts. The doctor
+directory uses the full page width. Add new Doctor sits immediately left of search
+and reuses the shadcn AddDoctorDialog. Successful invitations close the dialog,
+refresh the directory and invalidate the existing association-request query.
+
+Doctor Directory displays only the last hyphen-separated segment of the Clinzo ID;
+the full identifier remains in the data model for searching and backend operations.
+
+`FacilityDoctorScheduleDrawer` owns open state, local service selection and save
+dismissal protection. It composes the existing schedule screen/editors rather than
+duplicating RPCs or query state. Service adjustment links select another editor
+inside the drawer; booking-review notices still open Appointments. The phone and
+specialization glyphs have been removed from the doctor directory. Browser/native
+interaction with the drawer and nested dialogs remains a separate acceptance check.
+
+The facility sidebar rail resizes the desktop panel between 208 and 352 pixels
+with pointer capture or arrow keys. Width stays in the mounted admin shell.
+Appointments delegate patient details to a right-side drawer; rows display the
+last patient ID segment while preserving the full ID in the appointment data.
+Browser verification of resizing and drawer interaction remains separate.
+
+All four portal data tables use the shared TanStack DataTable with column-edge
+resizing. Columns keep their original order. Mouse, touch and keyboard controls
+change widths without changing sorting, pagination, row IDs or mutations.
+Bed setup stays in the Department cell until inventory is configured.
+Dashboard header actions are composed by the route from the Doctor and Appointment
+features. Its bed section is omitted without configured positive capacity. Weekly
+clinic coverage uses a compact searchable roster with five doctors per page.
+Each visible doctor retains all seven days; search covers the full roster by name
+or speciality. Pagination keeps large rosters from stretching the dashboard.
+The published-week projection and schedule-management route remain unchanged. Browser acceptance remains separate.
+
+Doctor Schedule overview uses a date/week selector, compact operational summary,
+and one exact-time timeline lane per published shift. On narrow screens each lane
+becomes an agenda entry with its service and time range. The existing projection,
+selected-day state, next-scheduled-day action and resizable assignments table are
+preserved. Surgery and emergency placeholders are replaced by selected-date shift
+and department counts. Management and notification links use existing routes.
+
+Appointment search, status and date filters live with the booking list. Summary
+labels describe all-date totals; the rolling-week filter is labelled Next 7 days.
+Patient names retain their details drawer and existing booking/review workflows
+keep their mutation contracts. Column reordering and its grip handles are removed.

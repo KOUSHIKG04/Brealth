@@ -73,3 +73,5 @@ export const scheduleDays = [
   "Sat",
   "Sun",
 ] as const;
+
+export const weeklySchedulePageSize = 5;

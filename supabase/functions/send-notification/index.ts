@@ -1,4 +1,5 @@
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.0";
+import { logFailure } from "../_shared/log.ts";
 
 type PushDelivery = {
   delivery_id: string;
@@ -6,9 +7,11 @@ type PushDelivery = {
   template_key: string;
   safe_parameters: Record<string, unknown>;
 };
+
 type PushReceipt = { delivery_id: string; ticket_id: string };
 
 const sendUrl = "https://exp.host/--/api/v2/push/send";
+
 const receiptsUrl = "https://exp.host/--/api/v2/push/getReceipts";
 
 function notificationCopy(delivery: PushDelivery) {
@@ -23,6 +26,15 @@ function notificationCopy(delivery: PushDelivery) {
     };
   }
   if (delivery.template_key.startsWith("appointment.")) {
+    if (delivery.template_key === "appointment.reschedule_requested") {
+      return {
+        title: "Your doctor requested a new appointment time",
+        body:
+          typeof delivery.safe_parameters.reason === "string"
+            ? `${delivery.safe_parameters.reason.slice(0, 500)} Open the app to choose another time or contact the clinic.`
+            : "Open the app to choose another time or contact the clinic. Your booking is still reserved.",
+      };
+    }
     if (delivery.template_key === "appointment.check_in") {
       return {
         title: "Patient arrived at clinic",
@@ -118,8 +130,17 @@ export default {
           }))
         );
         tickets = Array.isArray(response.data) ? response.data : [];
-      } catch {
+      } catch (error) {
         // Resolve each lease as retryable; the database applies bounded backoff.
+        logFailure(
+          "send-notification",
+          "push-send",
+          error,
+          {
+            deliveries: deliveries.length,
+          },
+          "warn"
+        );
       }
 
       for (const [index, delivery] of deliveries.entries()) {
@@ -169,8 +190,17 @@ export default {
         ) {
           receiptData = response.data as typeof receiptData;
         }
-      } catch {
+      } catch (error) {
         // Unavailable receipts remain sent and are retried after the lease expires.
+        logFailure(
+          "send-notification",
+          "push-receipts",
+          error,
+          {
+            receipts: claimedReceipts.length,
+          },
+          "warn"
+        );
       }
 
       for (const receipt of claimedReceipts) {

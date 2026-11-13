@@ -1,8 +1,18 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { PortalCheckoutButton } from "./PortalCheckoutButton";
+import { PaymentTermsDialog } from "./PaymentTermsDialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@startup/web-ui/components/ui/dialog";
 import {
   appointmentMoney,
   appointmentPaymentLabel,
@@ -20,10 +30,20 @@ import {
   loadPortalAppointmentPayouts,
 } from "../server/paymentActions";
 
-export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
+export function AppointmentPaymentPanel({
+  item,
+  checkoutAvailable = false,
+}: {
+  item: ClinicAppointment;
+  checkoutAvailable?: boolean;
+}) {
   const client = useQueryClient();
   const router = useRouter();
   const [note, setNote] = useState("");
+  const [financialAction, setFinancialAction] =
+    useState<FinancialAction | null>(null);
+  const [cashAccepted, setCashAccepted] = useState(false);
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
   const payouts = useQuery({
     queryKey: ["appointment-billing", "payouts", item.id],
     queryFn: () => loadPortalAppointmentPayouts(item.id),
@@ -38,21 +58,36 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
       const result = await changePortalAppointmentBilling(input);
       if (result.error) throw new Error(result.error);
     },
-    onSuccess: () => setNote(""),
+    onSuccess: () => {
+      setNote("");
+      setCashAccepted(false);
+      setFinancialAction(null);
+    },
     onSettled: async () => {
       await client.invalidateQueries({ queryKey: ["appointment-billing"] });
+      await client.invalidateQueries({ queryKey: ["portal-transactions"] });
       router.refresh();
     },
   });
   const billing = saved.data;
   if (!billing)
-    return saved.isError ? (
+    return saved.isLoading ? (
+      <p role="status" className="text-muted-foreground text-sm">
+        Loading payment details…
+      </p>
+    ) : saved.isError ? (
       <Button variant="outline" onClick={() => void saved.refetch()}>
         Retry payment status
       </Button>
     ) : null;
   if (!billing.enabled && !billing.charge_id) return null;
-  const disabled = mutation.isPending || note.trim().length < 2;
+  const busy = mutation.isPending || checkoutBusy;
+  const requestAction = (action: FinancialAction) => {
+    setNote("");
+    setCashAccepted(false);
+    mutation.reset();
+    setFinancialAction(action);
+  };
   return (
     <PaymentSummary
       title="Payment"
@@ -74,6 +109,179 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
           {appointmentMoney(billing.due_minor)}
         </dd>
       </dl>
+      <ClinicGatewayPayment
+        billing={billing}
+        item={item}
+        checkoutAvailable={checkoutAvailable}
+        setCheckoutBusy={setCheckoutBusy}
+      />
+      <CashPaymentConfirmation
+        billing={billing}
+        item={item}
+        disabled={busy}
+        mutate={requestAction}
+      />
+      <ProviderPayouts payouts={payouts} />
+      <PaymentReceipts billing={billing} />
+      <PaymentRefunds
+        billing={billing}
+        item={item}
+        disabled={busy}
+        mutate={requestAction}
+      />
+      <Dialog
+        open={financialAction !== null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setFinancialAction(null);
+        }}
+      >
+        <DialogContent className="max-h-[85dvh] overflow-y-auto sm:max-w-lg">
+          <DialogTitle>
+            {financialAction?.action === "cash"
+              ? "Record cash received"
+              : "Confirm refund action"}
+          </DialogTitle>
+          <DialogDescription>
+            {financialAction?.action === "cash"
+              ? "Confirm receipt before this payment is recorded."
+              : "The patient will see your decision note."}
+          </DialogDescription>
+          {financialAction?.action === "cash" ? (
+            <>
+              <p className="text-xl font-semibold tabular-nums">
+                {appointmentMoney(billing.due_minor)}
+              </p>
+              <PaymentTermsDialog text={billing.policy_text} />
+              <label className="flex items-start gap-2 text-sm leading-6">
+                <input
+                  type="checkbox"
+                  className="accent-primary mt-1 size-4"
+                  checked={cashAccepted}
+                  disabled={busy}
+                  onChange={(event) => setCashAccepted(event.target.checked)}
+                />
+                Cash has been received and the patient agrees to the payment and
+                refund terms.
+              </label>
+            </>
+          ) : null}
+          <label className="block space-y-2 text-sm font-medium">
+            {financialAction?.action === "cash"
+              ? "Collection note"
+              : "Decision note"}
+            <textarea
+              className="border-input bg-background min-h-24 w-full rounded-lg border px-3 py-2 font-normal"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              maxLength={1000}
+              disabled={busy}
+            />
+          </label>
+          {mutation.isError ? (
+            <p role="alert" className="text-destructive text-sm">
+              {userErrorMessage(
+                mutation.error,
+                "Could not complete this payment action. Refresh and try again."
+              )}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => setFinancialAction(null)}
+            >
+              Cancel
+            </Button>
+            <Button
+              disabled={
+                busy ||
+                note.trim().length < 2 ||
+                (financialAction?.action === "cash" && !cashAccepted)
+              }
+              onClick={() => {
+                if (financialAction)
+                  mutation.mutate({ ...financialAction, note });
+              }}
+            >
+              {busy ? "Saving…" : "Confirm"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {mutation.isError && !financialAction ? (
+        <p role="alert" className="text-destructive text-sm">
+          {userErrorMessage(
+            mutation.error,
+            "Could not complete this payment action. Refresh and try again."
+          )}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          disabled={busy}
+          onClick={() =>
+            mutation.mutate({ action: "reconcile", appointmentId: item.id })
+          }
+        >
+          Refresh payment status
+        </Button>
+        {billing.can_manage &&
+        billing.refunds.some((refund) =>
+          ["approved", "processing"].includes(refund.status)
+        ) ? (
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() =>
+              mutation.mutate({
+                action: "process_refunds",
+                appointmentId: item.id,
+              })
+            }
+          >
+            Process or reconcile refunds
+          </Button>
+        ) : null}
+      </div>
+    </PaymentSummary>
+  );
+}
+
+type Billing = NonNullable<
+  Awaited<ReturnType<typeof loadPortalAppointmentBilling>>
+>;
+
+type FinancialAction = { appointmentId: string } & (
+  | { action: "cash"; expectedDue: number }
+  | {
+      action: "decision";
+      refundId: string;
+      expectedVersion: number;
+      approve: boolean;
+    }
+  | { action: "cash_refund"; refundId: string }
+);
+
+type BillingActionProps = {
+  billing: Billing;
+  item: ClinicAppointment;
+  disabled: boolean;
+  mutate: (input: FinancialAction) => void;
+};
+
+function ProviderPayouts({
+  payouts,
+}: {
+  payouts: {
+    isError: boolean;
+    refetch: () => unknown;
+    data?: Awaited<ReturnType<typeof loadPortalAppointmentPayouts>>;
+  };
+}) {
+  return (
+    <>
       {payouts.isError ? (
         <Button variant="outline" onClick={() => void payouts.refetch()}>
           Retry provider payment status
@@ -112,6 +320,13 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
           ) : null}
         </div>
       ))}
+    </>
+  );
+}
+
+function PaymentReceipts({ billing }: { billing: Billing }) {
+  return (
+    <>
       {billing.attempts.length ? (
         <details className="border-t pt-2">
           <summary className="focus-visible:outline-ring cursor-pointer py-2 text-sm font-medium focus-visible:outline-2">
@@ -131,44 +346,18 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
           </div>
         </details>
       ) : null}
-      {billing.can_manage ? (
-        <label className="block space-y-1 text-sm">
-          Financial action note
-          <textarea
-            className="border-border bg-background min-h-20 w-full rounded-lg border px-3 py-2"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-            maxLength={1000}
-            disabled={mutation.isPending}
-          />
-        </label>
-      ) : null}
-      {billing.can_manage &&
-      billing.enabled &&
-      item.visit_mode === "clinic" &&
-      item.status === "confirmed" &&
-      billing.appointment_id === item.id &&
-      billing.due_minor > 0 ? (
-        <>
-          <p className="text-muted-foreground text-sm">
-            Confirm cash has been received and the patient has accepted these
-            payment terms. {billing.policy_text}
-          </p>
-          <Button
-            disabled={disabled}
-            onClick={() =>
-              mutation.mutate({
-                action: "cash",
-                appointmentId: item.id,
-                expectedDue: billing.due_minor,
-                note,
-              })
-            }
-          >
-            Confirm cash received · {appointmentMoney(billing.due_minor)}
-          </Button>
-        </>
-      ) : null}
+    </>
+  );
+}
+
+function PaymentRefunds({
+  billing,
+  item,
+  disabled,
+  mutate,
+}: BillingActionProps) {
+  return (
+    <>
       {billing.refunds.map((refund) => (
         <div
           className="border-border space-y-3 border-t pt-4 text-sm"
@@ -196,13 +385,12 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
               <Button
                 disabled={disabled}
                 onClick={() =>
-                  mutation.mutate({
+                  mutate({
                     action: "decision",
                     appointmentId: item.id,
                     refundId: refund.id,
                     expectedVersion: refund.row_version,
                     approve: true,
-                    note,
                   })
                 }
               >
@@ -212,13 +400,12 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
                 variant="outline"
                 disabled={disabled}
                 onClick={() =>
-                  mutation.mutate({
+                  mutate({
                     action: "decision",
                     appointmentId: item.id,
                     refundId: refund.id,
                     expectedVersion: refund.row_version,
                     approve: false,
-                    note,
                   })
                 }
               >
@@ -230,11 +417,10 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
             <Button
               disabled={disabled}
               onClick={() =>
-                mutation.mutate({
+                mutate({
                   action: "cash_refund",
                   appointmentId: item.id,
                   refundId: refund.id,
-                  note,
                 })
               }
             >
@@ -243,39 +429,74 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
           ) : null}
         </div>
       ))}
-      {mutation.isError ? (
-        <p role="alert" className="text-destructive text-sm">
-          {mutation.error.message}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Button
-          variant="outline"
-          disabled={mutation.isPending}
-          onClick={() =>
-            mutation.mutate({ action: "reconcile", appointmentId: item.id })
-          }
-        >
-          Refresh payment status
-        </Button>
-        {billing.can_manage &&
-        billing.refunds.some((refund) =>
-          ["approved", "processing"].includes(refund.status)
-        ) ? (
+    </>
+  );
+}
+
+function CashPaymentConfirmation({
+  billing,
+  item,
+  disabled,
+  mutate,
+}: BillingActionProps) {
+  return (
+    <>
+      {billing.can_manage &&
+      billing.enabled &&
+      item.visit_mode === "clinic" &&
+      (item.status === "confirmed" ||
+        (item.status === "pending" && item.confirmation_payment_pending)) &&
+      billing.appointment_id === item.id &&
+      billing.due_minor > 0 ? (
+        <>
           <Button
             variant="outline"
-            disabled={mutation.isPending}
+            disabled={disabled}
             onClick={() =>
-              mutation.mutate({
-                action: "process_refunds",
+              mutate({
+                action: "cash",
                 appointmentId: item.id,
+                expectedDue: billing.due_minor,
               })
             }
           >
-            Process or reconcile refunds
+            Record cash received
           </Button>
-        ) : null}
-      </div>
-    </PaymentSummary>
+        </>
+      ) : null}
+    </>
+  );
+}
+
+function ClinicGatewayPayment({
+  billing,
+  item,
+  checkoutAvailable,
+  setCheckoutBusy,
+}: {
+  billing: Billing;
+  item: ClinicAppointment;
+  checkoutAvailable: boolean;
+  setCheckoutBusy: (busy: boolean) => void;
+}) {
+  return (
+    <>
+      {billing.can_manage && billing.can_pay && item.visit_mode === "clinic" ? (
+        checkoutAvailable ? (
+          <PortalCheckoutButton
+            key={`${item.id}:${billing.policy_version}`}
+            billing={billing}
+            patientName={item.patient_name}
+            onBusyChange={setCheckoutBusy}
+          />
+        ) : (
+          <Button asChild>
+            <Link href={`/transactions?appointment=${item.id}`}>
+              Collect via Razorpay · {appointmentMoney(billing.due_minor)}
+            </Link>
+          </Button>
+        )
+      ) : null}
+    </>
   );
 }

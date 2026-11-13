@@ -1,3 +1,4 @@
+import { reportError } from "@startup/data-access";
 import { useEffect } from "react";
 import { AppState } from "react-native";
 import * as Crypto from "expo-crypto";
@@ -87,7 +88,9 @@ export function useDriverLocationReporter() {
       if (disposed) subscription.remove();
       else void sample();
     })();
-    void startDriverBackgroundLocation().catch(() => {});
+    void startDriverBackgroundLocation().catch((error) =>
+      reportError(error, { source: "background-location" })
+    );
     const timer = setInterval(() => {
       void sample();
     }, 45000);

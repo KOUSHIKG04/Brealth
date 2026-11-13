@@ -357,6 +357,9 @@ export const doctorSchedulePreferences = clinzo
   .table(
     "doctor_schedule_preferences",
     {
+      schedule_adjustments: jsonb("schedule_adjustments")
+        .notNull()
+        .default(sql`'[]'::jsonb`),
       doctor_facility_id: uuid("doctor_facility_id")
         .primaryKey()
         .references((): AnyPgColumn => doctorFacility.id, {
@@ -405,6 +408,9 @@ export const doctorSchedulePreferences = clinzo
       online_grace_minutes: integer("online_grace_minutes")
         .notNull()
         .default(15),
+      clinic_grace_minutes: integer("clinic_grace_minutes")
+        .notNull()
+        .default(10),
       reschedule_cutoff_minutes: integer("reschedule_cutoff_minutes")
         .notNull()
         .default(0),
@@ -452,6 +458,10 @@ export const doctorSchedulePreferences = clinzo
       check(
         "doctor_schedule_preferences_online_grace_minutes_check",
         sql`${table.online_grace_minutes} between 0 and 180`
+      ),
+      check(
+        "doctor_schedule_preferences_clinic_grace_minutes_check",
+        sql`${table.clinic_grace_minutes} between 0 and 180`
       ),
       check(
         "doctor_schedule_preferences_reschedule_cutoff_minutes_check",

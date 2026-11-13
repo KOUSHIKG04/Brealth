@@ -31,7 +31,7 @@ import { patientAddressSchema } from "@startup/contracts";
 
 export type { PatientAddress };
 
-export function AddressSheet({
+function AddressSheetDraft({
   visible,
   value,
   onClose,
@@ -85,6 +85,7 @@ export function AddressSheet({
     <ModalSurface
       layout="custom"
       visible={visible}
+      onShow={() => setError("")}
       transparent
       animationType="slide"
       statusBarTranslucent
@@ -328,3 +329,8 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
 });
+
+
+export function AddressSheet(props: AddressSheetProps) {
+ return <AddressSheetDraft key={JSON.stringify(props.value)} {...props} />;
+}

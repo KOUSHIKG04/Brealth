@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -18,7 +19,11 @@ export function useLiveDoctorProfile() {
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
   const [languages, setLanguages] = useState("");
-  useToastFeedback({ error: profile.error?.message });
+  useToastFeedback({
+    error: profile.error
+      ? userErrorMessage(profile.error, "Could not load your profile.")
+      : undefined,
+  });
   const [editing, setEditing] = useState(false);
   useEffect(() => {
     if (!profile.data) return;

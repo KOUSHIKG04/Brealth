@@ -4,6 +4,7 @@ import type {
   SortingState,
   PaginationState,
   OnChangeFn,
+  TableOptions,
 } from "@tanstack/react-table";
 
 export interface DataTableProps<TData, TValue> {
@@ -14,6 +15,11 @@ export interface DataTableProps<TData, TValue> {
   emptyState?: React.ReactNode;
   emptyMessage?: string;
   className?: string;
+  tableClassName?: string;
+  cellClassName?: string;
+  bare?: boolean;
+  enableColumnResizing?: boolean;
+  getRowId?: TableOptions<TData>["getRowId"];
   // Controlled pagination
   pageCount?: number;
   rowCount?: number;
@@ -29,3 +35,5 @@ export interface DataTableProps<TData, TValue> {
   // Header / Footer slot
   hidePagination?: boolean;
 }
+
+export type DisplayTableRow = { id: string; cells: React.ReactNode[] };

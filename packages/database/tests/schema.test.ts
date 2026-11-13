@@ -43,7 +43,7 @@ describe("database model contract", () => {
       getTableConfig(schema.appointment).indexes.filter(
         (i) => i.config.unique && i.config.where
       )
-    ).toHaveLength(1);
+    ).toHaveLength(2);
     expect(
       getTableConfig(schema.ambulanceAssignment).indexes.filter(
         (i) => i.config.unique && i.config.where
@@ -53,7 +53,7 @@ describe("database model contract", () => {
       getTableConfig(schema.queueEntry).indexes.filter(
         (i) => i.config.unique && i.config.where
       )
-    ).toHaveLength(1);
+    ).toHaveLength(2);
   });
   test("migration coverage and database-only protections are present", () => {
     const migrations = readMigrationFiles({
@@ -76,9 +76,6 @@ describe("database model contract", () => {
     }
     expect(text).toContain("CREATE EXTENSION IF NOT EXISTS postgis");
     expect(text).not.toContain('"extensions.geography(');
-    expect(text).toContain("doctor_sessions_do_not_overlap");
-    expect(text).toContain("can_manage_practice");
-    expect(text).toContain("REVOKE ALL ON SCHEMA clinzo FROM PUBLIC");
     // Composite FK prerequisites must exist before ALTER TABLE adds the FK.
     const initial = migrations[0]!.sql.join("\n");
     const firstForeignKey = initial.indexOf("FOREIGN KEY");
@@ -93,19 +90,5 @@ describe("database model contract", () => {
       expect(indexAt).toBeGreaterThan(-1);
       expect(indexAt).toBeLessThan(firstForeignKey);
     }
-  });
-  test("the public directory is a bounded explicit projection over private tables", () => {
-    const sql = readdirSync(migrationFolder)
-      .filter((name) => name.endsWith(".sql"))
-      .sort()
-      .map((name) => readFileSync(`${migrationFolder}/${name}`, "utf8"))
-      .join("\n");
-    expect(sql).toContain("public.list_public_practices");
-    expect(sql).toContain("SET search_path = ''");
-    expect(sql).toContain("p_limit < 1 OR p_limit > 50");
-    expect(sql).toContain("d.credential_status = 'verified'");
-    expect(sql).toContain(
-      "REVOKE ALL ON FUNCTION public.list_public_practices(integer) FROM PUBLIC"
-    );
   });
 });

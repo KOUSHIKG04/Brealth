@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { AmbulanceCompletionProps } from "../types/ambulance-completion";
 import { useState } from "react";
 import { useToastFeedback } from "@startup/mobile-ui";
@@ -23,9 +24,7 @@ export function useAmbulanceCompletion({
       await onSubmitRating(rating + 1);
       setRatingSubmitted(true);
     } catch (cause) {
-      setRatingError(
-        cause instanceof Error ? cause.message : "Could not submit rating."
-      );
+      setRatingError(userErrorMessage(cause, "Could not submit rating."));
     } finally {
       setRatingPending(false);
     }

@@ -8,6 +8,7 @@ import {
   useReactTable,
   type SortingState,
   type PaginationState,
+  type ColumnSizingState,
 } from "@tanstack/react-table";
 import type { DataTableProps } from "../types/dataTable";
 
@@ -22,6 +23,8 @@ export function useDataTable<TData, TValue>({
   sorting,
   onSortingChange,
   manualSorting,
+  getRowId,
+  enableColumnResizing = false,
 }: Pick<
   DataTableProps<TData, TValue>,
   | "columns"
@@ -34,7 +37,11 @@ export function useDataTable<TData, TValue>({
   | "sorting"
   | "onSortingChange"
   | "manualSorting"
+  | "getRowId"
+  | "enableColumnResizing"
 >) {
+  const [columnSizing, setColumnSizing] = React.useState<ColumnSizingState>({});
+
   const [internalSorting, setInternalSorting] = React.useState<SortingState>(
     []
   );
@@ -65,12 +72,20 @@ export function useDataTable<TData, TValue>({
     columns,
     pageCount,
     rowCount,
+    getRowId,
+    enableColumnResizing,
+    columnResizeMode: "onChange",
+    defaultColumn: enableColumnResizing
+      ? { size: 176, minSize: 80, maxSize: 640 }
+      : undefined,
     state: {
+      columnSizing,
       sorting: activeSorting,
       pagination: activePagination,
     },
     manualPagination,
     manualSorting,
+    onColumnSizingChange: setColumnSizing,
     onSortingChange: activeSetSorting,
     onPaginationChange: activeSetPagination,
     getCoreRowModel: getCoreRowModel(),

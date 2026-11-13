@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import * as Crypto from "expo-crypto";
 import { sendOnlineMessage } from "@startup/data-access";
 import { supabase } from "../../../services/supabase";
@@ -28,7 +29,7 @@ export function useLegacyConsultationChat() {
     enabled: Boolean(live.appointment && supabase),
   });
   useEffect(() => {
-    if (!live.appointment || !supabase || !appointmentId) return;
+    if (!live.appointment?.id || !supabase || !appointmentId) return;
     return subscribeOnlineMessages(supabase, appointmentId, () => {
       void queryClient.invalidateQueries({
         queryKey: ["online-messages", appointmentId],
@@ -58,9 +59,7 @@ export function useLegacyConsultationChat() {
           queryKey: ["online-messages", appointmentId],
         });
       } catch (cause) {
-        setSendError(
-          cause instanceof Error ? cause.message : "Message could not be sent."
-        );
+        setSendError(userErrorMessage(cause, "Message could not be sent."));
       }
     } else if (appointment) {
       sendMessage(appointment.id, draft.trim());

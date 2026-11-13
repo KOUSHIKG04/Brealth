@@ -1,5 +1,11 @@
 "use client";
 
+import { useMemo } from "react";
+import {
+  DataTable,
+  createDisplayColumns,
+} from "@startup/web-ui/components/data-table";
+import { bedTableHeaders } from "../utils/bedManagementConstants";
 import { useBedManagementScreen } from "../hooks/useBedManagementScreen";
 
 import type { BedManagementScreenProps } from "../types/bedManagementScreen";
@@ -13,6 +19,7 @@ export default function BedManagementScreen({
   inventory,
   loadError,
 }: BedManagementScreenProps) {
+  const bedColumns = useMemo(() => createDisplayColumns(bedTableHeaders), []);
   const {
     viewMode,
     setViewMode,
@@ -28,6 +35,89 @@ export default function BedManagementScreen({
     pendingIds,
     bedManagementDateLabel,
   } = useBedManagementScreen({ inventory, loadError });
+  const tableRows = departments.map((dept) => {
+    const occupancyPct =
+      dept.total > 0 ? Math.round((dept.occupied / dept.total) * 100) : 0;
+    return {
+      id: `${dept.facilityId}:${dept.id}`,
+      cells: [
+        <div key="department" className="px-3 py-3.5">
+          <div className="text-foreground flex items-center gap-2.5 font-semibold">
+            <span
+              className={`size-2.5 rounded-full ${dept.dotColor} shrink-0`}
+            />
+            <span>{dept.name}</span>
+          </div>
+          {!dept.configured ? (
+            <InitialBedCountsForm row={dept} onSaved={acceptSavedRow} />
+          ) : null}
+        </div>,
+        dept.configured ? (
+          <div
+            key="total"
+            className="text-foreground px-3 py-3.5 text-center font-medium"
+          >
+            {dept.total}
+          </div>
+        ) : (
+          <div key="total" className="text-muted-foreground px-3 py-3.5">
+            —
+          </div>
+        ),
+        dept.configured ? (
+          <div key="available" className="px-3 py-3.5 text-center">
+            <BedCountStepper
+              label={`Available beds for ${dept.name}`}
+              value={dept.available}
+              max={dept.total - dept.maintenance}
+              disabled={pendingIds.has(dept.id)}
+              onCommit={(value) => handleSetCount(dept.id, "available", value)}
+            />
+          </div>
+        ) : (
+          <div key="available" className="text-muted-foreground px-3 py-3.5">
+            —
+          </div>
+        ),
+        dept.configured ? (
+          <div key="occupied" className="px-3 py-3.5 text-center">
+            <BedCountStepper
+              label={`Occupied beds for ${dept.name}`}
+              value={dept.occupied}
+              max={dept.total - dept.maintenance}
+              disabled={pendingIds.has(dept.id)}
+              onCommit={(value) => handleSetCount(dept.id, "occupied", value)}
+            />
+          </div>
+        ) : (
+          <div key="occupied" className="text-muted-foreground px-3 py-3.5">
+            —
+          </div>
+        ),
+        dept.configured ? (
+          <div key="occupancy" className="px-3 py-3.5">
+            <div className="flex max-w-[280px] items-center gap-4">
+              <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
+                <div
+                  className={`h-full rounded-full transition-all duration-300 ${dept.barColor}`}
+                  style={{ width: `${occupancyPct}%` }}
+                />
+              </div>
+              <span className="text-foreground w-12 text-right text-sm font-bold">
+                {viewMode === "percent"
+                  ? `${occupancyPct}%`
+                  : `${dept.occupied}/${dept.total}`}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div key="occupancy" className="text-muted-foreground px-3 py-3.5">
+            —
+          </div>
+        ),
+      ],
+    };
+  });
   return (
     <div className="flex flex-col gap-6 pb-12">
       {/* TopBar (Figma 832:56) */}
@@ -206,99 +296,17 @@ export default function BedManagementScreen({
 
         {/* Departments Table */}
         <div className="mt-2 overflow-x-auto">
-          <table className="w-full min-w-[760px] border-collapse text-left text-sm">
-            <thead>
-              <tr className="border-border text-muted-foreground border-b text-xs font-bold">
-                <th className="px-3 py-3">Department</th>
-                <th className="px-3 py-3 text-center">Total Beds</th>
-                <th className="px-3 py-3 text-center">Available</th>
-                <th className="px-3 py-3 text-center">Occupied</th>
-                <th className="px-3 py-3">Occupancy Rate</th>
-              </tr>
-            </thead>
-            <tbody className="divide-border divide-y">
-              {departments.map((dept) => {
-                const occupancyPct =
-                  dept.total > 0
-                    ? Math.round((dept.occupied / dept.total) * 100)
-                    : 0;
-
-                return (
-                  <tr
-                    key={`${dept.facilityId}:${dept.id}`}
-                    className="hover:bg-muted/70 transition-colors"
-                  >
-                    {/* Department name with dot */}
-                    <td className="px-3 py-3.5">
-                      <div className="text-foreground flex items-center gap-2.5 font-semibold">
-                        <span
-                          className={`size-2.5 rounded-full ${dept.dotColor} shrink-0`}
-                        />
-                        <span>{dept.name}</span>
-                      </div>
-                    </td>
-
-                    {!dept.configured ? (
-                      <td colSpan={4} className="px-3 py-3.5">
-                        <InitialBedCountsForm
-                          row={dept}
-                          onSaved={acceptSavedRow}
-                        />
-                      </td>
-                    ) : (
-                      <>
-                        {/* Total Beds */}
-                        <td className="text-foreground px-3 py-3.5 text-center font-medium">
-                          {dept.total}
-                        </td>
-
-                        {/* Available with Stepper (- / +) */}
-                        <td className="px-3 py-3.5 text-center">
-                          <BedCountStepper
-                            label={`Available beds for ${dept.name}`}
-                            value={dept.available}
-                            max={dept.total - dept.maintenance}
-                            disabled={pendingIds.has(dept.id)}
-                            onCommit={(value) => {
-                              void handleSetCount(dept.id, "available", value);
-                            }}
-                          />
-                        </td>
-                        <td className="px-3 py-3.5 text-center">
-                          <BedCountStepper
-                            label={`Occupied beds for ${dept.name}`}
-                            value={dept.occupied}
-                            max={dept.total - dept.maintenance}
-                            disabled={pendingIds.has(dept.id)}
-                            onCommit={(value) => {
-                              void handleSetCount(dept.id, "occupied", value);
-                            }}
-                          />
-                        </td>
-
-                        {/* Occupancy Rate Bar & Label */}
-                        <td className="px-3 py-3.5">
-                          <div className="flex max-w-[280px] items-center gap-4">
-                            <div className="bg-muted h-2 flex-1 overflow-hidden rounded-full">
-                              <div
-                                className={`h-full rounded-full transition-all duration-300 ${dept.barColor}`}
-                                style={{ width: `${occupancyPct}%` }}
-                              />
-                            </div>
-                            <span className="text-foreground w-12 text-right text-sm font-bold">
-                              {viewMode === "percent"
-                                ? `${occupancyPct}%`
-                                : `${dept.occupied}/${dept.total}`}
-                            </span>
-                          </div>
-                        </td>
-                      </>
-                    )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <DataTable
+            columns={bedColumns}
+            data={tableRows}
+            enableColumnResizing
+            manualPagination
+            hidePagination
+            bare
+            cellClassName="p-0 align-top"
+            getRowId={(row) => row.id}
+            emptyMessage="No bed inventory is configured."
+          />
         </div>
       </div>
     </div>

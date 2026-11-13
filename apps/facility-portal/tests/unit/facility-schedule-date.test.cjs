@@ -97,3 +97,142 @@ test("home visit sessions also appear in the published schedule view", () => {
   assert.equal(view.assignments.length, 1);
   assert.equal(view.departments[0].shifts.length, 1);
 });
+
+function loadScheduleView(name, mocks) {
+  const exports = {};
+  const file = path.join(
+    __dirname,
+    "../../src/features/doctors/components",
+    name + ".tsx"
+  );
+  vm.runInNewContext(
+    ts.transpileModule(fs.readFileSync(file, "utf8"), {
+      compilerOptions: {
+        module: ts.ModuleKind.CommonJS,
+        target: ts.ScriptTarget.ES2022,
+        jsx: ts.JsxEmit.ReactJSX,
+      },
+    }).outputText,
+    {
+      exports,
+      Date,
+      Intl,
+      require(name) {
+        if (name in mocks) return mocks[name];
+        throw Error("Unmocked import: " + name);
+      },
+    }
+  );
+  return exports;
+}
+
+function scheduleViewFixture(
+  departments,
+  selectedDay = "2026-11-02",
+  nextScheduledDay = null
+) {
+  const changes = [];
+  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const { DoctorShiftGantt } = loadScheduleView("DoctorShiftGantt", {
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+    "next/link": "Link",
+    "lucide-react": {},
+    "@startup/web-ui/components/ui/button": { Button: "Button" },
+    "@startup/web-ui/components/ui/input": { Input: "Input" },
+    "../utils/facilitySchedule": { facilityDayKey: () => "2026-10-30" },
+    "../utils/doctorSchedulesConstants": {
+      scheduleTimeLabels: [
+        "00:00",
+        "04:00",
+        "08:00",
+        "12:00",
+        "16:00",
+        "20:00",
+      ],
+      shiftStyles: {
+        "on-duty": { label: "Clinic", bar: "bg-primary", badge: "bg-muted" },
+      },
+    },
+  });
+  const flatten = (node) =>
+    Array.isArray(node)
+      ? node.flatMap(flatten)
+      : node && typeof node === "object"
+        ? [node, ...flatten(node.props?.children)]
+        : [];
+  const nodes = flatten(
+    DoctorShiftGantt({
+      departments,
+      selectedDay,
+      nextScheduledDay,
+      onDayChange: (day) => changes.push(day),
+    })
+  );
+  return { nodes, changes };
+}
+
+test("schedule timeline uses exact minutes and separate lanes for overlapping shifts", () => {
+  const { nodes } = scheduleViewFixture([
+    {
+      department: "General",
+      shifts: [
+        {
+          doctor: "A",
+          time: "09:15-10:45",
+          type: "on-duty",
+          startCol: 3,
+          spanCols: 1,
+        },
+        {
+          doctor: "B",
+          time: "09:30-11:00",
+          type: "on-duty",
+          startCol: 3,
+          spanCols: 1,
+        },
+      ],
+    },
+  ]);
+  assert.equal(nodes.filter((node) => node.type === "li").length, 2);
+  const bars = nodes.filter((node) => node.props.style?.left !== undefined);
+  const first = bars.find(
+    (node) =>
+      Math.abs(parseFloat(node.props.style.left) - (555 / 1440) * 100) < 0.00001
+  );
+  assert.ok(first);
+  assert.equal(parseFloat(first.props.style.width), 6.25);
+});
+
+test("schedule date controls retain today, tomorrow, custom date and next scheduled day actions", () => {
+  const { nodes, changes } = scheduleViewFixture(
+    [],
+    "2026-10-30",
+    "2026-11-03"
+  );
+  assert.equal(
+    nodes.find((node) => node.props["aria-label"] === "Previous schedule day")
+      .props.disabled,
+    true
+  );
+  nodes
+    .find((node) => node.props["aria-label"] === "Next schedule day")
+    .props.onClick();
+  assert.equal(changes.at(-1), "2026-10-31");
+  nodes.find((node) => node.props.children === "Tomorrow").props.onClick();
+  assert.equal(changes.at(-1), "2026-10-31");
+  nodes.find((node) => node.props.children === "Today").props.onClick();
+  assert.equal(changes.at(-1), "2026-10-30");
+  const input = nodes.find((node) => node.type === "Input");
+  input.props.onChange({ target: { value: "2026-11-05" } });
+  assert.equal(changes.at(-1), "2026-11-05");
+  input.props.onChange({ target: { value: "2026-10-29" } });
+  assert.equal(changes.at(-1), "2026-11-05");
+  nodes
+    .find(
+      (node) =>
+        Array.isArray(node.props.children) &&
+        node.props.children[0] === "View next scheduled day: "
+    )
+    .props.onClick();
+  assert.equal(changes.at(-1), "2026-11-03");
+});

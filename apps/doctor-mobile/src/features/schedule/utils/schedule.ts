@@ -1,5 +1,8 @@
 import type { Schedule } from "../../../types/doctor";
-import { scheduleBlocksError } from "@startup/contracts";
+import {
+  scheduleBlocksError,
+  type DoctorScheduleSettings,
+} from "@startup/contracts";
 
 export function minutes(value: string): number {
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return NaN;
@@ -160,4 +163,55 @@ export function toggleSelectedSlot(
   if (slots.includes(slot)) return slots.filter((item) => item !== slot);
   if (!Number.isInteger(limit) || limit <= slots.length) return slots;
   return [...slots, slot];
+}
+
+/** Editor draft for one service from complete schedule settings. */
+export function draftFromSettings(
+  settings: DoctorScheduleSettings,
+  mode: "clinic" | "online" | "home"
+): Schedule {
+  const blocks =
+    mode === "clinic"
+      ? settings.clinicTimeBlocks
+      : mode === "online"
+        ? settings.onlineTimeBlocks
+        : settings.homeTimeBlocks;
+  const days =
+    mode === "online"
+      ? (settings.onlineWorkingDays ?? settings.workingDays)
+      : mode === "home"
+        ? (settings.homeWorkingDays ?? settings.workingDays)
+        : settings.workingDays;
+  return {
+    timeBlocks: blocks,
+    homeTravelBuffer: settings.homeTravelBufferMinutes ?? 0,
+    days: days.map((day) => day - 1),
+    start:
+      mode === "online"
+        ? (settings.onlineStart ?? "13:00")
+        : mode === "home"
+          ? (settings.homeStart ?? "16:00")
+          : settings.clinicStart,
+    end:
+      mode === "online"
+        ? (settings.onlineEnd ?? "15:00")
+        : mode === "home"
+          ? (settings.homeEnd ?? "17:00")
+          : settings.clinicEnd,
+    duration: settings.slotMinutes,
+    onlineDuration: settings.onlineSlotMinutes,
+    homeDuration: settings.homeSlotMinutes,
+    online: settings.onlineDailyLimit,
+    walkIn: settings.walkinDailyLimit,
+    clinicApp: settings.clinicAppDailyLimit ?? settings.walkinDailyLimit,
+    clinicWalkin: settings.clinicWalkinDailyLimit ?? 0,
+    autoAccept: settings.autoAccept,
+    autoLimit: settings.autoAcceptLimit,
+    homeVisits: settings.homeVisits,
+    homeRadius:
+      settings.homeRadiusKm === null ? "" : String(settings.homeRadiusKm),
+    onlineFee: String((settings.onlineFeeMinor ?? 0) / 100),
+    clinicFee: String(settings.clinicFeeMinor / 100),
+    homeFee: String((settings.homeFeeMinor ?? 0) / 100),
+  };
 }

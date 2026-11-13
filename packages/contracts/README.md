@@ -24,7 +24,8 @@ deployed or tested. Keep Drizzle
 models and database credentials out of this package. Supabase generated wire
 types belong in data-access; UI labels map to canonical persisted states.
 
-See ../../plans/ui-db-validation/api-contracts.md and ../../PROJECT_CONTEXT.md.
+See the [repository ownership map](../../ARCHITECTURE.md) and
+[shared package guide](../ARCHITECTURE.md) for current contract ownership.
 `clinical.ts` contains implemented clinical intake, prescription, follow-up, and
 record schemas. The unreferenced empty `consultations.ts` and `prescriptions.ts`
 scaffolds have been removed. Extend the existing clinical contracts instead of

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { userErrorMessage } from "./errors";
 
 export const doctorTimeBlockSchema = z
   .object({
@@ -11,6 +12,114 @@ export const doctorTimeBlockSchema = z
   });
 
 export type DoctorTimeBlock = z.infer<typeof doctorTimeBlockSchema>;
+
+export const scheduleServiceSchema = z.enum(["clinic", "online", "home"]);
+
+export const scheduleRemainingBlockSchema = z.object({
+  days: z.array(z.number().int().min(1).max(7)),
+  start: z.string(),
+  end: z.string(),
+});
+
+export const scheduleAdjustmentSchema = z.object({
+  mode: scheduleServiceSchema,
+  effective_from: z.iso.date(),
+  message: z.string(),
+});
+
+export const scheduleConflictSchema = z.object({
+  rule_id: z.uuid(),
+  practice_id: z.uuid(),
+  facility_name: z.string(),
+  mode: scheduleServiceSchema,
+  days: z.array(z.number().int()),
+  start: z.string(),
+  end: z.string(),
+  travel_buffer_minutes: z.number().int(),
+  effective_from: z.iso.date(),
+  effective_until: z.iso.date().nullable(),
+  remaining: z.array(scheduleRemainingBlockSchema),
+  booked_count: z.number().int().nonnegative(),
+  replaceable: z.boolean(),
+  reason: z.string().nullable(),
+  can_request: z.boolean().optional(),
+  paused_remaining: z.array(scheduleRemainingBlockSchema).optional(),
+  bookings: z
+    .array(
+      z.object({
+        id: z.uuid(),
+        booking_code: z.string(),
+        patient_name: z.string(),
+        starts_at: z.string(),
+        ends_at: z.string(),
+        timezone: z.string(),
+        status: z.string(),
+        payment_hold: z.boolean(),
+        row_version: z.string(),
+      })
+    )
+    .optional(),
+});
+
+export const scheduleChangePreviewSchema = z.object({
+  token: z.string(),
+  effective_from: z.iso.date(),
+  conflicts: z.array(scheduleConflictSchema),
+  can_replace: z.boolean(),
+  can_request: z.boolean().optional(),
+  // First start date with no booked or started sessions in the conflicts.
+  suggested_effective_from: z.iso.date().optional(),
+});
+
+export const scheduleBusyBlockSchema = z.object({
+  rule_id: z.uuid(),
+  practice_id: z.uuid(),
+  facility_name: z.string(),
+  mode: scheduleServiceSchema,
+  days: z.array(z.number().int().min(1).max(7)),
+  start: z.string(),
+  end: z.string(),
+  travel_buffer_minutes: z.number().int().nonnegative(),
+  effective_from: z.iso.date(),
+  effective_until: z.iso.date().nullable(),
+});
+
+export type ScheduleBusyBlock = z.infer<typeof scheduleBusyBlockSchema>;
+
+export const scheduleConflictDecisionSchema = z
+  .object({
+    strategy: z.enum(["trim", "pause"]),
+    patientReason: z.string().trim().max(1000).default(""),
+  })
+  .strict();
+
+export type ScheduleConflictDecision = z.infer<
+  typeof scheduleConflictDecisionSchema
+>;
+
+export type ScheduleChangePreview = z.infer<typeof scheduleChangePreviewSchema>;
+
+export type ScheduleAdjustment = z.infer<typeof scheduleAdjustmentSchema>;
+
+export const scheduleAdjustmentNoticeSchema = scheduleAdjustmentSchema.extend({
+  practice_id: z.uuid(),
+  facility_name: z.string(),
+});
+
+export type ScheduleAdjustmentNotice = z.infer<
+  typeof scheduleAdjustmentNoticeSchema
+>;
+
+export function scheduleServiceLabel(mode: "clinic" | "online" | "home") {
+  return { clinic: "Clinic", online: "Online", home: "Home visit" }[mode];
+}
+
+export function scheduleBlockSummary(
+  block: z.infer<typeof scheduleRemainingBlockSchema>
+) {
+  const names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  return `${block.days.map((day) => names[day - 1]).join(", ")}: ${block.start}–${block.end}`;
+}
 
 export function scheduleBlocksError(
   blocks: DoctorTimeBlock[],
@@ -137,7 +246,9 @@ export const doctorScheduleSettingsSchema = z
   );
 
 export const doctorSchedulePreferencesSchema = z.object({
+  schedule_adjustments: z.array(scheduleAdjustmentSchema).optional(),
   online_grace_minutes: z.number().int().optional(),
+  clinic_grace_minutes: z.number().int().optional(),
   reschedule_cutoff_minutes: z.number().int().optional(),
   max_self_reschedules: z.number().int().optional(),
   practice_id: z.uuid(),
@@ -196,3 +307,195 @@ export const doctorSchedulePublicationSchema = z.object({
   slot_count: z.number().int().nonnegative(),
   horizon_days: z.number().int().positive(),
 });
+
+type ScheduleSettingKey = keyof DoctorScheduleSettings;
+
+/** Converts a saved preference projection into editable schedule settings. */
+export function preferencesToScheduleSettings(
+  saved: DoctorSchedulePreferences
+): DoctorScheduleSettings {
+  return {
+    clinicTimeBlocks: saved.clinic_time_blocks ?? [
+      {
+        start: saved.clinic_start.slice(0, 5),
+        end: saved.clinic_end.slice(0, 5),
+      },
+    ],
+    onlineTimeBlocks: saved.online_time_blocks ?? [
+      {
+        start: saved.online_start?.slice(0, 5) ?? "13:00",
+        end: saved.online_end?.slice(0, 5) ?? "15:00",
+      },
+    ],
+    homeTimeBlocks: saved.home_time_blocks ?? [
+      {
+        start: saved.home_start?.slice(0, 5) ?? "16:00",
+        end: saved.home_end?.slice(0, 5) ?? "17:00",
+      },
+    ],
+    homeTravelBufferMinutes: saved.home_travel_buffer_minutes ?? 0,
+    workingDays: saved.working_days,
+    onlineWorkingDays: saved.online_working_days ?? saved.working_days,
+    homeWorkingDays: saved.home_working_days ?? saved.working_days,
+    clinicStart: saved.clinic_start.slice(0, 5),
+    clinicEnd: saved.clinic_end.slice(0, 5),
+    onlineStart: saved.online_start?.slice(0, 5) ?? "13:00",
+    onlineEnd: saved.online_end?.slice(0, 5) ?? "15:00",
+    homeStart: saved.home_start?.slice(0, 5) ?? "16:00",
+    homeEnd: saved.home_end?.slice(0, 5) ?? "17:00",
+    slotMinutes: saved.slot_minutes,
+    onlineSlotMinutes: saved.online_slot_minutes,
+    homeSlotMinutes: saved.home_slot_minutes,
+    onlineDailyLimit: saved.online_daily_limit,
+    walkinDailyLimit: saved.walkin_daily_limit,
+    clinicAppDailyLimit:
+      saved.clinic_app_daily_limit ?? saved.walkin_daily_limit,
+    clinicWalkinDailyLimit: saved.clinic_walkin_daily_limit ?? 0,
+    autoAccept: saved.auto_accept,
+    autoAcceptLimit: saved.auto_accept_limit,
+    homeVisits: saved.home_visits,
+    homeRadiusKm: saved.home_radius_km,
+    onlineFeeMinor: saved.online_fee_minor ?? 0,
+    clinicFeeMinor: saved.clinic_fee_minor,
+    homeFeeMinor: saved.home_fee_minor ?? 0,
+  };
+}
+
+const scheduleSettingLabels: Partial<Record<ScheduleSettingKey, string>> = {
+  workingDays: "clinic working days",
+  onlineWorkingDays: "online working days",
+  homeWorkingDays: "home-visit working days",
+  clinicStart: "clinic hours",
+  clinicEnd: "clinic hours",
+  onlineStart: "online hours",
+  onlineEnd: "online hours",
+  homeStart: "home-visit hours",
+  homeEnd: "home-visit hours",
+  clinicTimeBlocks: "clinic hours",
+  onlineTimeBlocks: "online hours",
+  homeTimeBlocks: "home-visit hours",
+  homeTravelBufferMinutes: "travel buffer",
+  slotMinutes: "clinic consultation duration",
+  onlineSlotMinutes: "online consultation duration",
+  homeSlotMinutes: "home-visit duration",
+  onlineDailyLimit: "online daily limit",
+  walkinDailyLimit: "clinic daily limit",
+  clinicAppDailyLimit: "clinic app bookings",
+  clinicWalkinDailyLimit: "clinic walk-ins",
+  autoAccept: "automatic booking",
+  autoAcceptLimit: "automatic booking limit",
+  homeVisits: "home visits",
+  homeRadiusKm: "home-visit radius",
+  onlineFeeMinor: "online fee",
+  clinicFeeMinor: "clinic fee",
+  homeFeeMinor: "home-visit fee",
+};
+
+/** Readable, de-duplicated names for settings, e.g. for merge conflicts. */
+export function scheduleSettingNames(keys: readonly ScheduleSettingKey[]) {
+  return [...new Set(keys.map((key) => scheduleSettingLabels[key] ?? key))];
+}
+
+function normalizedSetting(value: unknown): string {
+  if (Array.isArray(value)) {
+    // Day and block order carries no meaning; [3, 1] equals [1, 3].
+    return JSON.stringify(
+      value
+        .map((item) => JSON.stringify(item))
+        .sort((a, b) => a.localeCompare(b))
+    );
+  }
+  return JSON.stringify(value ?? null);
+}
+
+function sameSetting(left: unknown, right: unknown) {
+  return normalizedSetting(left) === normalizedSetting(right);
+}
+
+/**
+ * Three-way merge of schedule settings. `base` is the saved copy the editor
+ * started from, `mine` is the editor's result and `theirs` the latest saved
+ * copy. Fields only one side changed merge silently; fields both sides changed
+ * differently keep the editor's value and are reported as conflicts.
+ */
+export function rebaseScheduleSettings(
+  base: DoctorScheduleSettings,
+  mine: DoctorScheduleSettings,
+  theirs: DoctorScheduleSettings
+): { settings: DoctorScheduleSettings; conflicts: ScheduleSettingKey[] } {
+  const keys = new Set([
+    ...Object.keys(base),
+    ...Object.keys(mine),
+    ...Object.keys(theirs),
+  ] as ScheduleSettingKey[]);
+  const merged: Record<string, unknown> = {};
+  const conflicts: ScheduleSettingKey[] = [];
+  for (const key of keys) {
+    const mineValue = mine[key];
+    const theirValue = theirs[key];
+    let value: unknown;
+    if (sameSetting(mineValue, base[key])) value = theirValue;
+    else if (
+      sameSetting(theirValue, base[key]) ||
+      sameSetting(theirValue, mineValue)
+    )
+      value = mineValue;
+    else {
+      value = mineValue;
+      conflicts.push(key);
+    }
+    if (value !== undefined) merged[key] = value;
+  }
+  return { settings: merged as DoctorScheduleSettings, conflicts };
+}
+
+function clockMinutes(clock: string) {
+  return Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
+}
+
+/**
+ * Busy blocks that share a weekday with the draft and overlap one of its time
+ * blocks, including both travel buffers. Mirrors the preview's overlap test.
+ */
+export function scheduleBusyOverlaps(
+  busy: readonly ScheduleBusyBlock[],
+  days: readonly number[],
+  blocks: readonly DoctorTimeBlock[],
+  bufferMinutes = 0
+): ScheduleBusyBlock[] {
+  return busy.filter(
+    (item) =>
+      item.days.some((day) => days.includes(day)) &&
+      blocks.some(
+        (block) =>
+          clockMinutes(item.start) - item.travel_buffer_minutes <
+            clockMinutes(block.end) + bufferMinutes &&
+          clockMinutes(item.end) + item.travel_buffer_minutes >
+            clockMinutes(block.start) - bufferMinutes
+      )
+  );
+}
+
+export function scheduleErrorCode(cause: unknown) {
+  return typeof cause === "object" && cause !== null && "code" in cause
+    ? String((cause as { code: unknown }).code)
+    : undefined;
+}
+
+/** Stable SQLSTATE codes raised by the schedule RPCs. */
+export const scheduleErrorCodes = {
+  changedElsewhere: "PT409",
+  newConflict: "PT410",
+} as const;
+
+/** Safe, readable copy for schedule save/publish failures. */
+export function scheduleErrorMessage(cause: unknown, fallback: string) {
+  const code = scheduleErrorCode(cause);
+  if (code === scheduleErrorCodes.changedElsewhere)
+    return "This schedule changed in another app. Your edits are kept; review them and publish again.";
+  if (code === scheduleErrorCodes.newConflict)
+    return "Another schedule now overlaps these hours. Review the conflicts and choose how to continue.";
+  if (code === "42501")
+    return "You no longer have permission to change this practice's schedule.";
+  return userErrorMessage(cause, fallback);
+}

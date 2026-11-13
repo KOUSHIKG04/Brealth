@@ -42,6 +42,9 @@ export default function AppointmentsScreen({
     search,
     setSearch,
     statusFilter,
+    showPaymentHolds,
+    setShowPaymentHolds,
+    paymentHoldCount,
     setStatusFilter,
     now,
     showScanner,
@@ -63,79 +66,53 @@ export default function AppointmentsScreen({
     submitCheckin,
     startCamera,
   } = useAppointments({ appointments, loadError });
+  const hasFilters =
+    search.trim() !== "" || statusFilter !== "All" || filterPeriod !== "All";
+  const clearFilters = () => {
+    setFilterPeriod("All");
+    setStatusFilter("All");
+    setSearch("");
+    setCurrentPage(1);
+  };
   return (
-    <div className="flex flex-col gap-6 pb-12">
-      {/* TopBar (Figma 815:56) */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-foreground text-2xl font-bold tracking-tight">
-            Appointments
-          </h1>
+    <div className="flex min-w-0 flex-col gap-6 pb-12">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 space-y-1">
+          <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <h1 className="text-foreground shrink-0 text-2xl font-semibold tracking-tight">
+              Appointments
+            </h1>
+            <p className="text-muted-foreground min-w-0 grow basis-80 text-sm leading-6">
+              Bookings, patient check-ins and consultation status.
+            </p>
+          </div>
+          <p
+            suppressHydrationWarning
+            className="text-muted-foreground flex items-center gap-1.5 text-xs"
+          >
+            <Calendar className="size-3.5" />
+            Today, {appointmentsDateLabel}
+          </p>
         </div>
-
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-2 [&>button]:min-h-10 [&>button]:text-sm">
           <Button
             type="button"
             variant="outline"
+            aria-expanded={showScanner}
             onClick={() => {
               stopCamera();
               setShowScanner((current) => !current);
             }}
           >
-            <ScanLine className="size-4" /> Scan patient QR
+            <ScanLine className="size-4" />
+            {showScanner ? "Close scanner" : "Scan patient QR"}
           </Button>
-          {/* Search Box */}
-          <div className="border-border bg-card flex w-56 items-center gap-2 rounded-lg border px-3 py-2 shadow-xs">
-            <Search className="text-muted-foreground size-4 shrink-0" />
-            <input
-              type="text"
-              aria-label="Search patient, doctor..."
-              placeholder="Search patient, doctor..."
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              className="text-foreground placeholder-muted-foreground focus-visible:ring-primary focus-visible:ring-offset-background w-full bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-            />
-          </div>
-
-          {/* Date Badge */}
-          <div className="border-border bg-card flex items-center gap-2 rounded-lg border px-3 py-2 shadow-xs">
-            <Calendar className="text-muted-foreground size-4 shrink-0" />
-            <span
-              suppressHydrationWarning
-              className="text-muted-foreground text-sm font-semibold whitespace-nowrap"
-            >
-              {appointmentsDateLabel}
-            </span>
-          </div>
-
-          {/* Status Dropdown */}
-          <div className="border-border bg-card flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2 shadow-xs">
-            <span className="text-foreground text-sm">Status:</span>
-            <select
-              aria-label="Filter appointment status"
-              className="focus-visible:ring-primary focus-visible:ring-offset-background bg-transparent text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
-            >
-              {appointmentStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {status.replaceAll("_", " ")}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="text-muted-foreground size-3.5" />
-          </div>
-
           <NewAppointmentDialog
-            onCreated={() => {
-              setFilterPeriod("All");
-              setStatusFilter("All");
-              setSearch("");
-              setCurrentPage(1);
-            }}
+            triggerLabel="Add appointment"
+            onCreated={clearFilters}
           />
         </div>
-      </div>
+      </header>
 
       {showScanner ? (
         <section
@@ -168,7 +145,7 @@ export default function AppointmentsScreen({
               value={checkinToken}
               onChange={(event) => setCheckinToken(event.target.value)}
               placeholder="Paste QR value if camera is unavailable"
-              className="border-border min-w-64 rounded-lg border px-3 py-2 text-sm"
+              className="border-input min-w-0 flex-1 basis-64 rounded-lg border px-3 py-2 text-sm"
             />
             <Button
               type="button"
@@ -183,6 +160,37 @@ export default function AppointmentsScreen({
 
       {/* Summary Stat Cards Row */}
       <AppointmentsSummaryCards summary={appointmentsSummary} />
+      <div
+        className="flex flex-wrap items-center gap-3"
+        aria-label="Booking views"
+      >
+        <Button
+          variant={showPaymentHolds ? "outline" : "default"}
+          aria-pressed={!showPaymentHolds}
+          onClick={() => {
+            setShowPaymentHolds(false);
+            setCurrentPage(1);
+          }}
+        >
+          Appointments
+        </Button>
+        <Button
+          variant={showPaymentHolds ? "default" : "outline"}
+          aria-pressed={showPaymentHolds}
+          onClick={() => {
+            setShowPaymentHolds(true);
+            setCurrentPage(1);
+          }}
+        >
+          Payment reservations ({paymentHoldCount})
+        </Button>
+        {showPaymentHolds ? (
+          <p className="text-muted-foreground text-sm">
+            Checkout holds are not confirmed appointments. Only verified payment
+            confirms them.
+          </p>
+        ) : null}
+      </div>
 
       {/* Recent Bookings Card & Table */}
       <AppointmentsTable
@@ -197,6 +205,56 @@ export default function AppointmentsScreen({
         filterPeriod={filterPeriod}
         onFilterPeriodChange={setFilterPeriod}
         bookingDateLabel={bookingDateLabel}
+        filters={
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <div className="border-input bg-background focus-within:ring-ring/50 flex h-10 min-w-0 flex-1 basis-56 items-center gap-2 rounded-lg border px-3 focus-within:ring-2">
+              <Search className="text-muted-foreground size-4 shrink-0" />
+              <input
+                type="search"
+                aria-label="Search patient, doctor..."
+                placeholder="Search patient, doctor or ID"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                className="text-foreground placeholder:text-muted-foreground w-full min-w-0 bg-transparent text-sm outline-none"
+              />
+            </div>
+            <div className="border-input bg-background focus-within:ring-ring/50 relative flex h-10 min-w-0 items-center gap-2 rounded-lg border px-3 focus-within:ring-2">
+              <label
+                htmlFor="appointment-status"
+                className="text-muted-foreground text-sm"
+              >
+                Status
+              </label>
+              <select
+                id="appointment-status"
+                aria-label="Filter appointment status"
+                className="text-foreground h-full w-40 min-w-0 appearance-none bg-transparent pr-5 text-sm outline-none"
+                value={statusFilter}
+                onChange={(event) => setStatusFilter(event.target.value)}
+              >
+                {appointmentStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {status.replaceAll("_", " ")}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                aria-hidden="true"
+                className="text-muted-foreground pointer-events-none absolute right-3 size-4"
+              />
+            </div>
+            {hasFilters ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-10 text-sm"
+                onClick={clearFilters}
+              >
+                Clear filters
+              </Button>
+            ) : null}
+          </div>
+        }
       />
       <Dialog
         open={Boolean(reasonRequest)}

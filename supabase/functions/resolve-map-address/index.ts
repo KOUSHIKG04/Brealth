@@ -1,5 +1,7 @@
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.0";
 import { normalizeAddress } from "./address.ts";
+import { logFailure, requestId } from "../_shared/log.ts";
+
 class LookupFailure extends Error {}
 
 export default {
@@ -68,7 +70,12 @@ export default {
         { headers: { "cache-control": "no-store" } }
       );
     } catch (cause) {
-      // Fetch errors may contain the request URL, including the server key.
+      // Fetch errors may contain the request URL, including the server key;
+      // the logger redacts key parameters before writing.
+      if (!(cause instanceof LookupFailure))
+        logFailure("resolve-map-address", "provider-request", cause, {
+          request_id: requestId(request),
+        });
       return Response.json(
         {
           error:

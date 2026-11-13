@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { doctorDocuments, labels } from "../utils/verificationConstants";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Animated, Easing } from "react-native";
@@ -135,7 +136,7 @@ export function useVerificationStatus() {
       if (focused.current)
         showToast({
           title: "Could not submit document",
-          message: cause instanceof Error ? cause.message : "Try again.",
+          message: userErrorMessage(cause, "Try again."),
           type: "error",
         });
     } finally {
@@ -164,7 +165,7 @@ export function useVerificationStatus() {
       if (focused.current)
         showToast({
           title: "Could not open dashboard",
-          message: cause instanceof Error ? cause.message : "Try again.",
+          message: userErrorMessage(cause, "Try again."),
           type: "error",
         });
     } finally {

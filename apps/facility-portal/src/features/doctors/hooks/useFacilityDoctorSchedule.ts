@@ -8,14 +8,25 @@ import { toast } from "@startup/web-ui/components/ui/toast";
 import {
   doctorScheduleSettingsSchema,
   formatDisplayDate,
+  preferencesToScheduleSettings,
+  rebaseScheduleSettings,
+  scheduleBusyOverlaps,
+  scheduleErrorCodes,
+  scheduleErrorMessage,
+  scheduleSettingNames,
   type DoctorScheduleSettings,
+  type DoctorSchedulePreferences,
+  type ScheduleChangePreview,
+  type ScheduleConflictDecision,
 } from "@startup/contracts";
 import {
+  listFacilityDoctorBusyBlocks,
   loadFacilityDoctorSchedule,
   publishFacilityDoctorSchedule,
+  publishPreviewedFacilityDoctorSchedule,
+  previewFacilityDoctorSchedule,
 } from "../server/scheduleActions";
 import { initialSettings } from "../utils/facilityScheduleEditorConstants";
-import { settingsDraft } from "../utils/scheduleDraft";
 import {
   previewClocks,
   suggestConsultationDuration,
@@ -23,6 +34,7 @@ import {
 
 export function useFacilityDoctorSchedule({
   practiceId,
+  transition,
   mode,
 }: FacilityDoctorScheduleEditorProps) {
   const client = useQueryClient();
@@ -62,15 +74,24 @@ export function useFacilityDoctorSchedule({
       : mode === "home"
         ? "homeFeeMinor"
         : "clinicFeeMinor";
+  // base is the saved copy the edits started from (three-way merge base).
   const [edits, setEdits] = useState<{
     version: number;
+    base: DoctorScheduleSettings | null;
     settings: DoctorScheduleSettings;
   } | null>(null);
+  const savedSettings = saved ? preferencesToScheduleSettings(saved) : null;
   const version = edits?.version ?? Number(saved?.row_version ?? 0);
-  const draft =
-    edits?.settings ??
-    (saved ? settingsDraft(saved) : { ...initialSettings, [daysKey]: [] });
-  const [pending, startTransition] = useTransition();
+  const draft = edits?.settings ??
+    savedSettings ?? { ...initialSettings, [daysKey]: [] };
+  // Saved elsewhere while these edits are unsaved; merged on publish.
+  const remoteChanged =
+    edits !== null &&
+    saved !== null &&
+    Number(saved.row_version) > edits.version;
+  const localTransition = useTransition();
+  const [pending, startTransition] = transition ?? localTransition;
+  const [conflict, setConflict] = useState<ScheduleChangePreview | null>(null);
   const [showScheduleHelp, setShowScheduleHelp] = useState(true);
   const [showAutoBookingHelp, setShowAutoBookingHelp] = useState(false);
   const [availabilityDuration, setAvailabilityDuration] = useState<
@@ -111,8 +132,26 @@ export function useFacilityDoctorSchedule({
         previewClocks(block.start, block.end, suggestedDuration)
       )
     : [];
-  const update = (changes: Partial<DoctorScheduleSettings>) =>
-    setEdits({ version, settings: { ...draft, ...changes } });
+  const busyBlocks = useQuery({
+    queryKey: ["facility-schedule-busy-blocks", practiceId, mode, startsFrom],
+    queryFn: () => listFacilityDoctorBusyBlocks(practiceId, mode, startsFrom),
+    enabled: Boolean(result?.ok),
+    retry: false,
+  });
+  const busyOverlaps = scheduleBusyOverlaps(
+    busyBlocks.data ?? [],
+    serviceDays,
+    timeBlocks,
+    mode === "home" ? (draft.homeTravelBufferMinutes ?? 0) : 0
+  );
+  const update = (changes: Partial<DoctorScheduleSettings>) => {
+    setConflict(null);
+    setEdits({
+      version,
+      base: edits ? edits.base : savedSettings,
+      settings: { ...draft, ...changes },
+    });
+  };
   const fail = (message: string) =>
     toast.add({
       title: "Schedule action failed",
@@ -150,7 +189,44 @@ export function useFacilityDoctorSchedule({
       ? null
       : (parsed.error.issues[0]?.message ?? "Check the schedule fields.");
   };
-  const save = () => {
+  type EditState = {
+    version: number;
+    base: DoctorScheduleSettings | null;
+    settings: DoctorScheduleSettings;
+  };
+  /**
+   * Merges the draft onto a newer saved copy. Fields changed only elsewhere are
+   * adopted; returns null when both sides changed a setting (draft values kept).
+   */
+  const rebaseOnto = (
+    latest: DoctorSchedulePreferences,
+    current: EditState
+  ): EditState | null => {
+    const theirs = preferencesToScheduleSettings(latest);
+    const { settings, conflicts } = rebaseScheduleSettings(
+      current.base ?? theirs,
+      current.settings,
+      theirs
+    );
+    const next = {
+      version: Number(latest.row_version),
+      base: theirs,
+      settings,
+    };
+    setEdits(next);
+    if (!conflicts.length) return next;
+    fail(
+      `${scheduleSettingNames(conflicts).join(", ")} also changed elsewhere. Your values are kept; review them and publish again.`
+    );
+    return null;
+  };
+  const persist = (
+    options: {
+      previewToken?: string;
+      decision?: ScheduleConflictDecision;
+      effectiveFrom?: string;
+    } = {}
+  ) => {
     if (pending) return;
     const problem = validate();
     if (problem) {
@@ -158,44 +234,112 @@ export function useFacilityDoctorSchedule({
       return;
     }
     startTransition(async () => {
-      const response = await publishFacilityDoctorSchedule(
-        practiceId,
-        mode,
-        draft,
+      const from = options.effectiveFrom ?? startsFrom;
+      let { previewToken, decision } = options;
+      let current: EditState | null = {
         version,
-        startsFrom
-      );
-      if (!response.ok) {
-        if (response.error.includes("Schedule changed")) {
-          await schedule.refetch();
-          setEdits(null);
+        base: edits ? edits.base : savedSettings,
+        settings: draft,
+      };
+      try {
+        // A newer copy already loaded: merge before asking the server.
+        if (saved && Number(saved.row_version) > current.version) {
+          current = rebaseOnto(saved, current);
+          if (!current) return;
+          previewToken = undefined;
+          decision = undefined;
         }
-        fail(response.error);
-        return;
+        let response;
+        for (let attempt = 0; ; attempt++) {
+          if (!previewToken) {
+            const checked = await previewFacilityDoctorSchedule(
+              practiceId,
+              mode,
+              current.settings,
+              current.version,
+              from
+            );
+            if (checked.ok && checked.preview.conflicts.length) {
+              setConflict(checked.preview);
+              return;
+            }
+            response = checked.ok
+              ? await publishPreviewedFacilityDoctorSchedule(
+                  practiceId,
+                  mode,
+                  current.settings,
+                  current.version,
+                  from,
+                  checked.preview.token
+                )
+              : checked;
+          } else
+            response = await publishFacilityDoctorSchedule(
+              practiceId,
+              mode,
+              current.settings,
+              current.version,
+              from,
+              previewToken,
+              decision
+            );
+          if (response.ok || attempt > 0) break;
+          if (response.code === scheduleErrorCodes.changedElsewhere) {
+            const refreshed = await schedule.refetch();
+            const latest = refreshed.data?.ok ? refreshed.data.settings : null;
+            if (!latest) break;
+            current = rebaseOnto(latest, current);
+            if (!current) return;
+          } else if (response.code !== scheduleErrorCodes.newConflict) break;
+          // Re-preview: new overlaps reopen the conflict dialog with a fresh token.
+          previewToken = undefined;
+          decision = undefined;
+        }
+        if (!response.ok || !("settings" in response)) {
+          setConflict(null);
+          fail(response.ok ? "Could not publish schedule." : response.error);
+          return;
+        }
+        client.setQueryData(["facility-practice-schedule", practiceId], {
+          ...result,
+          settings: response.settings,
+        });
+        setEdits(null);
+        setConflict(null);
+        await client.invalidateQueries({ queryKey: ["schedule-adjustments"] });
+        await client.invalidateQueries({
+          queryKey: ["facility-practice-schedule", practiceId],
+        });
+        await client.invalidateQueries({
+          queryKey: ["facility-recovery-policy", practiceId],
+        });
+        await client.invalidateQueries({
+          queryKey: ["facility-schedule-busy-blocks", practiceId],
+        });
+        router.refresh();
+        toast.add({
+          title: response.settings.published_modes?.includes(mode)
+            ? "Schedule published"
+            : "Schedule paused",
+          description: options.previewToken
+            ? "Schedule saved. Conflicting availability was adjusted. Review the affected service schedules below."
+            : response.settings.published_modes?.includes(mode)
+              ? `Schedule published from ${formatDisplayDate(from)} for this practice and visit type. Existing appointments keep their times.`
+              : "Future unbooked slots are withdrawn. Existing appointments keep their times.",
+          type: "success",
+        });
+      } catch (cause) {
+        setConflict(null);
+        fail(
+          scheduleErrorMessage(
+            cause,
+            "Could not check the schedule. Try again."
+          )
+        );
       }
-      client.setQueryData(["facility-practice-schedule", practiceId], {
-        ...result,
-        settings: response.settings,
-      });
-      setEdits(null);
-      await client.invalidateQueries({
-        queryKey: ["facility-practice-schedule", practiceId],
-      });
-      await client.invalidateQueries({
-        queryKey: ["facility-recovery-policy", practiceId],
-      });
-      router.refresh();
-      toast.add({
-        title: response.settings.published_modes?.includes(mode)
-          ? "Schedule published"
-          : "Schedule paused",
-        description: response.settings.published_modes?.includes(mode)
-          ? `Schedule published from ${formatDisplayDate(startsFrom)} for this practice and visit type. Existing appointments keep their times.`
-          : "Future unbooked slots are withdrawn. Existing appointments keep their times.",
-        type: "success",
-      });
     });
   };
+  const save = () => persist();
 
   return {
     schedule,
@@ -229,5 +373,23 @@ export function useFacilityDoctorSchedule({
     fee,
     feeLabel,
     save,
+    conflict,
+    busyBlocks: busyBlocks.data ?? [],
+    busyOverlaps,
+    remoteChanged,
+    dismissConflict: () => setConflict(null),
+    confirmConflict: (decision?: ScheduleConflictDecision) => {
+      if (conflict?.can_replace || (decision && conflict?.can_request))
+        persist({
+          previewToken: conflict!.token,
+          decision,
+          effectiveFrom: conflict!.effective_from,
+        });
+    },
+    startFromSuggestedDate: (date: string) => {
+      setConflict(null);
+      setEffectiveDate(date);
+      persist({ effectiveFrom: date });
+    },
   };
 }

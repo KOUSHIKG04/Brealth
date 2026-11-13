@@ -1,3 +1,7 @@
+import "../services/monitoring";
+import type { ErrorBoundaryProps } from "expo-router";
+import { ErrorFallback } from "@startup/mobile-ui";
+import { reportError } from "@startup/data-access";
 import { LiveUpdatesBridge } from "../services/LiveUpdatesBridge";
 import { useEffect, useRef } from "react";
 import { Text, View } from "react-native";
@@ -23,6 +27,15 @@ import { useDeviceNotifications } from "../features/notifications/hooks/useDevic
 
 void SplashScreen.preventAutoHideAsync();
 
+// Contains render crashes anywhere below the root, reports them once and
+// offers recovery instead of closing the app.
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    reportError(error, { source: "render-boundary" });
+  }, [error]);
+  return <ErrorFallback theme="driver" onRetry={retry} />;
+}
+
 export const unstable_settings = { initialRouteName: "(auth)" };
 
 function DeviceNotificationsBridge({ identityId }: { identityId?: string }) {
@@ -34,24 +47,18 @@ function DeviceNotificationsBridge({ identityId }: { identityId?: string }) {
 export default function RootLayout() {
   const [loaded, error] = useFonts(interFonts);
   const auth = useMobileSession();
+  const accountId = auth.session?.user.id;
   const routedAccount = useRef<string | null>(null);
   useEffect(() => {
     if (auth.loading || (!loaded && !error)) return;
-    if (!auth.session) {
+    if (!accountId) {
       routedAccount.current = null;
       return;
     }
-    if (auth.error || routedAccount.current === auth.session.user.id) return;
-    routedAccount.current = auth.session.user.id;
+    if (auth.error || routedAccount.current === accountId) return;
+    routedAccount.current = accountId;
     if (!auth.profile?.driver?.id) router.replace("/onboarding");
-  }, [
-    auth.loading,
-    auth.error,
-    auth.session?.user.id,
-    auth.profile,
-    loaded,
-    error,
-  ]);
+  }, [auth.loading, auth.error, accountId, auth.profile, loaded, error]);
 
   useEffect(() => {
     if (loaded || error) void SplashScreen.hideAsync();

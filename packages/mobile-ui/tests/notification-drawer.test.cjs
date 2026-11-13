@@ -48,6 +48,7 @@ function harness({
     View: "View",
     Pressable: "Pressable",
     ScrollView: "ScrollView",
+    FlatList: "FlatList",
     PanResponder: { create: (handlers) => ({ panHandlers: handlers }) },
     BackHandler: {
       addEventListener: (_, callback) => {
@@ -169,6 +170,11 @@ function harness({
     if (typeof element.type === "function")
       return nodes(element.type(element.props), list);
     list.push(element);
+    if (element.type === "FlatList") {
+      nodes(element.props.ListHeaderComponent, list);
+      if (!element.props.data.length) nodes(element.props.ListEmptyComponent, list);
+      element.props.data.forEach((item, index) => nodes(element.props.renderItem({ item, index }), list));
+    }
     nodes(element.props?.children, list);
     return list;
   }
@@ -203,19 +209,24 @@ test("only a completed active close hides the drawer", () => {
   assert.deepEqual(h.updates, [false]);
 });
 
-test("opening mounts before animation and closing reports visibility until hidden", () => {
+test("opening mounts before animation; native show and completed close report presentation", () => {
   const opening = harness({ visible: true, mounted: false });
   opening.render();
   opening.effects[0]();
   assert.deepEqual(opening.updates, [true]);
   assert.equal(opening.animations.length, 0);
-  for (const mounted of [true, false]) {
-    const h = harness({ visible: false, mounted });
-    const changes = [];
-    h.render({ onVisibilityChange: (value) => changes.push(value) });
-    h.effects[3]();
-    assert.deepEqual(changes, [mounted]);
-  }
+  const shown = harness();
+  const changes = [];
+  shown.nodes(shown.render({ onVisibilityChange: (value) => changes.push(value) }))
+    .find((node) => node.type === "ModalSurface").props.onShow();
+  assert.deepEqual(changes, [true]);
+  const closing = harness({ visible: false, mounted: true });
+  closing.render({ onVisibilityChange: (value) => changes.push(value) });
+  closing.effects[0]();
+  closing.animations[0].callback({ finished: false });
+  assert.deepEqual(changes, [true]);
+  closing.animations[0].callback({ finished: true });
+  assert.deepEqual(changes, [true, false]);
 });
 
 test("hardware back closes and removes its listener on cleanup", () => {
@@ -352,7 +363,7 @@ test("empty notification lists forward the refresh action and app theme", async 
     };
     const scroll = h
       .nodes(h.render({ onRefresh }))
-      .find((node) => node.type === "ScrollView");
+      .find((node) => node.type === "FlatList");
     assert.equal(scroll.props.alwaysBounceVertical, true);
     assert.equal(scroll.props.refreshControl.type, "PullToRefresh");
     assert.equal(scroll.props.refreshControl.props.theme, theme);

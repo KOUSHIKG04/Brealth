@@ -20,6 +20,7 @@ import {
 
 export function FacilityUnavailableTime({
   practiceId,
+  transition,
 }: FacilityUnavailableTimeProps) {
   const {
     addUnavailableTime,
@@ -39,19 +40,21 @@ export function FacilityUnavailableTime({
     pending,
     result,
     zone,
-  } = useFacilityUnavailableTime({ practiceId });
+  } = useFacilityUnavailableTime({ practiceId, transition });
   return (
     <section className={`${card} max-w-full min-w-0`}>
-      <h2 className="text-[15px] font-normal">Unavailable time / Leave</h2>
+      <h2 className="text-base leading-6 font-semibold">
+        Unavailable time / Leave
+      </h2>
       <div
         role="group"
         aria-label="Unavailable time service"
-        className="flex w-full max-w-full min-w-0 gap-2 overflow-x-auto pb-1"
+        className="flex w-full max-w-full min-w-0 flex-wrap gap-2"
       >
         {scopes.map(([value, label]) => (
           <label
             key={value}
-            className={`flex min-h-11 shrink-0 cursor-pointer items-center rounded-full border px-5 text-sm font-medium focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#008577] ${selectedScopes.includes(value) ? "border-[#008577] bg-[#008577] text-white" : "border-[#e2e8f0] bg-white text-[#0f172a]"}`}
+            className={`flex min-h-11 shrink-0 cursor-pointer items-center rounded-lg border px-3 text-sm font-medium focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[#008577] ${selectedScopes.includes(value) ? "border-[#008577] bg-[#008577] text-white" : "border-[#e2e8f0] bg-white text-[#0f172a]"}`}
           >
             <input
               type="checkbox"

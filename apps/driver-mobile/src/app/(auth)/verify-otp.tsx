@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { Button } from "@startup/mobile-ui";
 import { Input } from "@startup/mobile-ui";
 import { useToastFeedback } from "@startup/mobile-ui";
@@ -35,9 +36,7 @@ export default function DriverVerifyOtp() {
       if (auth.loading || auth.error || !auth.session) return;
       router.replace(auth.profile?.driver ? "/(app)" : "/onboarding");
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Incorrect code. Try again."
-      );
+      setError(userErrorMessage(cause, "Incorrect code. Try again."));
       setCode("");
     } finally {
       setBusy(false);
@@ -52,9 +51,7 @@ export default function DriverVerifyOtp() {
       setSeconds(30);
       setError("");
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not resend the code."
-      );
+      setError(userErrorMessage(cause, "Could not resend the code."));
     } finally {
       setResending(false);
     }

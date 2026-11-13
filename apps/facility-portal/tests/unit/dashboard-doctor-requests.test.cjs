@@ -143,3 +143,223 @@ test("dashboard alerts once for a new incoming request and keeps its query facil
     "facility-a",
   ]);
 });
+
+test("dashboard hides unconfigured beds, retains full wards and puts both actions in its header", () => {
+  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const { default: DashboardScreen } = compile(
+    "features/dashboard/screens/DashboardScreen.tsx",
+    {
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "next/link": "Link",
+      "lucide-react": new Proxy({}, { get: (_target, key) => key }),
+      "@startup/contracts": {
+        formatDisplayDate: () => "30 Oct 2026",
+        formatDisplayDateTime: (value) => value,
+      },
+      "../components/AcceptPendingAppointmentButton": {
+        AcceptPendingAppointmentButton: "Accept",
+      },
+      "../components/DashboardErrorToast": { DashboardErrorToast: "Toast" },
+      "../components/WeeklyDoctorSchedule": {
+        WeeklyDoctorSchedule: "WeeklySchedule",
+      },
+    }
+  );
+  const flatten = (node) =>
+    Array.isArray(node)
+      ? node.flatMap(flatten)
+      : node && typeof node === "object"
+        ? [node, ...flatten(node.props?.children)]
+        : [node];
+  const render = (inventory) =>
+    flatten(
+      DashboardScreen({
+        doctorAction: "Add doctor",
+        appointmentAction: "Add appointment",
+        inventory,
+        appointments: [],
+        weeklyDoctors: [],
+        acceptAppointment() {},
+      })
+    );
+  for (const inventory of [[], [{ configured: false, total: 0 }]]) {
+    const nodes = render(inventory);
+    assert.equal(nodes.includes("Bed Availability by Type"), false);
+    const header = nodes.find((node) => node?.type === "header");
+    assert.ok(flatten(header).includes("Add doctor"));
+    assert.ok(flatten(header).includes("Add appointment"));
+  }
+  const full = render([
+    {
+      configured: true,
+      total: 10,
+      available: 0,
+      occupied: 10,
+      bedTypeName: "General",
+    },
+  ]);
+  assert.ok(full.includes("Bed Availability by Type"));
+});
+
+function weeklyRosterFixture(doctors) {
+  const states = [];
+  let cursor = 0;
+  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const { WeeklyDoctorSchedule } = compile(
+    "features/dashboard/components/WeeklyDoctorSchedule.tsx",
+    {
+      react: {
+        useState(initial) {
+          const index = cursor++;
+          if (!(index in states))
+            states[index] = typeof initial === "function" ? initial() : initial;
+          return [
+            states[index],
+            (value) => {
+              states[index] =
+                typeof value === "function" ? value(states[index]) : value;
+            },
+          ];
+        },
+      },
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "next/link": "Link",
+      "lucide-react": new Proxy({}, { get: (_target, key) => key }),
+      "@startup/web-ui/components/ui/button": { Button: "Button" },
+    }
+  );
+  const flatten = (node) =>
+    Array.isArray(node)
+      ? node.flatMap(flatten)
+      : node && typeof node === "object"
+        ? [node, ...flatten(node.props?.children)]
+        : [node];
+  return {
+    render(data = doctors) {
+      cursor = 0;
+      return flatten(WeeklyDoctorSchedule({ doctors: data }));
+    },
+  };
+}
+
+test("weekly roster keeps seven dates and clinic availability for every visible doctor", () => {
+  const doctors = [
+    {
+      id: "a",
+      name: "Doctor A",
+      speciality: "General",
+      days: [true, false, false, false, false, false, false],
+    },
+    {
+      id: "b",
+      name: "Doctor B",
+      speciality: "General",
+      days: [false, true, false, false, false, false, false],
+    },
+  ];
+  const fixture = weeklyRosterFixture(doctors),
+    nodes = fixture.render();
+  assert.ok(nodes.includes("Doctor A"));
+  assert.ok(nodes.includes("Doctor B"));
+  const days = nodes.filter(
+    (node) => node?.props?.role === "columnheader" && node.props["aria-label"]
+  );
+  assert.equal(days.length, 7);
+  assert.match(days[0].props["aria-label"], /Monday/);
+  assert.match(days[6].props["aria-label"], /Sunday/);
+  assert.equal(
+    days.filter((node) => node.props["aria-current"] === "date").length,
+    1
+  );
+  const cells = nodes.filter((node) => node?.props?.role === "cell");
+  assert.equal(cells.length, 14);
+  assert.equal(
+    cells.filter((node) =>
+      node.props["aria-label"].endsWith("Clinic scheduled")
+    ).length,
+    2
+  );
+  assert.ok(
+    cells.some(
+      (node) => node.props["aria-label"] === "Doctor A · Mon · Clinic scheduled"
+    )
+  );
+  assert.ok(
+    cells.some(
+      (node) =>
+        node.props["aria-label"] ===
+        "Doctor A · Tue · No published clinic shift"
+    )
+  );
+  const empty = fixture.render([]);
+  assert.equal(
+    empty.some((node) => node?.props?.role === "table"),
+    false
+  );
+  assert.ok(
+    empty.some(
+      (node) =>
+        typeof node === "string" && node.includes("No doctors are associated")
+    )
+  );
+});
+
+test("large weekly rosters paginate, search all doctors and recover from no matches", () => {
+  const doctors = Array.from({ length: 12 }, (_, index) => ({
+    id: String(index),
+    name: "Doctor " + (index + 1),
+    speciality: index % 2 ? "Cardiology" : "General",
+    days: [true, false, false, false, false, false, false],
+  }));
+  const fixture = weeklyRosterFixture(doctors);
+  let nodes = fixture.render();
+  assert.equal(nodes.filter((node) => node?.props?.role === "cell").length, 35);
+  assert.ok(nodes.includes("Doctor 1"));
+  assert.equal(nodes.includes("Doctor 6"), false);
+  nodes
+    .find((node) => node?.props?.["aria-label"] === "Next doctors")
+    .props.onClick();
+  nodes = fixture.render();
+  assert.ok(nodes.includes("Doctor 6"));
+  assert.equal(nodes.includes("Doctor 1"), false);
+  nodes
+    .find((node) => node?.props?.["aria-label"] === "Next doctors")
+    .props.onClick();
+  nodes = fixture.render();
+  assert.ok(nodes.includes("Doctor 12"));
+  assert.equal(nodes.filter((node) => node?.props?.role === "cell").length, 14);
+  assert.equal(
+    nodes.find((node) => node?.props?.["aria-label"] === "Next doctors").props
+      .disabled,
+    true
+  );
+  nodes
+    .find((node) => node?.type === "input")
+    .props.onChange({ target: { value: "Doctor 2" } });
+  nodes = fixture.render();
+  assert.ok(nodes.includes("Doctor 2"));
+  assert.equal(nodes.filter((node) => node?.props?.role === "cell").length, 7);
+  assert.equal(
+    nodes.find((node) => node?.props?.["aria-label"] === "Previous doctors")
+      .props.disabled,
+    true
+  );
+  nodes
+    .find((node) => node?.type === "input")
+    .props.onChange({ target: { value: "No match" } });
+  nodes = fixture.render();
+  assert.ok(nodes.includes("No doctors match your search."));
+  assert.equal(nodes.filter((node) => node?.props?.role === "cell").length, 0);
+  nodes
+    .find((node) => node?.props?.children === "Clear search")
+    .props.onClick();
+  nodes = fixture.render();
+  assert.ok(nodes.includes("Doctor 1"));
+  assert.equal(nodes.filter((node) => node?.props?.role === "cell").length, 35);
+  nodes
+    .find((node) => node?.type === "input")
+    .props.onChange({ target: { value: "cardiology" } });
+  nodes = fixture.render();
+  assert.ok(nodes.includes("Doctor 2"));
+  assert.equal(nodes.includes("Doctor 1"), false);
+});

@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import ts from "typescript";
 
-export function inspectFeatureStructure(appRoot) {
+export function inspectFeatureStructure(appRoot, { mobile = false } = {}) {
   const root = path.resolve(appRoot, "src");
   const walk = (dir) =>
     fs
@@ -12,7 +12,9 @@ export function inspectFeatureStructure(appRoot) {
           ? walk(path.join(dir, entry.name))
           : [path.join(dir, entry.name)]
       );
-  const files = walk(root).filter((file) => /\.tsx?$/.test(file));
+  const files = walk(mobile ? path.join(root, "features") : root).filter(
+    (file) => /\.tsx?$/.test(file)
+  );
   const errors = [],
     modules = new Map();
   const label = (file) =>
@@ -38,6 +40,9 @@ export function inspectFeatureStructure(appRoot) {
       if (
         feature &&
         (ts.isTypeAliasDeclaration(node) || ts.isInterfaceDeclaration(node)) &&
+        node.modifiers?.some(
+          (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword
+        ) &&
         !label(file).includes("/types/")
       )
         errors.push(`${label(file)}: move ${node.name.text} to feature types`);
@@ -86,6 +91,8 @@ export function inspectFeatureStructure(appRoot) {
       errors.push(`${label(file)}: runtime feature contains a test`);
     modules.set(file, { imports, directives });
   }
+  // Mobile keeps the same feature/import checks without web client/server rules.
+  if (mobile) return errors;
   // Server Actions are RPC boundaries; their implementations are excluded from the client graph.
   for (const [entry, unit] of modules) {
     if (!unit.directives.has("use client")) continue;

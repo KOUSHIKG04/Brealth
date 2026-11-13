@@ -47,7 +47,7 @@ export function ClockDurationPicker({
         disabled={disabled}
         aria-label={`${label}, ${value} minutes`}
         aria-haspopup="dialog"
-        className="flex min-h-12 w-full items-center justify-between gap-2 rounded-xl border border-[#d2d2d2] bg-white px-3 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#008577] disabled:opacity-50"
+        className="border-input bg-background flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border px-3 text-left text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#008577] disabled:opacity-50"
         onClick={() => {
           setSelected(clamp(value));
           setOpen(true);
@@ -62,7 +62,9 @@ export function ClockDurationPicker({
           <DialogDescription className="sr-only">
             Choose {min} to {max} minutes on the clock.
           </DialogDescription>
-          <p className="text-center text-3xl text-[#008577]">{selected} min</p>
+          <p className="text-center text-3xl font-medium text-[#008577] tabular-nums">
+            {selected} min
+          </p>
           <div
             role="slider"
             tabIndex={0}

@@ -48,6 +48,7 @@ export const appointment = clinzo
         .notNull()
         .default(sql`1`),
       public_code: text("public_code").notNull(),
+      planned_queue_number: integer("planned_queue_number"),
       patient_id: uuid("patient_id")
         .notNull()
         .references((): AnyPgColumn => patient.id, { onDelete: "restrict" }),
@@ -88,6 +89,11 @@ export const appointment = clinzo
         { onDelete: "restrict" }
       ),
       reason: text("reason"),
+      schedule_change_reason: text("schedule_change_reason"),
+      schedule_change_requested_at: timestamp("schedule_change_requested_at", {
+        withTimezone: true,
+        mode: "date",
+      }),
       confirmation_payment_pending: boolean("confirmation_payment_pending")
         .notNull()
         .default(false),
@@ -135,6 +141,14 @@ export const appointment = clinzo
       ).notNull(),
     },
     (table) => [
+      check(
+        "appointment_schedule_change_reason_check",
+        sql`${table.schedule_change_reason} is null or length(btrim(${table.schedule_change_reason})) between 2 and 1000`
+      ),
+      check(
+        "appointment_schedule_change_pair",
+        sql`(${table.schedule_change_reason} is null) = (${table.schedule_change_requested_at} is null)`
+      ),
       uniqueIndex("appointment_uq_1").on(table.public_code),
       check(
         "appointment_recovery_outcome_check",
@@ -145,6 +159,17 @@ export const appointment = clinzo
         sql`${table.reschedule_count} >= 0`
       ),
       uniqueIndex("appointment_uq_2").on(table.replaces_appointment_id),
+      uniqueIndex("appointment_planned_queue_uq")
+        .on(table.session_id, table.planned_queue_number)
+        .where(
+          sql.raw(
+            "planned_queue_number IS NOT NULL AND status IN ('pending','confirmed','in_consultation','completed')"
+          )
+        ),
+      check(
+        "appointment_planned_queue_number_check",
+        sql.raw("planned_queue_number > 0")
+      ),
       uniqueIndex("appointment_active_uq_1")
         .on(table.patient_id, table.window_id)
         .where(

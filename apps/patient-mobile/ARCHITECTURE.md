@@ -1,5 +1,25 @@
 # Patient mobile architecture
 
+## Authentication provider availability
+
+Google sign-in is hidden unless `EXPO_PUBLIC_ENABLE_GOOGLE_LOGIN=true` is explicitly
+set for the build. Enable it only after the provider configuration, native callback
+and session establishment are verified; this flag does not implement that flow.
+The handler uses the same gate as the control. Shared password/OTP operations and
+session/profile restoration use safe Auth error messages. Phone sign-in and current
+development-password behavior are unchanged. No device/provider check is implied.
+
+## Hybrid clinic reservations
+
+Clinic details and the visit flow display the shared reserved token separately
+from booked time, ready patients ahead, currently serving token and estimated
+consultation range. `clinic_queue` remains optional for older-backend compatibility.
+The hybrid queue migration was applied to the test project on 30 October 2026.
+Check-in still requires the existing secure QR;
+late arrivals see a reception-review state. Focused polling and existing live
+invalidation refresh the authorized projection. Hosted rollback workflow checks
+passed; native-device verification remains pending.
+
 ## Manual refresh
 
 Home, bookings and appointment details, doctor results/details, records, profile,
@@ -405,3 +425,13 @@ Ambulance/Route activation remains off. Mock and rollback SQL verification does 
 establish native Checkout, actual provider captures/refunds or
 cross-device behavior. See the [payment guide](../../APPOINTMENT_RECOVERY_PAYMENTS.md)
 for setup, Route limits and the verification runner.
+
+## Schedule changes with patient rescheduling
+
+The notification drawer shows the doctor's rescheduling reason and opens the
+affected Appointment Details route. Device push responses use the same route when
+an appointment ID is present. AppointmentRecoveryActions shows the reason and a
+Choose another time action, using the existing time picker and explicit confirmation.
+Bookings/payments remain in place until a separate decision; doctor-requested moves
+do not consume the patient's allowance. The test backend and notification worker
+are deployed. Physical push delivery and native acceptance remain unverified.

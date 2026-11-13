@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useCallback, useEffect, useState } from "react";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import * as Haptics from "expo-haptics";
@@ -29,6 +30,8 @@ export function useAppointmentReview() {
   useFocusEffect(
     useCallback(() => {
       void appointments.refetch();
+      const timer = setInterval(() => void appointments.refetch(), 15000);
+      return () => clearInterval(timer);
     }, [appointments.refetch])
   );
   const item = appointments.data?.find((entry) => entry.id === appointmentId);
@@ -103,7 +106,10 @@ export function useAppointmentReview() {
         ? "This request has expired or its slot is no longer available. Ask the patient to book a new time."
         : message.includes("Appointment changed")
           ? "This appointment was updated elsewhere. Its latest status is being loaded; review it before trying again."
-          : message || "Could not update the appointment. Please try again.";
+          : userErrorMessage(
+              cause,
+              "Could not update the appointment. Please try again."
+            );
       void appointments.refetch();
       showToast({ title: "Update failed", message: feedback, type: "error" });
     },

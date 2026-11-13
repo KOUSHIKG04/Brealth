@@ -1,5 +1,6 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
 import { getFacilityLocation } from "../services/browserLocation";
 import type { FacilityVerificationFormProps } from "../types/facilityVerificationForm";
 import type {
@@ -100,7 +101,7 @@ export function useFacilityVerification({
     try {
       const current = await loadStatus(activeFacilityId);
       if (current?.status === "verified") {
-        router.replace("/dashboard");
+        toast.add({ title: "Facility verified", type: "success" });
       } else {
         toast.add({
           title: "Company verification is still pending",
@@ -111,7 +112,7 @@ export function useFacilityVerification({
     } catch (cause) {
       toast.add({
         title: "Could not check verification status",
-        description: cause instanceof Error ? cause.message : "Try again.",
+        description: userErrorMessage(cause, "Try again."),
         type: "error",
       });
     } finally {
@@ -192,10 +193,10 @@ export function useFacilityVerification({
       form.reset();
       toast.add({ title: "Submitted for company review", type: "success" });
     } catch (cause) {
-      const errorMessage =
-        cause instanceof Error
-          ? cause.message
-          : "Submission failed. Try again.";
+      const errorMessage = userErrorMessage(
+        cause,
+        "Submission failed. Try again."
+      );
       toast.add({
         title: "Submission failed",
         description: errorMessage,
@@ -268,8 +269,7 @@ export function useFacilityVerification({
           if (uploaded.error) throw uploaded.error;
           await setMyProfilePhoto(client, "facility", path, registeredId);
         } catch (cause) {
-          logoWarning =
-            cause instanceof Error ? cause.message : "Logo upload failed.";
+          logoWarning = userErrorMessage(cause, "Logo upload failed.");
         }
       }
       toast.add({
@@ -284,10 +284,10 @@ export function useFacilityVerification({
       setStatusLoading(true);
       router.refresh();
     } catch (cause) {
-      const text =
-        cause instanceof Error
-          ? cause.message
-          : "Could not register the facility. Allow location access while at the facility.";
+      const text = userErrorMessage(
+        cause,
+        "Could not register the facility. Allow location access while at the facility."
+      );
       toast.add({
         title: "Registration failed",
         description: text,
@@ -350,10 +350,7 @@ export function useFacilityVerification({
       );
       toast.add({
         title: "Address lookup failed",
-        description:
-          cause instanceof Error
-            ? cause.message
-            : "Enter the address manually.",
+        description: userErrorMessage(cause, "Enter the address manually."),
         type: "warning",
       });
     } finally {
@@ -369,13 +366,11 @@ export function useFacilityVerification({
       await applyLocation(await getFacilityLocation());
     } catch (cause) {
       setLocationMessage(
-        cause instanceof Error
-          ? cause.message
-          : "Could not capture location. Try again."
+        userErrorMessage(cause, "Could not capture location. Try again.")
       );
       toast.add({
         title: "Could not capture location",
-        description: cause instanceof Error ? cause.message : "Try again.",
+        description: userErrorMessage(cause, "Try again."),
         type: "error",
       });
     } finally {

@@ -1,5 +1,5 @@
 import type { AmbulanceBookingFormProps } from "../types/ambulance-booking-form";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useToastFeedback } from "@startup/mobile-ui";
 
 export function useAmbulanceBookingForm({
@@ -28,10 +28,7 @@ export function useAmbulanceBookingForm({
   hasActiveBooking,
   onRequestBooking,
 }: AmbulanceBookingFormProps) {
-  const [needsLandmark, setNeedsLandmark] = useState(false);
-  useEffect(() => {
-    setNeedsLandmark(Boolean(pickup) && pickupAddress.trim().length < 5);
-  }, [pickup]);
+  const needsLandmark = Boolean(pickup) && pickupAddress.trim().length < 5;
   const allHospitals = useMemo(
     () =>
       [...hospitalsData, ...googleHospitals].sort(

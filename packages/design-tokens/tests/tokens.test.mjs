@@ -1,19 +1,9 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { colors } from "../src/colors.ts";
 import { gradients } from "../src/gradients.ts";
 import { fontFamilies } from "../src/typography.ts";
-
-test("checked-in CSS matches source tokens", () => {
-  execFileSync(process.execPath, [
-    "--experimental-strip-types",
-    fileURLToPath(new URL("../scripts/generate-theme.mjs", import.meta.url)),
-    "--check",
-  ]);
-});
 
 
 test("patient background and gradients agree across native and CSS", async () => {

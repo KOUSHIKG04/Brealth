@@ -1,4 +1,4 @@
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.0";
 import { AccessToken } from "npm:livekit-server-sdk@2.19.1";
 
 type JoinContext = {

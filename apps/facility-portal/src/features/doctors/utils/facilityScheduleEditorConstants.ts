@@ -27,7 +27,7 @@ export const initialSettings: DoctorScheduleSettings = {
 };
 
 export const card =
-  "rounded-2xl border border-[#e2e8f0] bg-white p-6 space-y-5";
+  "space-y-4 rounded-xl border border-border bg-card p-4 sm:p-5";
 
 export const unavailableServiceOptions = [
   ["all", "All"],

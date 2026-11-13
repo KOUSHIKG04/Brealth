@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { submitMyAmbulanceReview } from "@startup/data-access";
 import { supabase } from "../../../services/supabase";
 import { useToast, useToastFeedback } from "@startup/mobile-ui";
@@ -99,8 +100,9 @@ export function useAmbulanceBooking({
   const activeBooking = bookings.data?.find(
     (item) => item.status === "searching" || item.status === "assigned"
   );
+  const hasActiveBooking = Boolean(activeBooking);
   useEffect(() => {
-    if (bookings.isLoading || activeBooking || devicePickupAttempted.current)
+    if (bookings.isLoading || hasActiveBooking || devicePickupAttempted.current)
       return;
     devicePickupAttempted.current = true;
     let active = true;
@@ -133,10 +135,10 @@ export function useAmbulanceBooking({
         if (active && !manualPickupChosen.current)
           showToast({
             title: "Choose pickup location",
-            message:
-              cause instanceof Error
-                ? cause.message
-                : "Could not get your current location. Choose pickup on the map.",
+            message: userErrorMessage(
+              cause,
+              "Could not get your current location. Choose pickup on the map."
+            ),
             type: "info",
           });
       })
@@ -150,7 +152,7 @@ export function useAmbulanceBooking({
       active = false;
       if (!finished) devicePickupAttempted.current = false;
     };
-  }, [bookings.isLoading, Boolean(activeBooking)]);
+  }, [bookings.isLoading, hasActiveBooking, showToast]);
   const completedBooking = currentBookingId
     ? bookings.data?.find(
         (item) => item.id === currentBookingId && item.status === "fulfilled"
@@ -279,11 +281,7 @@ export function useAmbulanceBooking({
       });
     },
     onError: (cause) =>
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not request an ambulance."
-      ),
+      setError(userErrorMessage(cause, "Could not request an ambulance.")),
   });
   const cancel = useMutation({
     mutationFn: () => {
@@ -308,7 +306,7 @@ export function useAmbulanceBooking({
     onError: (cause) =>
       showToast({
         title: "Could not cancel booking",
-        message: cause instanceof Error ? cause.message : "Please try again.",
+        message: userErrorMessage(cause, "Please try again."),
         type: "error",
       }),
   });

@@ -1,3 +1,4 @@
+import { uniqueMapAttributions, mapAttributionKey } from "@startup/contracts";
 import { useMapPicker } from "../hooks/useMapPicker";
 
 import type { Point, PlaceDetails } from "../types/map-picker";
@@ -36,7 +37,7 @@ export default function PickLocationScreen({
     onMapLoaded,
     chooseSearchResult,
     searchAddress,
-    useDeviceLocation,
+    locateDevice,
     onCameraMove,
     onMapClick,
     confirm,
@@ -147,12 +148,10 @@ export default function PickLocationScreen({
               <Text variant="body" style={styles.googleAttribution}>
                 Google Maps
               </Text>
-              {searchResults
-                .flatMap((p) => p.attributions)
-                .map((a, i) => (
+              {uniqueMapAttributions(searchResults.flatMap((p) => p.attributions)).map((a) => (
                   <Text
                     variant="body"
-                    key={`${a.provider}-${i}`}
+                    key={mapAttributionKey(a)}
                     style={styles.googleAttribution}
                   >
                     {a.provider}
@@ -174,7 +173,7 @@ export default function PickLocationScreen({
             loading={locating}
             disabled={locating || searching}
             leftIcon={<LocateFixed size={19} color={colors.patient.primary} />}
-            onPress={() => void useDeviceLocation()}
+            onPress={() => void locateDevice()}
           />
           {point ? (
             <View style={styles.place}>

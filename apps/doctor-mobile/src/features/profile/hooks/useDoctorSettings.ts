@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useEffect, useRef, useState } from "react";
 import { router } from "expo-router";
 import { useToast } from "@startup/mobile-ui";
@@ -28,7 +29,7 @@ export function useDoctorSettings() {
       if (mounted.current)
         showToast({
           title: "Could not sign out",
-          message: cause instanceof Error ? cause.message : "Try again.",
+          message: userErrorMessage(cause, "Try again."),
           type: "error",
         });
     } finally {

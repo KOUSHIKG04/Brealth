@@ -32,7 +32,7 @@ export type PopularServicesProps = {
 };
 
 export type HomeAction = {
-  key: "doctor" | "home" | "lab" | "consultation";
+  key: "doctor" | "home" | "hospital" | "consultation";
   label: string;
   icon: (props: IconLabelIconProps) => ReactNode;
   consultationType?: ConsultationType;

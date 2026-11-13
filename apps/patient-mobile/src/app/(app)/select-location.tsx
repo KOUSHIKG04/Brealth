@@ -1,3 +1,5 @@
+import { userErrorMessage } from "@startup/contracts";
+import { uniqueMapAttributions, mapAttributionKey } from "@startup/contracts";
 import { AppText as Text } from "@startup/mobile-ui";
 import { Button } from "@startup/mobile-ui";
 import { Input } from "@startup/mobile-ui";
@@ -167,10 +169,10 @@ export default function SelectLocationScreen() {
       if (request === searchVersion.current)
         showToast({
           title: "Location search unavailable",
-          message:
-            cause instanceof Error
-              ? cause.message
-              : "Try again or use your current location.",
+          message: userErrorMessage(
+            cause,
+            "Try again or use your current location."
+          ),
           type: "error",
         });
     } finally {
@@ -353,9 +355,16 @@ export default function SelectLocationScreen() {
                 SEARCH RESULTS
               </Text>
               <View style={styles.card}>
-                {matches.map((place, index) => (
+                {matches.map((place) => (
                   <Pressable
-                    key={`${place.latitude}-${place.longitude}-${index}`}
+                    key={
+                      place.mapPlace?.id ??
+                      JSON.stringify([
+                        place.latitude,
+                        place.longitude,
+                        place.addressLabel,
+                      ])
+                    }
                     accessibilityRole="button"
                     onPress={() =>
                       router.push({
@@ -388,17 +397,17 @@ export default function SelectLocationScreen() {
                   Google Maps
                 </Text>
               ) : null}
-              {matches
-                .flatMap((place) => place.mapPlace?.attributions ?? [])
-                .map((attribution, index) => (
-                  <Text
-                    variant="label"
-                    key={`${attribution.provider}-${index}`}
-                    style={styles.helper}
-                  >
-                    {attribution.provider}
-                  </Text>
-                ))}
+              {uniqueMapAttributions(
+                matches.flatMap((place) => place.mapPlace?.attributions ?? [])
+              ).map((attribution) => (
+                <Text
+                  variant="label"
+                  key={mapAttributionKey(attribution)}
+                  style={styles.helper}
+                >
+                  {attribution.provider}
+                </Text>
+              ))}
             </View>
           ) : null}
           <View style={styles.section}>

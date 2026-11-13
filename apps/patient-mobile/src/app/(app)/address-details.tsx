@@ -85,7 +85,7 @@ export default function AddressDetailsScreen() {
     setUseAccountDetails(existing.use_account_details);
     setReceiverName(existing.receiver_name || "");
     setReceiverPhone(existing.receiver_phone || "");
-  }, [existing, initializedId]);
+  }, [existing, initializedId, chosenForForm?.street, chosenForForm?.locality, chosenForForm?.city, chosenForForm?.state, chosenForForm?.pincode]);
 
   useEffect(() => {
     if (!chosenForForm) return;

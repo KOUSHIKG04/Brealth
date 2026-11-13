@@ -211,3 +211,55 @@ test("Doctor preserves requested and check-in notification copy", () => {
     "Clinic check-in confirmed"
   );
 });
+
+test("Patient rescheduling notification shows the doctor reason and opens the affected booking", () => {
+  const item = {
+    ...notification("reschedule"),
+    template_key: "appointment.reschedule_requested",
+    safe_parameters: {
+      appointment_id: "appointment-1",
+      reason: "Clinic hours changed",
+    },
+  };
+  const h = wrapper("patient", [item]);
+  const view = h.render();
+  assert.match(view.props.notifications[0].title, /new appointment time/);
+  assert.match(view.props.notifications[0].message, /Clinic hours changed/);
+  assert.match(view.props.notifications[0].message, /booking and payment stay/);
+  view.props.onNotificationPress("reschedule");
+  assert.equal(h.closed(), 1);
+  assert.equal(h.routes[0].pathname, "/appointment-details/[id]");
+  assert.equal(h.routes[0].params.id, "appointment-1");
+});
+
+test("Push rescheduling copy carries the patient-facing reason without claiming cancellation", () => {
+  const file = path.join(root, "supabase/functions/send-notification/index.ts");
+  const source = ts.createSourceFile(
+    file,
+    fs.readFileSync(file, "utf8"),
+    ts.ScriptTarget.Latest,
+    true
+  );
+  const copy = source.statements.find(
+    (node) =>
+      ts.isFunctionDeclaration(node) && node.name.text === "notificationCopy"
+  );
+  const code = ts.transpileModule(copy.getText(source), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022 },
+  }).outputText;
+  const ctx = {};
+  vm.runInNewContext(code, ctx);
+  const result = ctx.notificationCopy({
+    template_key: "appointment.reschedule_requested",
+    safe_parameters: { reason: "Clinic hours changed" },
+  });
+  assert.match(result.title, /new appointment time/);
+  assert.match(result.body, /Clinic hours changed/);
+  assert.doesNotMatch(result.body, /cancelled/);
+  assert.ok(
+    ctx.notificationCopy({
+      template_key: "appointment.reschedule_requested",
+      safe_parameters: { reason: "x".repeat(1000) },
+    }).body.length < 700
+  );
+});

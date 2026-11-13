@@ -1,5 +1,6 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
 import { useEffect, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -51,9 +52,7 @@ export function useAddDoctorForm(onSuccess?: () => void) {
         queryKey: ["facility-doctor-requests"],
       });
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not invite doctor."
-      );
+      setError(userErrorMessage(cause, "Could not invite doctor."));
     } finally {
       setBusy(false);
     }

@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { Button } from "@startup/mobile-ui";
 import { Input } from "@startup/mobile-ui";
 import { useToastFeedback } from "@startup/mobile-ui";
@@ -134,11 +135,7 @@ export default function DriverDocuments() {
       await queryClient.invalidateQueries({ queryKey: ["driver-fleet"] });
       router.replace("/(app)/verification");
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not submit vehicle documents."
-      );
+      setError(userErrorMessage(cause, "Could not submit vehicle documents."));
     } finally {
       setBusy(false);
     }

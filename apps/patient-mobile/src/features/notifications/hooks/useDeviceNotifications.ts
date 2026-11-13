@@ -1,3 +1,4 @@
+import { reportError } from "@startup/data-access";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import type { ToastInput } from "@startup/mobile-ui";
@@ -17,7 +18,9 @@ export function useDeviceNotifications(
     if (!identityId || !Notifications || Platform.OS === "web") return;
     let active = true;
     const tokenListener = Notifications.addPushTokenListener(() => {
-      void register().catch(() => {});
+      void register().catch((error) =>
+        reportError(error, { source: "push-registration" })
+      );
     });
 
     const responseListener =
@@ -33,7 +36,9 @@ export function useDeviceNotifications(
       }
     );
 
-    void register().catch(() => {});
+    void register().catch((error) =>
+      reportError(error, { source: "push-registration" })
+    );
 
     void Notifications.getLastNotificationResponseAsync()
       .then((response) => {

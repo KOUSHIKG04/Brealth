@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface AppointmentsPaginationData {
   range: string;
   total: number;
@@ -11,6 +13,7 @@ import type { AppointmentAction, AppointmentPeriod } from "./appointments";
 
 export type AppointmentsTableProps = {
   now: number;
+  filters?: ReactNode;
   pageRows: ClinicAppointment[];
   pending: boolean;
   onManage: (item: ClinicAppointment) => void;

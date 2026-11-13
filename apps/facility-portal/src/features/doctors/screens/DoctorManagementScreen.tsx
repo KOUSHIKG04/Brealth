@@ -1,17 +1,30 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
+
 import { useDoctorManagement } from "../hooks/useDoctorManagement";
 
 import type { DoctorManagementScreenProps } from "../types/doctorManagementScreen";
 
 import { Search, UserCheck, Award, Stethoscope } from "lucide-react";
 import { DoctorTable } from "../components/DoctorTable";
-import { AddDoctorCard } from "../components/AddDoctorCard";
+import { AddDoctorAction } from "../components/AddDoctorAction";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@startup/web-ui/components/ui/tabs";
+import { Bell } from "lucide-react";
 import { FacilityDoctorRequests } from "../components/FacilityDoctorRequests";
 
 export default function DoctorManagementScreen({
   facilityIds,
 }: DoctorManagementScreenProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeTab =
+    searchParams.get("tab") === "notifications" ? "notifications" : "doctors";
   const {
     searchTerm,
     setSearchTerm,
@@ -31,7 +44,8 @@ export default function DoctorManagementScreen({
           </h1>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <AddDoctorAction onSuccess={() => void refetch()} />
           <div className="border-border bg-card flex w-64 items-center gap-2 rounded-lg border px-3 py-2 shadow-xs">
             <Search className="text-muted-foreground size-4 shrink-0" />
             <input
@@ -46,81 +60,107 @@ export default function DoctorManagementScreen({
         </div>
       </div>
 
-      <FacilityDoctorRequests
-        scope={[...facilityIds].sort().join(":")}
-        onChange={() => void refetch()}
-      />
-
-      {/* KPI Cards Row */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="border-border bg-card flex items-center justify-between rounded-xl border p-5 shadow-2xs">
-          <div>
-            <p className="text-muted-foreground text-sm font-medium">
-              Total Doctors
-            </p>
-            <h3 className="text-foreground mt-1 text-3xl font-bold">
-              {doctorManagementSummary.total}
-            </h3>
-          </div>
-          <div className="bg-muted text-primary flex size-10 items-center justify-center rounded-lg">
-            <UserCheck className="size-5" />
-          </div>
-        </div>
-
-        <div className="border-border bg-card flex items-center justify-between rounded-xl border p-5 shadow-2xs">
-          <div>
-            <p className="text-muted-foreground text-sm font-medium">
-              Active on Duty
-            </p>
-            <h3 className="text-primary mt-1 text-3xl font-bold">
-              {doctorManagementSummary.active}
-            </h3>
-          </div>
-          <div className="bg-muted text-primary flex size-10 items-center justify-center rounded-lg">
-            <Stethoscope className="size-5" />
-          </div>
-        </div>
-
-        <div className="border-border bg-card flex items-center justify-between rounded-xl border p-5 shadow-2xs">
-          <div>
-            <p className="text-muted-foreground text-sm font-medium">
-              Verified Licenses
-            </p>
-            <h3 className="text-primary mt-1 text-3xl font-bold">
-              {doctorManagementSummary.verified}
-            </h3>
-          </div>
-          <div className="bg-muted text-primary flex size-10 items-center justify-center rounded-lg">
-            <Award className="size-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Split: Roster Table + Add Doctor Card */}
-      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
-        {/* Left: Doctor Roster Table (7 cols) */}
-        <div className="border-border bg-card flex flex-col justify-between rounded-lg border p-6 shadow-xs lg:col-span-7">
-          <div>
-            <div className="border-border mb-4 flex items-center justify-between border-b pb-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) => {
+          const params = new URLSearchParams(searchParams.toString());
+          if (value === "notifications") params.set("tab", "notifications");
+          else params.delete("tab");
+          const query = params.toString();
+          router.replace(`/doctor-management${query ? `?${query}` : ""}`, {
+            scroll: false,
+          });
+        }}
+        className="gap-6"
+      >
+        <TabsList aria-label="Doctor management sections">
+          <TabsTrigger value="doctors">Doctors</TabsTrigger>
+          <TabsTrigger value="notifications">
+            <Bell aria-hidden="true" className="size-4" />
+            Notifications
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent
+          value="doctors"
+          forceMount
+          className="space-y-6 data-[state=inactive]:hidden"
+        >
+          {/* KPI Cards Row */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="border-border bg-card flex items-center justify-between rounded-xl border p-5 shadow-2xs">
               <div>
-                <h2 className="text-foreground text-lg font-bold">
-                  Doctor Directory
-                </h2>
-                <p className="text-muted-foreground text-sm">
-                  {total} doctors currently registered
+                <p className="text-muted-foreground text-sm font-medium">
+                  Total Doctors
                 </p>
+                <h3 className="text-foreground mt-1 text-3xl font-bold">
+                  {doctorManagementSummary.total}
+                </h3>
+              </div>
+              <div className="bg-muted text-primary flex size-10 items-center justify-center rounded-lg">
+                <UserCheck className="size-5" />
               </div>
             </div>
 
-            <DoctorTable data={filteredDoctors} isLoading={isLoading} />
-          </div>
-        </div>
+            <div className="border-border bg-card flex items-center justify-between rounded-xl border p-5 shadow-2xs">
+              <div>
+                <p className="text-muted-foreground text-sm font-medium">
+                  Active on Duty
+                </p>
+                <h3 className="text-primary mt-1 text-3xl font-bold">
+                  {doctorManagementSummary.active}
+                </h3>
+              </div>
+              <div className="bg-muted text-primary flex size-10 items-center justify-center rounded-lg">
+                <Stethoscope className="size-5" />
+              </div>
+            </div>
 
-        {/* Right: Add Doctor Card (Figma 939:12) (5 cols) */}
-        <div className="flex w-full justify-center lg:col-span-5">
-          <AddDoctorCard onSuccess={() => refetch()} showOuterHeader={true} />
-        </div>
-      </div>
+            <div className="border-border bg-card flex items-center justify-between rounded-xl border p-5 shadow-2xs">
+              <div>
+                <p className="text-muted-foreground text-sm font-medium">
+                  Verified Licenses
+                </p>
+                <h3 className="text-primary mt-1 text-3xl font-bold">
+                  {doctorManagementSummary.verified}
+                </h3>
+              </div>
+              <div className="bg-muted text-primary flex size-10 items-center justify-center rounded-lg">
+                <Award className="size-5" />
+              </div>
+            </div>
+          </div>
+
+          {/* Doctor directory */}
+          <div className="w-full min-w-0">
+            <div className="border-border bg-card flex min-w-0 flex-col justify-between rounded-lg border p-6 shadow-xs">
+              <div>
+                <div className="border-border mb-4 flex items-center justify-between border-b pb-4">
+                  <div>
+                    <h2 className="text-foreground text-lg font-bold">
+                      Doctor Directory
+                    </h2>
+                    <p className="text-muted-foreground text-sm">
+                      {total} doctors currently registered
+                    </p>
+                  </div>
+                </div>
+
+                <DoctorTable data={filteredDoctors} isLoading={isLoading} />
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+        <TabsContent
+          value="notifications"
+          forceMount
+          className="data-[state=inactive]:hidden"
+        >
+          <FacilityDoctorRequests
+            scope={[...facilityIds].sort().join(":")}
+            onChange={() => void refetch()}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

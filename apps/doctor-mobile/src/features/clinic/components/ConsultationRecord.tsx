@@ -9,6 +9,7 @@ import {
 } from "../../../components/DoctorScreen";
 import { useConsultationDraft } from "../hooks/useConsultationDraft";
 import { vitalLabels } from "../utils/consultationConstants";
+import { recordMedicineRows } from "../utils/recordMedicines";
 
 export function ConsultationRecord({
   appointmentId,
@@ -79,10 +80,10 @@ export function ConsultationRecord({
           <Panel>
             <Heading>Prescription</Heading>
             {record.medicines?.length ? (
-              record.medicines.map((medicine, index) => (
+              recordMedicineRows(record.medicines).map(({ medicine, key }) => (
                 <View
                   style={{ gap: 8, marginTop: 12 }}
-                  key={`${medicine.medicine_name}-${index}`}
+                  key={key}
                 >
                   <Heading style={{ fontSize: 16 }}>
                     {medicine.medicine_name} · {medicine.strength}

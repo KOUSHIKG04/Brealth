@@ -1,4 +1,4 @@
-declare module "npm:@supabase/server@1" {
+declare module "npm:@supabase/server@1.9.0" {
   export * from "@supabase/server";
 }
 

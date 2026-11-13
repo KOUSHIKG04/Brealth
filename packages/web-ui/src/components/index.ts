@@ -69,3 +69,5 @@ export * from "./ui/tooltip";
 export * from "./data-table";
 
 export * from "./virtual-list";
+
+export * from "./route-error-state";

@@ -27,6 +27,13 @@ test.skipIf(!enabled)(
       await tx`set local role anon`;
       const rows = await tx`select * from public.list_public_practices(1)`;
       expect(rows.length).toBeLessThanOrEqual(1);
+      for (const limit of [0, 51]) {
+        await expect(
+          tx.savepoint(async (sp) => {
+            await sp`select * from public.list_public_practices(${limit})`;
+          })
+        ).rejects.toMatchObject({ code: "22023" });
+      }
     });
     const rollback = new Error("rollback_fixture");
     try {

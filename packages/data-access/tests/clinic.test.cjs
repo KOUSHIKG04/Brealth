@@ -72,6 +72,46 @@ function fixture(respond = () => id) {
   };
 }
 
+test("portal financial summaries batch appointments and preserve queue data", async () => {
+  const f = fixture((_, args) =>
+    args.p_appointment_ids.map((appointment_id) => ({
+      appointment_id,
+      enabled: true,
+      mode: "test",
+      amount_minor: 50000,
+      captured_minor: 0,
+      due_minor: 50000,
+    }))
+  );
+  const items = Array.from({ length: 101 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    ticket_number: index + 1,
+  }));
+  const rows = await api.attachPortalAppointmentPayments(f.client, items);
+  assert.equal(f.calls.length, 2);
+  assert.equal(f.calls[0].args.p_appointment_ids.length, 100);
+  assert.equal(rows[100].ticket_number, 101);
+  assert.equal(rows[100].payment_summary.due_minor, 50000);
+});
+
+test("portal transaction cursors preserve both tie breakers and reject malformed dates", async () => {
+  const cursor = { created_at: "2026-10-31T11:00:00+00:00", id };
+  const f = fixture(() => ({ items: [], next_cursor: cursor }));
+  const page = await api.listPortalAppointmentTransactions(f.client, cursor);
+  assert.equal(page.next_cursor.id, id);
+  assert.deepEqual(f.calls[0].args, {
+    p_before_created_at: cursor.created_at,
+    p_before_id: id,
+  });
+  await assert.rejects(
+    api.listPortalAppointmentTransactions(f.client, {
+      ...cursor,
+      created_at: "invalid",
+    })
+  );
+  assert.equal(f.calls.length, 1);
+});
+
 test("unpaid reservations cannot show consultation, QR, rescheduling or approval-ready states", () => {
   const now = Date.now();
   const item = {
@@ -279,6 +319,34 @@ test("recovery operations forward optimistic versions and retry keys; invalid in
   assert.equal(f.calls.length, 1);
 });
 
+test("clinic grace is validated and forwarded alongside the existing recovery policy", async () => {
+  const parsed = recoveryContracts.recoveryPolicySchema.parse({
+    practiceId: id,
+    expectedVersion: 7,
+    onlineGraceMinutes: 15,
+    clinicGraceMinutes: 20,
+    rescheduleCutoffMinutes: 0,
+    maxSelfReschedules: 1,
+  });
+  assert.equal(parsed.clinicGraceMinutes, 20);
+  assert.throws(() =>
+    recoveryContracts.recoveryPolicySchema.parse({
+      ...parsed,
+      clinicGraceMinutes: 181,
+    })
+  );
+  const f = fixture(() => null);
+  await assert.rejects(recovery.setAppointmentRecoveryPolicy(f.client, parsed)); // invalid server response after the request
+  assert.equal(f.calls[0].args.p_clinic_grace_minutes, 20);
+  await assert.rejects(
+    recovery.setAppointmentRecoveryPolicy(f.client, {
+      ...parsed,
+      clinicGraceMinutes: 181,
+    })
+  );
+  assert.equal(f.calls.length, 1);
+});
+
 test("availability preserves the live daily allowance alongside time choices", async () => {
   const f = fixture(() => [
     {
@@ -413,6 +481,20 @@ test("editable quotas survive saves and publication; invalid allocations never r
     )
   );
   assert.equal(f.calls.length, 2);
+  await schedules.publishMyDoctorSchedule(
+    f.client,
+    id,
+    "clinic",
+    settings,
+    2,
+    "2026-11-01",
+    "a".repeat(32),
+    { strategy: "pause", patientReason: "  Clinic hours changed  " }
+  );
+  assert.equal(f.calls[2].name, "resolve_doctor_schedule_conflicts");
+  assert.equal(f.calls[2].args.p_strategy, "pause");
+  assert.equal(f.calls[2].args.p_patient_reason, "Clinic hours changed");
+  assert.equal(f.calls[2].args.p_preview_token, "a".repeat(32));
 });
 
 test("booking retains the idempotency key, patient, service, window and trimmed reason", async () => {
@@ -669,4 +751,47 @@ test("practice appointment aggregation retains deduplication and reverse chronol
   assert.equal(appointments.length, 2);
   assert.equal(appointments[0].id, other);
   assert.equal(appointments[1].id, id);
+});
+
+test("Doctor-requested rescheduling preserves patient allowance and requires a separate confirmation", () => {
+  const item = {
+    status: "confirmed",
+    visit_mode: "online",
+    starts_at: "2026-11-02T10:00:00Z",
+    ends_at: "2026-11-02T10:30:00Z",
+    timezone: "Asia/Kolkata",
+    recovery: {
+      can_manage: false,
+      max_self_reschedules: 0,
+      reschedule_count: 0,
+      reschedule_cutoff_minutes: 10080,
+      request: null,
+      schedule_change: {
+        reason: "Clinic hours changed",
+        requested_at: "2026-10-30T10:00:00Z",
+        pending: true,
+      },
+    },
+  };
+  const view = recoveryContracts.appointmentRecoveryView(
+    item,
+    Date.parse("2026-11-02T09:59:00Z")
+  );
+  assert.equal(view.patientStatus, "Rescheduling requested");
+  assert.equal(view.canReschedule, true);
+  assert.equal(view.requiresApproval, false);
+  assert.match(view.message, /Clinic hours changed/);
+  assert.match(view.message, /booking and payment stay/);
+  assert.equal(item.status, "confirmed");
+  const resolved = recoveryContracts.appointmentRecoveryView({
+    ...item,
+    status: "cancelled",
+    recovery: {
+      ...item.recovery,
+      outcome: "rescheduled",
+      schedule_change: { ...item.recovery.schedule_change, pending: false },
+    },
+  });
+  assert.equal(resolved.patientStatus, "Rescheduled");
+  assert.equal(resolved.canReschedule, false);
 });

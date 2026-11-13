@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { OnlineVisitFlowProps } from "../types/visit-session";
 import { useEffect, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -48,12 +49,11 @@ export function useOnlineVisit({
     staleTime: 5 * 60 * 1000,
   });
   useToastFeedback({
-    error:
-      token.error instanceof Error
-        ? token.error.message
-        : context.isError
-          ? "Could not load this consultation."
-          : "",
+    error: token.error
+      ? userErrorMessage(token.error, "Could not start the video call.")
+      : context.isError
+        ? "Could not load this consultation."
+        : "",
   });
   useEffect(() => {
     if (!token.data) return;

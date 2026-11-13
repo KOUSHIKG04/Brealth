@@ -15,8 +15,32 @@ export const scheduleTimeLabels = [
 ] as const;
 
 export const shiftStyles = {
-  "on-duty": "bg-muted text-primary border-l-4 border-primary",
-  surgery: "bg-destructive/10 text-destructive border-l-4 border-destructive",
-  "on-call": "bg-muted text-muted-foreground border-l-4 border-border",
-  "home-visit": "bg-muted text-primary border-l-4 border-primary",
+  "on-duty": {
+    label: "Clinic",
+    bar: "bg-primary",
+    badge: "bg-muted text-primary",
+  },
+  surgery: {
+    label: "Surgery",
+    bar: "bg-destructive",
+    badge: "bg-destructive/10 text-destructive",
+  },
+  "on-call": {
+    label: "Online",
+    bar: "bg-slate-500",
+    badge: "bg-slate-100 text-slate-700",
+  },
+  "home-visit": {
+    label: "Home visit",
+    bar: "bg-sky-600",
+    badge: "bg-sky-100 text-sky-800",
+  },
 } as const;
+
+export const assignmentTableHeaders = [
+  ["doctor", "Doctor name"],
+  ["department", "Department"],
+  ["time", "Shift time"],
+  ["status", "Status"],
+  ["contact", "Contact"],
+] as const;

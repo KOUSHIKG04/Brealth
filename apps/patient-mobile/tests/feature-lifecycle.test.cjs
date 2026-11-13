@@ -10,6 +10,10 @@ const vm = require("node:vm");
 
 const ts = require("typescript");
 
+const {
+  withErrorDoubles,
+} = require("../../../packages/contracts/tests/support/errorTestDoubles.cjs");
+
 function load(file, mocks, globals = {}) {
   const exports = {};
   const code = ts.transpileModule(
@@ -24,6 +28,8 @@ function load(file, mocks, globals = {}) {
   vm.runInNewContext(code, {
     exports,
     require: (name) => {
+      const shared = withErrorDoubles(name, mocks);
+      if (shared) return shared;
       assert.ok(name in mocks, `Unmocked import ${name}`);
       return mocks[name];
     },

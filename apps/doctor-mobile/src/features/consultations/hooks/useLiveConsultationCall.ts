@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { LiveConsultationCallProps } from "../types/live-consultation-call";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -140,7 +141,7 @@ export function useLiveConsultationCall({
       if (mounted.current)
         showToast({
           title: "Could not send message",
-          message: cause instanceof Error ? cause.message : "Try again.",
+          message: userErrorMessage(cause, "Try again."),
           type: "error",
         });
       throw cause;

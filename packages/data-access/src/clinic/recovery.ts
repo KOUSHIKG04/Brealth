@@ -99,6 +99,7 @@ export async function setAppointmentRecoveryPolicy(
     p_practice_id: r.practiceId,
     p_expected_version: r.expectedVersion,
     p_online_grace_minutes: r.onlineGraceMinutes,
+    p_clinic_grace_minutes: r.clinicGraceMinutes,
     p_reschedule_cutoff_minutes: r.rescheduleCutoffMinutes,
     p_max_self_reschedules: r.maxSelfReschedules,
   });

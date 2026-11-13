@@ -24,6 +24,8 @@ function guide({ canGoBack = true } = {}) {
       current: { scrollToOffset: (options) => moves.push(options) },
     }),
     useEffect: () => {},
+    useCallback: (callback) => callback,
+    useEffectEvent: (callback) => callback,
   };
   const mocks = {
     react,

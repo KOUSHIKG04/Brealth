@@ -1,7 +1,7 @@
 "use client";
 
-import { centerOf } from "../utils/mapCoordinates";
-import { loadMaps } from "../services/googleMaps";
+import { userErrorMessage } from "@startup/contracts";
+import { loadMaps, createFacilityMap } from "../services/googleMaps";
 import type { FacilityLocationMapProps } from "../types/facilityLocationMap";
 import type {
   FacilityMapPoint,
@@ -33,44 +33,30 @@ export function useFacilityLocationMap({
 
   useEffect(() => {
     let active = true;
-    let listeners: Array<{ remove: () => void }> = [];
+    let disposeMap: (() => void) | undefined;
     void loadMaps(apiKey)
       .then((maps) => {
         if (!active || !containerRef.current) return;
         const startingPoint = initialSelected.current;
-        const map = new maps.Map(containerRef.current, {
-          center: startingPoint
-            ? { lat: startingPoint.latitude, lng: startingPoint.longitude }
-            : { lat: 20.5937, lng: 78.9629 },
-          zoom: startingPoint ? 17 : 5,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          gestureHandling: "cooperative",
-        });
+        const { map, dispose } = createFacilityMap(
+          maps,
+          containerRef.current,
+          startingPoint,
+          setDraft
+        );
+        disposeMap = dispose;
         mapRef.current = map;
-        listeners = [
-          map.addListener("dragend", () => setDraft(centerOf(map))),
-          map.addListener("click", (event) => {
-            if (!event?.latLng) return;
-            const point = { lat: event.latLng.lat(), lng: event.latLng.lng() };
-            map.setCenter(point);
-            setDraft({ latitude: point.lat, longitude: point.lng });
-          }),
-        ];
         setLoading(false);
       })
       .catch((cause) => {
         if (!active) return;
-        setMapError(
-          cause instanceof Error ? cause.message : "The map could not load."
-        );
+        setMapError(userErrorMessage(cause, "The map could not load."));
         onUnavailable(true);
         setLoading(false);
       });
     return () => {
       active = false;
-      listeners.forEach((listener) => listener.remove());
+      disposeMap?.();
       mapRef.current = null;
     };
   }, [apiKey, onUnavailable]);
@@ -94,9 +80,7 @@ export function useFacilityLocationMap({
       mapRef.current?.setZoom(17);
       setDraft(point);
     } catch (cause) {
-      setLocationError(
-        cause instanceof Error ? cause.message : "Could not get your location."
-      );
+      setLocationError(userErrorMessage(cause, "Could not get your location."));
     } finally {
       setLocating(false);
     }
@@ -132,9 +116,7 @@ export function useFacilityLocationMap({
           "No matching address found. Try a more complete address or move the map."
         );
     } catch (cause) {
-      setLocationError(
-        cause instanceof Error ? cause.message : "Address search failed."
-      );
+      setLocationError(userErrorMessage(cause, "Address search failed."));
     } finally {
       setSearching(false);
     }

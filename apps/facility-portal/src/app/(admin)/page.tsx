@@ -4,7 +4,10 @@ import {
   facilitySchedule,
   type PracticeSession,
 } from "@/features/doctors";
-import { changePortalAppointment } from "@/features/appointments";
+import {
+  NewAppointmentDialog,
+  changePortalAppointment,
+} from "@/features/appointments";
 import { DashboardScreen } from "@/features/dashboard";
 import {
   listFacilityBedInventory,
@@ -71,6 +74,9 @@ export default async function HomePage() {
   return (
     <DashboardScreen
       doctorAction={<AddDoctorAction />}
+      appointmentAction={
+        <NewAppointmentDialog triggerLabel="Add appointment" />
+      }
       doctorRequests={
         <DashboardDoctorRequests
           key={access.facilities

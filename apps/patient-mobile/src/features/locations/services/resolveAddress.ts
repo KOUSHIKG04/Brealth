@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { Point, Address } from "../types/location";
 
 export type { Point, Address } from "../types/location";
@@ -72,10 +73,10 @@ export function resolvePatientAddress(
             "No address was found here. Select a nearby point or enter the address manually."
           );
       }
-      const reason =
-        deviceError instanceof Error
-          ? deviceError.message
-          : "The phone’s address service is unavailable.";
+      const reason = userErrorMessage(
+        deviceError,
+        "The phone’s address service is unavailable."
+      );
       throw new Error(
         `${reason} Google fallback is not configured yet. Search for a place or fill the address manually.`
       );

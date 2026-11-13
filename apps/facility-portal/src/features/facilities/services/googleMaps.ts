@@ -1,6 +1,28 @@
 "use client";
 
-import type { MapsNamespace, MapWindow } from "../types/facilityLocationMap";
+import type { MapsNamespace, MapWindow, FacilityMapPoint } from "../types/facilityLocationMap";
+import { centerOf } from "../utils/mapCoordinates";
+
+export function createFacilityMap(maps: MapsNamespace, element: HTMLElement, selected: FacilityMapPoint | null, onPointChange: (point: FacilityMapPoint | null) => void) {
+  const map = new maps.Map(element, {
+    center: selected ? { lat: selected.latitude, lng: selected.longitude } : { lat: 20.5937, lng: 78.9629 },
+    zoom: selected ? 17 : 5,
+    mapTypeControl: false, streetViewControl: false, fullscreenControl: false, gestureHandling: "cooperative",
+  });
+  const dragListener = map.addListener("dragend", () => onPointChange(centerOf(map)));
+  try {
+    const clickListener = map.addListener("click", (event) => {
+      if (!event?.latLng) return;
+      const point = { lat: event.latLng.lat(), lng: event.latLng.lng() };
+      map.setCenter(point);
+      onPointChange({ latitude: point.lat, longitude: point.lng });
+    });
+    return { map, dispose() { dragListener.remove(); clickListener.remove(); } };
+  } catch (error) {
+    dragListener.remove();
+    throw error;
+  }
+}
 
 export let mapsPromise: Promise<MapsNamespace> | null = null;
 

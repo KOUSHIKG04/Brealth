@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { DetailsScreenProps } from "../types/details-screen";
 import { useToastFeedback } from "@startup/mobile-ui";
 import { useState } from "react";
@@ -91,9 +92,7 @@ export function useRegistrationDetails({
     try {
       await onSave({ ...form, name: form.name.trim(), city: form.city.trim() });
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not save your details."
-      );
+      setError(userErrorMessage(cause, "Could not save your details."));
     } finally {
       setSaving(false);
     }

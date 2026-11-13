@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from "react-native";
 import { Phone } from "lucide-react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import Svg, { Path } from "react-native-svg";
+import { googleLoginEnabled } from "../utils/loginConstants";
 
 function GoogleIcon({ size = 20 }: { size?: number }) {
   return (
@@ -34,21 +35,22 @@ export function ProdAuthChoices({
 }: ProdAuthChoicesProps) {
   return (
     <View style={styles.choices}>
-      {/* Continue with Google */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Continue with google"
-        onPress={onContinueWithGoogle}
-        style={({ pressed }) => [
-          styles.socialButton,
-          pressed && styles.buttonPressed,
-        ]}
-      >
-        <GoogleIcon size={20} />
-        <Text variant="button" style={styles.socialButtonText}>
-          Continue with google
-        </Text>
-      </Pressable>
+      {googleLoginEnabled ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Continue with google"
+          onPress={onContinueWithGoogle}
+          style={({ pressed }) => [
+            styles.socialButton,
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <GoogleIcon size={20} />
+          <Text variant="button" style={styles.socialButtonText}>
+            Continue with google
+          </Text>
+        </Pressable>
+      ) : null}
 
       {/* Continue with Phone */}
       <Pressable

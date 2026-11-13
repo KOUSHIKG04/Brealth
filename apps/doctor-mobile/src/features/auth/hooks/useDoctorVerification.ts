@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useCallback, useRef, useState } from "react";
 import { AppState } from "react-native";
 import { useFocusEffect } from "expo-router";
@@ -49,9 +50,7 @@ export function useDoctorVerification({
       } catch (cause) {
         if (active.current)
           setError(
-            cause instanceof Error
-              ? cause.message
-              : "Could not refresh verification status."
+            userErrorMessage(cause, "Could not refresh verification status.")
           );
       } finally {
         checking.current = false;

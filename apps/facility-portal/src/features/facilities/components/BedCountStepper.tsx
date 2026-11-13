@@ -2,7 +2,7 @@
 
 import type { BedCountStepperProps } from "../types/bedCountStepper";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "@startup/web-ui/components/ui/toast";
 
@@ -13,23 +13,25 @@ export function BedCountStepper({
   disabled,
   onCommit,
 }: BedCountStepperProps) {
-  const [draft, setDraft] = useState(String(value));
-  useEffect(() => {
-    if (!disabled) setDraft(String(value));
-  }, [value, disabled]);
+  const [editing, setDraft] = useState<string | null>(null);
+  const draft = editing ?? String(value);
   const parsed = /^\d+$/.test(draft) ? Number(draft) : NaN;
-  function commit(next = parsed) {
+  async function commit(next = parsed) {
     if (!Number.isSafeInteger(next) || next < 0 || next > max) {
       toast.add({
         title: "Invalid bed count",
         description: `Enter a whole number from 0 to ${max}.`,
         type: "error",
       });
-      setDraft(String(value));
+      setDraft(null);
       return;
     }
     setDraft(String(next));
-    onCommit(next);
+    try {
+      await onCommit(next);
+    } finally {
+      setDraft(null);
+    }
   }
   return (
     <div
@@ -62,7 +64,7 @@ export function BedCountStepper({
             event.preventDefault();
             commit();
           }
-          if (event.key === "Escape") setDraft(String(value));
+          if (event.key === "Escape") setDraft(null);
         }}
         className="focus-visible:ring-primary w-14 appearance-none bg-transparent py-1 text-center text-[13px] font-semibold text-[#0f172a] outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:opacity-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />

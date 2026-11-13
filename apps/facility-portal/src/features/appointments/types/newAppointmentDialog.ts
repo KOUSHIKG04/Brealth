@@ -11,4 +11,7 @@ export type Slot = Awaited<
   ReturnType<typeof loadPortalWalkInSlots>
 >["slots"][number];
 
-export type NewAppointmentDialogProps = { onCreated: () => void };
+export type NewAppointmentDialogProps = {
+  onCreated?: (appointmentId?: string) => void;
+  triggerLabel?: string;
+};

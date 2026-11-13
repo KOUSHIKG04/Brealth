@@ -4,19 +4,14 @@ import Link from "next/link";
 import { AcceptPendingAppointmentButton } from "../components/AcceptPendingAppointmentButton";
 import { DashboardErrorToast } from "../components/DashboardErrorToast";
 import { formatDisplayDate, formatDisplayDateTime } from "@startup/contracts";
-import {
-  Search,
-  Calendar,
-  CalendarDays,
-  Clock,
-  ChevronRight,
-} from "lucide-react";
+import { Calendar, Clock } from "lucide-react";
 
-import { scheduleDays } from "../utils/dashboardConstants";
+import { WeeklyDoctorSchedule } from "../components/WeeklyDoctorSchedule";
 import { wards as wardStyles } from "../utils/dashboardConstants";
 
 export default function DashboardScreen({
   doctorAction,
+  appointmentAction,
   doctorRequests,
   inventory,
   appointments,
@@ -25,7 +20,7 @@ export default function DashboardScreen({
   acceptAppointment,
 }: DashboardScreenProps) {
   const wards = inventory
-    .filter((item) => item.configured)
+    .filter((item) => item.configured && item.total > 0)
     .map((item, index) => {
       const style = wardStyles[index % wardStyles.length];
       return {
@@ -62,195 +57,107 @@ export default function DashboardScreen({
     <div className="flex flex-col gap-6 pb-12">
       <DashboardErrorToast message={loadError} />
 
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <h1 className="text-foreground text-2xl font-bold tracking-tight">
-            Hospital Dashboard
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="border-border bg-card flex w-64 items-center gap-2 rounded-lg border px-3 py-2 shadow-xs">
-            <Search className="text-muted-foreground size-4 shrink-0" />
-            <input
-              type="text"
-              aria-label="Search patient, doctor..."
-              placeholder="Search patient, doctor..."
-              className="text-foreground placeholder-muted-foreground focus-visible:ring-primary focus-visible:ring-offset-background w-full bg-transparent text-sm outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-            />
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-foreground text-2xl font-bold tracking-tight">
+              Hospital Dashboard
+            </h1>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">
+              <span className="size-1.5 animate-pulse rounded-full bg-emerald-500" />
+              Live Facility
+            </span>
           </div>
-
-          <div className="border-border bg-card flex items-center gap-2 rounded-lg border px-3 py-2 shadow-xs">
-            <Calendar className="text-muted-foreground size-4 shrink-0" />
-            <span
-              suppressHydrationWarning
-              className="text-muted-foreground text-sm font-semibold whitespace-nowrap"
-            >
+          <p className="text-muted-foreground flex items-center gap-2 text-xs sm:text-sm">
+            <Calendar className="text-muted-foreground/80 size-4" />
+            <span suppressHydrationWarning className="font-medium tabular-nums">
               {formatDisplayDate(new Date(), "Asia/Kolkata")}
             </span>
-          </div>
+          </p>
         </div>
-      </div>
-
-      <div className="border-border bg-card rounded-lg border p-6 shadow-xs">
-        <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="text-foreground text-lg font-bold">
-              Bed Availability by Type
-            </h2>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              Availability &amp; occupancy metrics across specialized wards
-            </p>
-          </div>
-          <div className="bg-muted inline-flex items-center self-start rounded-lg px-3 py-1.5 sm:self-auto">
-            <span className="text-primary text-xs font-semibold tracking-wide uppercase">
-              TOTAL CAPACITY: {capacity} BEDS
-            </span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {doctorAction}
+          {appointmentAction}
         </div>
+      </header>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {wards.map((ward) => {
-            const Icon = ward.icon;
-            return (
-              <div
-                key={ward.name}
-                className="border-border bg-card hover:border-border flex flex-col justify-between gap-3 rounded-xl border p-4 shadow-2xs transition-colors"
-              >
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-foreground text-sm leading-tight font-semibold">
-                      {ward.name}
-                    </h3>
-                    <span className="text-muted-foreground text-xs">
-                      Total: {ward.total}
-                    </span>
-                  </div>
-                  <div
-                    className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${ward.iconBg} ${ward.iconColor}`}
-                  >
-                    <Icon className="size-[18px]" />
-                  </div>
-                </div>
+      {wards.length > 0 ? (
+        <div className="border-border bg-card rounded-lg border p-6 shadow-xs">
+          <div className="mb-6 flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <h2 className="text-foreground text-lg font-bold">
+                Bed Availability by Type
+              </h2>
+              <p className="text-muted-foreground mt-0.5 text-sm">
+                Availability &amp; occupancy metrics across specialized wards
+              </p>
+            </div>
+            <div className="bg-muted inline-flex items-center self-start rounded-lg px-3 py-1.5 sm:self-auto">
+              <span className="text-primary text-xs font-semibold tracking-wide uppercase">
+                TOTAL CAPACITY: {capacity} BEDS
+              </span>
+            </div>
+          </div>
 
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      Available{" "}
-                      <strong className="text-foreground font-bold">
-                        {ward.available}
-                      </strong>{" "}
-                      • Occupied{" "}
-                      <strong className="text-foreground font-bold">
-                        {ward.occupied}
-                      </strong>
-                    </span>
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-xs font-bold ${ward.iconBg} ${ward.iconColor}`}
-                    >
-                      {ward.percent}%
-                    </span>
-                  </div>
-
-                  <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {wards.map((ward) => {
+              const Icon = ward.icon;
+              return (
+                <div
+                  key={ward.name}
+                  className="border-border bg-card hover:border-border flex flex-col justify-between gap-3 rounded-xl border p-4 shadow-2xs transition-colors"
+                >
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h3 className="text-foreground text-sm leading-tight font-semibold">
+                        {ward.name}
+                      </h3>
+                      <span className="text-muted-foreground text-xs">
+                        Total: {ward.total}
+                      </span>
+                    </div>
                     <div
-                      className={`h-full rounded-full ${ward.progressColor}`}
-                      style={{ width: `${ward.percent}%` }}
-                    />
+                      className={`flex size-9 shrink-0 items-center justify-center rounded-lg ${ward.iconBg} ${ward.iconColor}`}
+                    >
+                      <Icon className="size-[18px]" />
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">
+                        Available{" "}
+                        <strong className="text-foreground font-bold">
+                          {ward.available}
+                        </strong>{" "}
+                        • Occupied{" "}
+                        <strong className="text-foreground font-bold">
+                          {ward.occupied}
+                        </strong>
+                      </span>
+                      <span
+                        className={`rounded px-1.5 py-0.5 text-xs font-bold ${ward.iconBg} ${ward.iconColor}`}
+                      >
+                        {ward.percent}%
+                      </span>
+                    </div>
+
+                    <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full">
+                      <div
+                        className={`h-full rounded-full ${ward.progressColor}`}
+                        style={{ width: `${ward.percent}%` }}
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })}
-          {!loadError && wards.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              {inventory.length === 0
-                ? "This facility does not offer patient beds."
-                : "Set initial counts in Bed Management before availability is shown."}
-            </p>
-          )}
+              );
+            })}
+          </div>
         </div>
-      </div>
-
-      <div>{doctorAction}</div>
+      ) : null}
 
       <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-12">
-        <div className="border-border bg-card flex min-h-[420px] flex-col justify-between rounded-lg border p-6 shadow-xs lg:col-span-8">
-          <div>
-            <div className="mb-4 flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <CalendarDays className="text-primary size-5" />
-                <h3 className="text-foreground text-lg font-bold">
-                  Doctor Weekly Schedule
-                </h3>
-              </div>
-              <Link
-                href="/doctor-schedules"
-                className="text-primary cursor-pointer text-sm font-semibold hover:underline"
-              >
-                View All
-              </Link>
-            </div>
-
-            <div className="overflow-x-auto">
-              <div className="min-w-[540px]">
-                <div className="bg-background text-muted-foreground mb-1 flex items-center rounded-md px-4 py-2 text-xs font-bold">
-                  <div className="w-[180px] shrink-0">Doctor / Speciality</div>
-                  <div className="flex flex-1 justify-between px-4 text-center">
-                    {scheduleDays.map((day) => (
-                      <span key={day} className="w-8">
-                        {day}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="w-8 shrink-0" />
-                </div>
-
-                <div className="divide-border divide-y">
-                  {weeklyDoctors.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="hover:bg-muted flex items-center px-4 py-3 transition-colors"
-                    >
-                      <div className="w-[180px] shrink-0 leading-tight">
-                        <p className="text-foreground text-sm font-semibold">
-                          {doc.name}
-                        </p>
-                        <p className="text-muted-foreground text-xs">
-                          {doc.speciality}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-1 items-center justify-between px-4">
-                        {doc.days.map((isAvail, idx) => (
-                          <div
-                            key={idx}
-                            className="flex w-8 items-center justify-center"
-                          >
-                            <span
-                              className={`size-2 rounded-full ${
-                                isAvail ? "bg-primary" : "bg-destructive"
-                              }`}
-                            />
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="flex w-8 shrink-0 justify-end">
-                        <ChevronRight className="text-muted-foreground size-4" />
-                      </div>
-                    </div>
-                  ))}
-                  {weeklyDoctors.length === 0 && (
-                    <p className="text-muted-foreground px-4 py-5 text-sm">
-                      No doctors are associated with this facility yet.
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <WeeklyDoctorSchedule doctors={weeklyDoctors} />
 
         <div className="border-border bg-card flex min-h-[420px] flex-col justify-between rounded-lg border p-6 shadow-xs lg:col-span-4">
           <div>

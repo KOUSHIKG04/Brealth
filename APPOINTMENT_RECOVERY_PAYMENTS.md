@@ -1,5 +1,34 @@
 # Appointment recovery and consultation payments
 
+## Facility reception checkout and transaction history
+
+Facility Portal has `/transactions` in its sidebar. Reception registration opens
+the new booking's payment view. Staff can collect its outstanding clinic fee through
+Razorpay Standard Checkout or the existing cash receipt action. Razorpay uses the
+existing server-only keys, process-payment function and webhook configuration; no
+second gateway account or browser secret is required. The operator must have
+financial management access, and the patient must agree to the payment terms.
+The operator is recorded as the accepting identity; no patient app account is created.
+
+Preparation, verification and reconciliation have visible busy feedback. Only
+verified capture is received money; an authorized or uncertain attempt stays
+pending. Closing checkout does not cancel a staff-created clinic booking.
+The page lists pending/failed/captured attempts and cash receipts, refunded amounts,
+test/live mode and provider references with stable server pagination. Financial
+access is checked at both the Server Action and database boundary. Other facilities'
+records are excluded. Existing refunds, credit and provider/company splits are reused.
+
+App checkout holds have their own Payment reservations view instead of appearing in
+the default appointment table/count. Staff bookings remain visible with Payment due
+until collection is recorded. Rows sort by date and numeric queue token; this does
+not change the shared serving-order rules.
+
+The backend migration `20261031105135_facility_reception_checkout_and_transactions.sql`
+was deployed to the linked test environment on 31 October 2026 after rollback checks.
+The web source still needs its normal hosted deployment. No real-money checkout or
+external provider charge was performed during implementation; the browser tool
+stopped because it could not reliably determine the active Windows browser URL.
+
 ## Current implementation and deployment boundary
 
 Consultation billing has a deployed Razorpay test integration for Patient, Doctor and

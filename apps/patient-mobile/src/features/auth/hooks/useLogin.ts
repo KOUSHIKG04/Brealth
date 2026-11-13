@@ -1,11 +1,14 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useToastFeedback } from "@startup/mobile-ui";
 import { useState } from "react";
 import { router } from "expo-router";
 import {
   signInWithDevPassword,
   signUpWithDevPassword,
+  getAuthErrorMessage,
 } from "@startup/data-access";
 import { supabase } from "../../../services/supabase";
+import { googleLoginEnabled } from "../utils/loginConstants";
 
 export function useLogin() {
   const [mode, setMode] = useState<"dev" | "prod">("dev");
@@ -29,7 +32,7 @@ export function useLogin() {
       await signInWithDevPassword(supabase, email, password);
       router.replace("/setup");
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Could not sign in.");
+      setError(userErrorMessage(cause, "Could not sign in."));
     } finally {
       setBusy(false);
     }
@@ -59,11 +62,7 @@ export function useLogin() {
       if (session) router.replace("/setup");
       else setConfirmationPending(true);
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not create your account."
-      );
+      setError(userErrorMessage(cause, "Could not create your account."));
     } finally {
       setBusy(false);
     }
@@ -77,6 +76,7 @@ export function useLogin() {
   }
 
   async function continueWithGoogle() {
+    if (!googleLoginEnabled) return;
     if (!supabase) {
       setError("Supabase is not configured.");
       return;
@@ -88,11 +88,7 @@ export function useLogin() {
       });
       if (error) throw error;
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Google sign-in is not configured yet on this development project."
-      );
+      setError(getAuthErrorMessage(cause, "Could not sign in with Google."));
     }
   }
 

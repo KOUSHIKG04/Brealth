@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useDoctorProfileEditor } from "../hooks/useDoctorProfileEditor";
 import { PersonalAddressField } from "../components/PersonalAddressField";
 import { emptyPersonalAddress } from "../utils/personalAddressConstants";
@@ -44,7 +45,9 @@ export function EditProfileScreen() {
           <Skeleton theme="doctor" height={120} radius={12} />
         ) : null}
         {profile.error ? (
-          <Label style={ui.error}>{profile.error.message}</Label>
+          <Label style={ui.error}>
+            {userErrorMessage(profile.error, "Could not load your profile.")}
+          </Label>
         ) : null}
         {!profile.isLoading && !profile.error && !profile.data ? (
           <Label muted>Complete your doctor profile before editing it.</Label>

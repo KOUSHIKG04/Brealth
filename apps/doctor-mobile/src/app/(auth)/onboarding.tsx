@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { Button } from "@startup/mobile-ui";
 import { ModalSurface } from "@startup/mobile-ui";
 import { Input } from "@startup/mobile-ui";
@@ -198,7 +199,7 @@ export default function DoctorOnboarding() {
   );
 
   useEffect(() => {
-    if (!session?.user) return;
+    if (!session?.user.id) return;
     setEmail((current) => current || session.user.email || "");
     setPhone(
       (current) => current || contactPhoneForInput(session.user.phone || "")
@@ -550,11 +551,7 @@ export default function DoctorOnboarding() {
       await mobileSession.refresh();
       router.replace("/review-status");
     } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not submit your credentials."
-      );
+      setError(userErrorMessage(cause, "Could not submit your credentials."));
     } finally {
       setBusy(false);
     }

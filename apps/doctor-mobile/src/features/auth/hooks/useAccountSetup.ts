@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useToastFeedback } from "@startup/mobile-ui";
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
@@ -16,18 +17,14 @@ export function useAccountSetup() {
       })
       .catch((cause) => {
         if (active)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Could not load your account."
-          );
+          setError(userErrorMessage(cause, "Could not load your account."));
       });
     return () => {
       active = false;
     };
   }, []);
   useEffect(() => {
-    if (auth.loading || auth.error || !auth.session) return;
+    if (auth.loading || auth.error || !auth.session?.user.id) return;
     router.replace(
       auth.profile?.doctor?.status === "verified"
         ? "/(app)"

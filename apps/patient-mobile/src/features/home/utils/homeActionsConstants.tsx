@@ -5,7 +5,7 @@ export type { HomeAction } from "../types/home";
 import {
   House,
   MessageCircle,
-  Microscope,
+  Hospital,
   Stethoscope,
 } from "lucide-react-native";
 import type { IconLabelIconProps } from "@startup/mobile-ui";
@@ -36,10 +36,10 @@ export const homeActions: readonly HomeAction[] = [
     ),
   },
   {
-    key: "lab",
-    label: "Book\nLab Tests",
+    key: "hospital",
+    label: "Hospital\n& Beds",
     icon: ({ color, size }: IconLabelIconProps) => (
-      <Microscope color={color} size={size} strokeWidth={1.8} />
+      <Hospital color={color} size={size} strokeWidth={1.8} />
     ),
   },
 ];

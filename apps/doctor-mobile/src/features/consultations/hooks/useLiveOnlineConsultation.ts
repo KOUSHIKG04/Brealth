@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { LiveOnlineConsultationProps } from "../types/live-online-consultation";
 import { useEffect } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,9 +44,7 @@ export function useLiveOnlineConsultation({
         String(start.error.message).includes("Pay the consultation fee")
         ? "Awaiting patient payment. Ask the patient to pay in Appointment Details before starting."
         : "Could not start consultation. Check its payment, scheduled time and status."
-      : token.error instanceof Error
-        ? token.error.message
-        : "",
+      : userErrorMessage(token.error, ""),
   });
   useEffect(() => {
     if (!token.data) return;

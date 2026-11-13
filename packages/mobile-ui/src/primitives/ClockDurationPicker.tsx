@@ -200,7 +200,7 @@ export function ClockDurationPicker({
                         if (Math.hypot(x - tipX, y - tipY) < 36) return null;
                         return (
                           <SvgText
-                            key={index}
+                            key={tick}
                             x={x}
                             y={y}
                             textAnchor="middle"

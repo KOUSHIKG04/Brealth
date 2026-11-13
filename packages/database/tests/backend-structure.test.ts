@@ -32,8 +32,11 @@ describe("shared backend structure", () => {
     expect(fixtures.length).toBeGreaterThan(0);
     for (const name of fixtures) {
       const sql = readFileSync(join(smokeRoot, name), "utf8");
-      expect(sql).toMatch(/\bBEGIN\s*;/i);
-      expect(sql).toMatch(/\bROLLBACK\s*;/i);
+      const statements = sql.replace(/^--.*$/gm, "").trim();
+      expect(statements).toMatch(/^BEGIN\s*;/i);
+      expect(statements).toMatch(
+        /ROLLBACK\s*;(?:\s*SELECT\s+true\s+AS\s+\w+\s*;)?\s*$/i
+      );
     }
   });
 

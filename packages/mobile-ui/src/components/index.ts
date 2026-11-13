@@ -13,3 +13,7 @@ export {
   type NotificationDrawerProps,
   type NotificationItem,
 } from "./NotificationDrawer";
+
+export { ErrorFallback, type ErrorFallbackProps } from "./ErrorFallback";
+
+export { OfflineBanner, type OfflineBannerProps } from "./OfflineBanner";

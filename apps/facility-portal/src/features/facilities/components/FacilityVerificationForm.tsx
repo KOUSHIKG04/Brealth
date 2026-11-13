@@ -87,6 +87,27 @@ export function FacilityVerificationForm({
 
   return (
     <div className="space-y-5">
+      {facilities.length > 0 ? (
+        <div className="space-y-2">
+          <Label htmlFor="facility">Facility</Label>
+          <select
+            id="facility"
+            value={activeFacilityId}
+            onChange={(event) => {
+              setFacilityId(event.target.value);
+              setStatus(null);
+              setStatusLoading(true);
+            }}
+            className="border-input bg-background h-11 w-full rounded-lg border px-3 text-sm"
+          >
+            {facilities.map((facility) => (
+              <option key={facility.facility_id} value={facility.facility_id}>
+                {facility.facility_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
       {!facilities.length ? (
         <form
           onSubmit={register}
@@ -215,6 +236,26 @@ export function FacilityVerificationForm({
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-9 w-28" />
         </div>
+      ) : status?.status === "verified" ? (
+        <section className="bg-card space-y-3 rounded-xl border p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="font-semibold">Facility verified</h2>
+            <span className="bg-accent text-accent-foreground rounded-md px-2.5 py-1 text-sm font-medium">
+              Approved
+            </span>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            {
+              facilities.find(
+                (facility) => facility.facility_id === activeFacilityId
+              )?.facility_name
+            }{" "}
+            has completed company verification.
+          </p>
+          <Button variant="outline" onClick={checkStatus}>
+            Refresh status
+          </Button>
+        </section>
       ) : awaitingReview ? (
         <section className="bg-card rounded-xl border p-6">
           <h2 className="font-semibold">Awaiting company approval</h2>
@@ -231,25 +272,6 @@ export function FacilityVerificationForm({
           onSubmit={submit}
           className="bg-card space-y-5 rounded-xl border p-6"
         >
-          <div className="space-y-2">
-            <Label htmlFor="facility">Facility</Label>
-            <select
-              id="facility"
-              value={activeFacilityId}
-              onChange={(event) => {
-                setFacilityId(event.target.value);
-                setStatus(null);
-                setStatusLoading(true);
-              }}
-              className="bg-background h-10 w-full rounded-md border px-3 text-sm"
-            >
-              {facilities.map((facility) => (
-                <option key={facility.facility_id} value={facility.facility_id}>
-                  {facility.facility_name}
-                </option>
-              ))}
-            </select>
-          </div>
           <div className="space-y-2">
             <Label htmlFor="registration">Registration number</Label>
             <Input

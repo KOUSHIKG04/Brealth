@@ -1,5 +1,6 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
 import type { FormEvent } from "react";
 import { toast } from "@startup/web-ui/components/ui/toast";
 import {
@@ -17,6 +18,7 @@ import { unavailableServiceOptions as scopes } from "../utils/facilityScheduleEd
 
 export function useFacilityUnavailableTime({
   practiceId,
+  transition,
 }: FacilityUnavailableTimeProps) {
   const client = useQueryClient();
   const schedule = useQuery({
@@ -45,7 +47,8 @@ export function useFacilityUnavailableTime({
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [reason, setReason] = useState("");
-  const [pending, startTransition] = useTransition();
+  const localTransition = useTransition();
+  const [pending, startTransition] = transition ?? localTransition;
   const result = schedule.data as
     Awaited<ReturnType<typeof loadFacilityDoctorSchedule>> | undefined;
   const zone = result?.ok ? result.doctor.booking_timezone : null;
@@ -97,9 +100,7 @@ export function useFacilityUnavailableTime({
         toast.add({ title: "Unavailable time saved", type: "success" });
       });
     } catch (cause) {
-      fail(
-        cause instanceof Error ? cause.message : "Check the date and hours."
-      );
+      fail(userErrorMessage(cause, "Check the date and hours."));
     }
   }
   function removeUnavailableTime(item: {

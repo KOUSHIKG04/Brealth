@@ -6,6 +6,7 @@ import {
   type ProviderEntity,
   type ProviderRequest,
 } from "./razorpay.ts";
+import { logFailure, requestId } from "./log.ts";
 
 export type RpcClient = {
   rpc(
@@ -302,7 +303,17 @@ export async function processRefunds(
   }
 }
 
-export function paymentFailure(error: unknown) {
+export function paymentFailure(
+  error: unknown,
+  fn = "payment",
+  request?: Request
+) {
+  const status = error instanceof PaymentError ? error.status : 503;
+  if (status >= 500)
+    logFailure(fn, "payment-request", error, {
+      status,
+      request_id: request ? requestId(request) : undefined,
+    });
   return Response.json(
     {
       error:

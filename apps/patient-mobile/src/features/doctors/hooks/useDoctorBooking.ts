@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { router, useFocusEffect, type Href } from "expo-router";
 import * as Crypto from "expo-crypto";
@@ -437,8 +438,10 @@ export function useDoctorBooking({
           : message.includes("Slot is full") ||
               message.includes("Slot no longer available")
             ? "This slot is no longer available. Choose another time."
-            : message ||
-              "Could not request this appointment. Refresh the slots and try again.";
+            : userErrorMessage(
+                cause,
+                "Could not request this appointment. Refresh the slots and try again."
+              );
       showToast({ title: "Booking failed", message: feedback, type: "error" });
       if (message.includes("Reservation expired")) {
         setIdempotencyKey(Crypto.randomUUID());

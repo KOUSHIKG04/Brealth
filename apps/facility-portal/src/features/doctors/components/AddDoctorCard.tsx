@@ -35,7 +35,13 @@ export function AddDoctorCard({
   }, [error]);
 
   return (
-    <div className="border-border bg-card w-full max-w-120 rounded-lg border p-6 shadow-xs">
+    <div
+      className={
+        showOuterHeader
+          ? "border-border bg-card w-full max-w-120 rounded-lg border p-6 shadow-xs"
+          : "w-full"
+      }
+    >
       {showOuterHeader && (
         <div className="border-border mb-5 flex items-center justify-between border-b pb-4">
           <div className="flex items-center gap-2.5">
@@ -55,13 +61,23 @@ export function AddDoctorCard({
       )}
 
       {/* Inner Panel (Figma 939:19) */}
-      <div className="border-border bg-muted flex flex-col gap-4 rounded-lg border p-5">
-        <div className="flex items-center justify-between">
-          <h3 className="text-foreground text-sm font-bold">Add New Doctor</h3>
-          <span className="bg-muted text-primary rounded-md px-2 py-1 text-xs font-bold">
-            New Doctor
-          </span>
-        </div>
+      <div
+        className={
+          showOuterHeader
+            ? "border-border bg-muted flex flex-col gap-4 rounded-lg border p-5"
+            : "flex flex-col gap-4"
+        }
+      >
+        {showOuterHeader ? (
+          <div className="flex items-center justify-between">
+            <h3 className="text-foreground text-sm font-bold">
+              Add New Doctor
+            </h3>
+            <span className="bg-muted text-primary rounded-md px-2 py-1 text-xs font-bold">
+              New Doctor
+            </span>
+          </div>
+        ) : null}
 
         {isSubmitted ? (
           <div className="flex flex-col items-center justify-center gap-2 py-8 text-center">

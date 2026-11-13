@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useToastFeedback } from "@startup/mobile-ui";
 import { useState } from "react";
 import { router } from "expo-router";
@@ -24,9 +25,7 @@ export function usePhoneSignIn() {
       await sendPhoneOtp(supabase, number);
       router.push({ pathname: "/verify-otp", params: { phone: number } });
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not send the code."
-      );
+      setError(userErrorMessage(cause, "Could not send the code."));
     } finally {
       setBusy(false);
     }

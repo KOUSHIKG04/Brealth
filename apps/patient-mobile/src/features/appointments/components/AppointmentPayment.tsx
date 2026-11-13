@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useState } from "react";
 import { View } from "react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -263,17 +264,19 @@ export function AppointmentPayment({ item }: { item: ClinicAppointment }) {
         />
         {mutation.isError ? (
           <AppText accessibilityRole="alert">
-            {mutation.error instanceof Error
-              ? mutation.error.message
-              : "Could not update payment. Refresh and retry."}
+            {userErrorMessage(
+              mutation.error,
+              "Could not update payment. Refresh and retry."
+            )}
           </AppText>
         ) : null}
       </AppDialog>
       {mutation.isError && !kind ? (
         <AppText accessibilityRole="alert">
-          {mutation.error instanceof Error
-            ? mutation.error.message
-            : "Could not update payment. Refresh and retry."}
+          {userErrorMessage(
+            mutation.error,
+            "Could not update payment. Refresh and retry."
+          )}
         </AppText>
       ) : null}
       <Button

@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { emptyPersonalAddress } from "../utils/personalAddressConstants";
 import { type DoctorPersonalAddressInput } from "@startup/contracts";
 import { getMyDoctorPersonalAddress } from "@startup/data-access";
@@ -102,9 +103,7 @@ export function useDoctorProfileEditor() {
       else router.replace("/profile");
     },
     onError: (cause) =>
-      setError(
-        cause instanceof Error ? cause.message : "Could not save profile."
-      ),
+      setError(userErrorMessage(cause, "Could not save profile.")),
   });
   const submitQualification = useMutation({
     mutationFn: () =>
@@ -125,7 +124,7 @@ export function useDoctorProfileEditor() {
     onError: (cause) =>
       showToast({
         title: "Qualifications not submitted",
-        message: cause instanceof Error ? cause.message : "Please try again.",
+        message: userErrorMessage(cause, "Please try again."),
         type: "error",
       }),
   });

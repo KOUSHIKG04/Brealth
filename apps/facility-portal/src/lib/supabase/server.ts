@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { Database } from "@startup/data-access";
+import { createTimeoutFetch, type Database } from "@startup/data-access";
 import { getSupabaseConfig } from "./config";
 import { facilityPortalAuthCookie } from "./cookie";
 
@@ -13,6 +13,7 @@ export async function createClient() {
 
   return createServerClient<Database>(config.url, config.key, {
     cookieOptions: { name: facilityPortalAuthCookie },
+    global: { fetch: createTimeoutFetch() },
     cookies: {
       getAll() {
         return cookieStore.getAll();

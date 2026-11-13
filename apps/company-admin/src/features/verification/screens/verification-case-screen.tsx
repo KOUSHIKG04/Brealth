@@ -59,9 +59,14 @@ export default async function CaseDetail({ params }: CaseDetailProps) {
           <h2 className="font-semibold">Hospital / clinic association</h2>
           {facilityRequests.length ? (
             <ul className="mt-3 space-y-3 text-sm">
-              {facilityRequests.map((request, index) => (
+              {facilityRequests.map((request) => (
                 <li
-                  key={`${request.facility_name}-${index}`}
+                  key={JSON.stringify([
+                    request.facility_kind,
+                    request.facility_name,
+                    request.facility_address,
+                    request.initiated_by,
+                  ])}
                   className="rounded-lg border p-3"
                 >
                   <strong>{request.facility_name}</strong> ·{" "}
@@ -102,99 +107,20 @@ export default async function CaseDetail({ params }: CaseDetailProps) {
           )}
         </section>
       )}
-      <section className="space-y-3">
-        <div>
-          <h2 className="font-semibold">Documents</h2>
-          <p className="text-muted-foreground text-sm">
-            Open each file and record an individual decision.
-          </p>
-        </div>
-        {current.map((document) => (
-          <article key={document.id} className="bg-card rounded-xl border p-5">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <h3 className="font-semibold">
-                  {documentNames[document.kind] ??
-                    document.kind.replaceAll("_", " ")}
-                </h3>
-                <p className="text-muted-foreground text-xs">
-                  Version {document.version} · Submitted{" "}
-                  {formatDisplayDate(document.submitted_at, "Asia/Kolkata")}
-                </p>
-                {item.subject_type === "doctor" &&
-                document.kind === "medical_degree" ? (
-                  <p className="mt-2 text-sm">
-                    Claimed qualifications:{" "}
-                    <strong>
-                      {claimedQualification || "Not submitted yet"}
-                    </strong>
-                  </p>
-                ) : null}
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="bg-muted rounded-full px-2.5 py-1 text-xs capitalize">
-                  {document.status}
-                </span>
-                <a
-                  href={`/verification/${id}/document/${document.id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary text-sm font-medium underline-offset-4 hover:underline"
-                >
-                  View document
-                </a>
-              </div>
-            </div>
-            {document.rejection_reason && (
-              <p className="bg-destructive/10 text-destructive mt-3 rounded-md p-3 text-sm">
-                {document.rejection_reason}
-              </p>
-            )}
-            {document.status === "pending" && (
-              <DocumentActions
-                caseId={id}
-                documentId={document.id}
-                approvalLabel={
-                  document.kind === "medical_degree"
-                    ? "Approve degree and qualifications"
-                    : undefined
-                }
-                canApprove={
-                  document.kind !== "medical_degree" ||
-                  Boolean(claimedQualification)
-                }
-              />
-            )}
-          </article>
-        ))}
-        {!current.length && (
-          <p className="bg-card text-muted-foreground rounded-xl border p-8 text-center text-sm">
-            No documents have been submitted for this case.
-          </p>
-        )}
-      </section>
-      {item.status !== "verified" && (
-        <section className="bg-card rounded-xl border p-5">
-          <h2 className="font-semibold">Complete verification</h2>
-          <p className="text-muted-foreground mt-1 mb-4 text-sm">
-            Every required document and the doctor's claimed qualifications must
-            be reviewed before verification.
-          </p>
-          {allApproved ? (
-            <FinalizeAction caseId={id} subjectType={item.subject_type} />
-          ) : (
-            <p className="text-muted-foreground text-sm">
-              {item.subject_type === "doctor" && !claimedQualification
-                ? "Awaiting the doctor's qualifications."
-                : missingKinds.length
-                  ? `Awaiting ${missingKinds.map((kind) => documentNames[kind] ?? kind.replaceAll("_", " ")).join(", ")}.`
-                  : !qualificationApproved
-                    ? "Review the claimed qualifications against the degree certificate."
-                    : "Review all pending or rejected documents first."}
-            </p>
-          )}
-        </section>
-      )}
+      <VerificationDocuments
+        current={current}
+        item={item}
+        id={id}
+        claimedQualification={claimedQualification}
+      />
+      <VerificationCompletion
+        item={item}
+        allApproved={allApproved}
+        id={id}
+        claimedQualification={claimedQualification}
+        missingKinds={missingKinds}
+        qualificationApproved={qualificationApproved}
+      />
       <section className="bg-card rounded-xl border p-5">
         <h2 className="font-semibold">Verification history</h2>
         <ol className="mt-4 divide-y">
@@ -224,5 +150,130 @@ export default async function CaseDetail({ params }: CaseDetailProps) {
         )}
       </section>
     </div>
+  );
+}
+
+type VerificationCase = Awaited<ReturnType<typeof loadVerificationCase>>;
+
+function VerificationDocuments({
+  current,
+  item,
+  id,
+  claimedQualification,
+}: Pick<VerificationCase, "current" | "item" | "id" | "claimedQualification">) {
+  return (
+    <section className="space-y-3">
+      <div>
+        <h2 className="font-semibold">Documents</h2>
+        <p className="text-muted-foreground text-sm">
+          Open each file and record an individual decision.
+        </p>
+      </div>
+      {current.map((document) => (
+        <article key={document.id} className="bg-card rounded-xl border p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h3 className="font-semibold">
+                {documentNames[document.kind] ??
+                  document.kind.replaceAll("_", " ")}
+              </h3>
+              <p className="text-muted-foreground text-xs">
+                Version {document.version} · Submitted{" "}
+                {formatDisplayDate(document.submitted_at, "Asia/Kolkata")}
+              </p>
+              {item.subject_type === "doctor" &&
+              document.kind === "medical_degree" ? (
+                <p className="mt-2 text-sm">
+                  Claimed qualifications:{" "}
+                  <strong>{claimedQualification || "Not submitted yet"}</strong>
+                </p>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="bg-muted rounded-full px-2.5 py-1 text-xs capitalize">
+                {document.status}
+              </span>
+              <a
+                href={`/verification/${id}/document/${document.id}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary text-sm font-medium underline-offset-4 hover:underline"
+              >
+                View document
+              </a>
+            </div>
+          </div>
+          {document.rejection_reason && (
+            <p className="bg-destructive/10 text-destructive mt-3 rounded-md p-3 text-sm">
+              {document.rejection_reason}
+            </p>
+          )}
+          {document.status === "pending" && (
+            <DocumentActions
+              caseId={id}
+              documentId={document.id}
+              approvalLabel={
+                document.kind === "medical_degree"
+                  ? "Approve degree and qualifications"
+                  : undefined
+              }
+              canApprove={
+                document.kind !== "medical_degree" ||
+                Boolean(claimedQualification)
+              }
+            />
+          )}
+        </article>
+      ))}
+      {!current.length && (
+        <p className="bg-card text-muted-foreground rounded-xl border p-8 text-center text-sm">
+          No documents have been submitted for this case.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function VerificationCompletion({
+  item,
+  allApproved,
+  id,
+  claimedQualification,
+  missingKinds,
+  qualificationApproved,
+}: Pick<
+  VerificationCase,
+  | "item"
+  | "allApproved"
+  | "id"
+  | "claimedQualification"
+  | "missingKinds"
+  | "qualificationApproved"
+>) {
+  return (
+    <>
+      {item.status !== "verified" && (
+        <section className="bg-card rounded-xl border p-5">
+          <h2 className="font-semibold">Complete verification</h2>
+          <p className="text-muted-foreground mt-1 mb-4 text-sm">
+            Every required document and the doctor&apos;s claimed qualifications
+            must be reviewed before verification.
+          </p>
+          {allApproved ? (
+            <FinalizeAction caseId={id} subjectType={item.subject_type} />
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              {item.subject_type === "doctor" && !claimedQualification
+                ? "Awaiting the doctor's qualifications."
+                : missingKinds.length
+                  ? `Awaiting ${missingKinds.map((kind) => documentNames[kind] ?? kind.replaceAll("_", " ")).join(", ")}.`
+                  : !qualificationApproved
+                    ? "Review the claimed qualifications against the degree certificate."
+                    : "Review all pending or rejected documents first."}
+            </p>
+          )}
+        </section>
+      )}
+    </>
   );
 }

@@ -85,6 +85,20 @@ export function AppointmentDetailScreen() {
                 {item.ticket_number ? ` · #${item.ticket_number}` : ""}
               </Label>
             ) : null}
+            {item.clinic_queue ? (
+              <>
+                <Label muted>
+                  {item.clinic_queue.late_review_required
+                    ? "Late arrival: review before admitting to the next available opening."
+                    : `${item.ahead_count} ready patients ahead · Serving ${item.clinic_queue.currently_serving ?? "—"}`}
+                </Label>
+                <Label muted>
+                  {item.clinic_queue.estimated_start
+                    ? `Estimated consultation: ${new Date(item.clinic_queue.estimated_start).toLocaleTimeString("en-IN", { timeZone: item.timezone, hour: "numeric", minute: "2-digit" })}`
+                    : "Booked time and token remain reserved. Actual calling order may change."}
+                </Label>
+              </>
+            ) : null}
             {item.reason ? <Label muted>Reason: {item.reason}</Label> : null}
             {item.home_visit_details ? (
               <View>
@@ -102,8 +116,7 @@ export function AppointmentDetailScreen() {
             ) : null}
             {(item.status === "pending" &&
               !item.confirmation_payment_pending) ||
-            (!item.can_consult &&
-              ["waiting", "called"].includes(item.queue_state ?? "")) ? (
+            ["waiting", "called"].includes(item.queue_state ?? "") ? (
               <Input
                 label={
                   item.status === "pending"
@@ -200,13 +213,15 @@ export function AppointmentDetailScreen() {
                 }
                 theme="doctor"
                 label="Start consultation"
-                disabled={transition.isPending}
+                disabled={
+                  transition.isPending ||
+                  (item.clinic_queue != null && !item.clinic_queue.can_call)
+                }
                 onPress={() => act(item, "start")}
               />
             ) : null}
             {item.status === "confirmed" &&
-            ["waiting", "called"].includes(item.queue_state ?? "") &&
-            !item.can_consult ? (
+            ["waiting", "called"].includes(item.queue_state ?? "") ? (
               <Button
                 loading={
                   transition.isPending &&
@@ -229,7 +244,11 @@ export function AppointmentDetailScreen() {
                 }
                 theme="doctor"
                 variant="outline"
-                label="Return to queue"
+                label={
+                  item.clinic_queue?.late_review_required
+                    ? "Admit to next available opening"
+                    : "Return to queue"
+                }
                 disabled={transition.isPending}
                 onPress={() => act(item, "resume")}
               />

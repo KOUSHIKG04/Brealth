@@ -49,6 +49,8 @@ export async function signOut() {
 }
 
 export async function logout(_previous: LoginState): Promise<LoginState> {
+  void _previous;
+
   try {
     const client = await createClient();
     const { error } = await client.auth.signOut({ scope: "local" });

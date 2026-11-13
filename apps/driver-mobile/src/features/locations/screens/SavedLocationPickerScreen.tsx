@@ -1,3 +1,4 @@
+import { uniqueMapAttributions, mapAttributionKey } from "@startup/contracts";
 import { useSavedLocationPicker } from "../hooks/useSavedLocationPicker";
 import { StatusBar } from "expo-status-bar";
 
@@ -28,7 +29,7 @@ export default function PickLocationScreen() {
     onMapLoaded,
     chooseSearchResult,
     searchAddress,
-    useDeviceLocation,
+    locateDevice,
     onCameraMove,
     onMapClick,
     confirm,
@@ -129,11 +130,9 @@ export default function PickLocationScreen() {
                 </Pressable>
               ))}
               <Text style={styles.googleAttribution}>Google Maps</Text>
-              {searchResults
-                .flatMap((p) => p.attributions)
-                .map((a, i) => (
+              {uniqueMapAttributions(searchResults.flatMap((p) => p.attributions)).map((a) => (
                   <Text
-                    key={`${a.provider}-${i}`}
+                    key={mapAttributionKey(a)}
                     style={styles.googleAttribution}
                   >
                     {a.provider}
@@ -155,7 +154,7 @@ export default function PickLocationScreen() {
             loading={locating}
             disabled={locating || searching}
             leftIcon={<LocateFixed size={19} color={colors.driver.primary} />}
-            onPress={() => void useDeviceLocation()}
+            onPress={() => void locateDevice()}
           />
           {point ? (
             <View style={styles.place}>

@@ -3,6 +3,14 @@ import { uuidSchema } from "./validation";
 import type { ClinicAppointment } from "./clinic";
 
 export const appointmentRecoverySchema = z.object({
+  schedule_change: z
+    .object({
+      reason: z.string(),
+      requested_at: z.string(),
+      pending: z.boolean(),
+    })
+    .nullable()
+    .optional(),
   outcome: z.enum(["rescheduled", "doctor_unavailable"]).nullable(),
   rescheduled_from_id: uuidSchema.nullable(),
   rescheduled_to_id: uuidSchema.nullable(),
@@ -31,6 +39,7 @@ export const recoveryPolicySchema = z
     practiceId: uuidSchema,
     expectedVersion: z.number().int().positive().safe(),
     onlineGraceMinutes: z.number().int().min(0).max(180),
+    clinicGraceMinutes: z.number().int().min(0).max(180).default(10),
     rescheduleCutoffMinutes: z.number().int().min(0).max(10080),
     maxSelfReschedules: z.number().int().min(0).max(10),
   })
@@ -144,25 +153,31 @@ export function appointmentRecoveryView(
   const inProgress = item.status === "in_consultation";
   const replaced = r?.outcome === "rescheduled";
   const doctorUnavailable = r?.outcome === "doctor_unavailable";
-  const needsReview = item.status === "confirmed" && passed;
-  const status = replaced
-    ? "Rescheduled"
-    : doctorUnavailable
-      ? "Doctor unavailable"
-      : expired
-        ? "Request expired"
-        : item.status === "no_show"
-          ? "Missed appointment"
-          : inProgress
-            ? "Consultation in progress"
-            : item.status === "confirmed" && checkedIn
-              ? "Waiting for doctor"
-              : needsReview
-                ? "Appointment time passed"
-                : item.status === "confirmed"
-                  ? "Confirmed"
-                  : item.status.charAt(0).toUpperCase() +
-                    item.status.slice(1).replaceAll("_", " ");
+  const doctorRequested = r?.schedule_change?.pending === true;
+  const lateArrival = item.clinic_queue?.late_review_required === true;
+  const needsReview = item.status === "confirmed" && (passed || lateArrival);
+  const status = doctorRequested
+    ? "Rescheduling requested"
+    : replaced
+      ? "Rescheduled"
+      : doctorUnavailable
+        ? "Doctor unavailable"
+        : expired
+          ? "Request expired"
+          : item.status === "no_show"
+            ? "Missed appointment"
+            : inProgress
+              ? "Consultation in progress"
+              : lateArrival
+                ? "Arrival needs review"
+                : item.status === "confirmed" && checkedIn
+                  ? "Waiting for doctor"
+                  : needsReview
+                    ? "Appointment time passed"
+                    : item.status === "confirmed"
+                      ? "Confirmed"
+                      : item.status.charAt(0).toUpperCase() +
+                        item.status.slice(1).replaceAll("_", " ");
 
   const terminal = [
     "completed",
@@ -176,6 +191,7 @@ export function appointmentRecoveryView(
     item.status !== "completed" &&
     (!terminal || doctorUnavailable || expired) &&
     (r?.can_manage ||
+      doctorRequested ||
       doctorUnavailable ||
       (r?.reschedule_count ?? 0) < (r?.max_self_reschedules ?? 1));
   const pendingRequest = r?.request?.status === "pending";
@@ -186,18 +202,24 @@ export function appointmentRecoveryView(
       : item.status === "no_show"
         ? "Patient no-show"
         : status,
-    message:
-      needsReview && !checkedIn
-        ? "Attendance awaiting confirmation."
-        : checkedIn && !inProgress
-          ? "You are checked in. Keep your place in the queue."
-          : expired
-            ? "This request was not accepted in time. Choose a new appointment."
-            : "",
+    message: doctorRequested
+      ? r?.can_manage
+        ? `Rescheduling requested. Reason sent to the patient: ${r.schedule_change!.reason} This reservation keeps its time and payment; conflicting new slots remain unavailable until the booking is resolved.`
+        : `Your doctor has requested a new appointment time. Reason: ${r!.schedule_change!.reason} Choose another time or contact the clinic. Your booking and payment stay in place until you make a separate decision.`
+      : lateArrival
+        ? "Reception will help you find the next available opening."
+        : needsReview && !checkedIn
+          ? "Attendance awaiting confirmation."
+          : checkedIn && !inProgress
+            ? "You are checked in. Keep your place in the queue."
+            : expired
+              ? "This request was not accepted in time. Choose a new appointment."
+              : "",
     needsReview,
     canReschedule: Boolean(canReschedule && !pendingRequest),
     requiresApproval:
       !r?.can_manage &&
+      !doctorRequested &&
       !doctorUnavailable &&
       (item.status === "no_show" ||
         (item.status === "confirmed" &&
@@ -221,7 +243,7 @@ export function appointmentRecoveryView(
           new Date(now)
         ),
     canShowQueue: item.visit_mode === "clinic" && (checkedIn || inProgress),
-    canMarkNoShow: Boolean(r?.can_manage && needsReview),
+    canMarkNoShow: Boolean(r?.can_manage && needsReview && passed),
     canMarkDoctorUnavailable: Boolean(
       r?.can_manage && item.status === "confirmed"
     ),

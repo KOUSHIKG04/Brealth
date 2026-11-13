@@ -1,4 +1,4 @@
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.0";
 import {
   PaymentError,
   providerClient,
@@ -191,7 +191,7 @@ export default {
         { headers: { "cache-control": "no-store" } }
       );
     } catch (error) {
-      return paymentFailure(error);
+      return paymentFailure(error, "process-payment", request);
     }
   }),
 };

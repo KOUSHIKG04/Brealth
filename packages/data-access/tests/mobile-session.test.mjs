@@ -16,6 +16,17 @@ const deferred = () => {
 };
 
 function fixture() {
+  const messages = {};
+  vm.runInNewContext(
+    ts.transpileModule(
+      readFileSync(
+        new URL("../src/auth/errorMessages.ts", import.meta.url),
+        "utf8"
+      ),
+      { compilerOptions: { module: ts.ModuleKind.CommonJS } }
+    ).outputText,
+    { exports: messages }
+  );
   const exports = {};
   const source = readFileSync(
     new URL("../src/auth/mobileSession.ts", import.meta.url),
@@ -32,6 +43,7 @@ function fixture() {
     require: (name) => {
       if (name === "./operations")
         return { getMyProfile: (client) => client.fetchProfile() };
+      if (name === "./errorMessages") return messages;
       throw new Error(name);
     },
     Error,
@@ -84,7 +96,7 @@ test("retry never exposes a settled missing-profile state before an existing pro
   assert.equal(f.store.getSnapshot().loading, true);
   f.requests[0].reject(new Error("Network unavailable"));
   await tick();
-  assert.equal(f.store.getSnapshot().error, "Network unavailable");
+  assert.equal(f.store.getSnapshot().error, "Could not load your profile.");
   const retry = f.store.refresh();
   await tick();
   const during = f.store.getSnapshot();
@@ -147,7 +159,7 @@ test("a background failure and retry preserve an existing profile without a load
   f.requests[1].reject(new Error("Temporary network failure"));
   await refresh;
   assert.equal(f.store.getSnapshot().profile.doctor.status, "verified");
-  assert.equal(f.store.getSnapshot().error, "Temporary network failure");
+  assert.equal(f.store.getSnapshot().error, "Could not load your profile.");
   const start = f.snapshots.length;
   const retry = f.store.refresh();
   await tick();
@@ -186,5 +198,5 @@ test("a session retrieval failure does not sign the existing account out", async
   await f.store.refresh();
   assert.equal(f.store.getSnapshot().session.user.id, "patient");
   assert.equal(f.store.getSnapshot().profile.patient_id, "existing");
-  assert.equal(f.store.getSnapshot().error, "Could not read stored session");
+  assert.equal(f.store.getSnapshot().error, "Could not restore your session.");
 });

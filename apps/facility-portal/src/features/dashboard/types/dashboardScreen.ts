@@ -6,6 +6,7 @@ import type {
 
 export type DashboardScreenProps = {
   doctorAction: ReactNode;
+  appointmentAction: ReactNode;
   doctorRequests?: ReactNode;
   inventory: BedInventoryProjection[];
   appointments: ClinicAppointment[];

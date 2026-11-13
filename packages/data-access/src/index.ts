@@ -3,6 +3,10 @@ export {
   type AppSupabaseClient,
 } from "./client/createSupabaseClient";
 
+export { createTimeoutFetch, requestTimeouts } from "./client/timeoutFetch";
+
+export * from "./monitoring/errorReporting";
+
 export { listPublicPractices } from "./doctors/queries";
 
 export {
@@ -20,6 +24,8 @@ export * from "./doctors/onboarding";
 export * from "./doctors/reviews";
 
 export * from "./auth/operations";
+
+export * from "./auth/errorMessages";
 
 export * from "./patients/profiles";
 

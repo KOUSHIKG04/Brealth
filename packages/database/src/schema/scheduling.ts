@@ -315,7 +315,9 @@ export const session = clinzo
       }).notNull(),
     },
     (table) => [
-      uniqueIndex("session_uq_1").on(table.doctor_facility_id, table.starts_at),
+      uniqueIndex("session_uq_1")
+        .on(table.doctor_facility_id, table.starts_at)
+        .where(sql`${table.state} <> 'cancelled'`),
       index("session_doctor_facility_id_idx").on(table.doctor_facility_id),
       index("session_doctor_id_idx").on(table.doctor_id),
       index("session_booking_day_id_idx").on(table.booking_day_id),
@@ -418,6 +420,7 @@ export const appointmentWindow = clinzo
         mode: "date",
       }).notNull(),
       hard_capacity: integer("hard_capacity").notNull(),
+      queue_number_base: integer("queue_number_base"),
       state: text("state", { enum: ["open", "blocked"] }).notNull(),
     },
     (table) => [
@@ -432,6 +435,10 @@ export const appointmentWindow = clinzo
         sql.raw("starts_at < ends_at AND hard_capacity > 0")
       ),
       check("appointment_window_ck_2", sql.raw("row_version > 0")),
+      check(
+        "appointment_window_queue_number_base_check",
+        sql.raw("queue_number_base > 0")
+      ),
       check(
         "appointment_window_ck_3",
         sql.raw("\"state\" IN ('open', 'blocked')")

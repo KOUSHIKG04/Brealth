@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { filters } from "../utils/unavailableTimeConstants";
 import type { Scope } from "../types/unavailable-time-manager";
 import { useCallback, useState } from "react";
@@ -122,7 +123,7 @@ export function useUnavailableTimeManager() {
     } catch (cause) {
       showToast({
         title: "Could not add unavailable time",
-        message: cause instanceof Error ? cause.message : "Try again.",
+        message: userErrorMessage(cause, "Try again."),
         type: "error",
       });
     } finally {
@@ -141,8 +142,7 @@ export function useUnavailableTimeManager() {
     } catch (cause) {
       showToast({
         title: "Could not remove unavailable time",
-        message:
-          cause instanceof Error ? cause.message : "Refresh and try again.",
+        message: userErrorMessage(cause, "Refresh and try again."),
         type: "error",
       });
     } finally {

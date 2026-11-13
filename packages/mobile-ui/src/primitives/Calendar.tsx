@@ -35,7 +35,10 @@ export function Calendar({
     if (selected)
       setMonth(new Date(selected.getFullYear(), selected.getMonth(), 1, 12));
   }, [value]);
-  const cells = calendarMonthDays(month);
+  const cells = calendarMonthDays(month).map((day, offset) => ({
+    day,
+    dateKey: formatCalendarDay(new Date(month.getFullYear(), month.getMonth(), 1 - month.getDay() + offset, 12)),
+  }));
   const previousMonthLastDay = formatCalendarDay(
     new Date(month.getFullYear(), month.getMonth(), 0, 12)
   );
@@ -98,13 +101,13 @@ export function Calendar({
             </Text>
           </View>
         ))}
-        {cells.map((day, index) => {
+        {cells.map(({ day, dateKey }) => {
           const disabled =
             !day ||
             Boolean((minDate && day < minDate) || (maxDate && day > maxDate));
           const selected = day === value;
           return (
-            <View key={`${day ?? "blank"}-${index}`} style={styles.cell}>
+            <View key={dateKey} style={styles.cell}>
               {day ? (
                 <Pressable
                   accessibilityRole="button"

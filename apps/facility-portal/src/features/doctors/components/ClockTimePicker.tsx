@@ -70,7 +70,7 @@ export function ClockTimePicker({
         disabled={disabled}
         aria-label={`${label}, ${display(value)}`}
         aria-haspopup="dialog"
-        className="flex min-h-12 w-full items-center justify-between gap-2 rounded-lg border border-[#e2e8f0] bg-white px-3 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#008577] disabled:opacity-50"
+        className="border-input bg-background flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border px-3 text-left text-sm tabular-nums focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#008577] disabled:opacity-50"
         onClick={() => {
           const [h, m] = (value || "09:00").split(":").map(Number);
           setHour(h % 12 || 12);
@@ -95,7 +95,7 @@ export function ClockTimePicker({
               aria-label="Select hour"
               aria-pressed={part === "hour"}
               onClick={() => setPart("hour")}
-              className={`${choice} min-w-16 py-2 text-4xl font-normal ${part === "hour" ? "bg-[#e6f5f4] text-[#008577]" : "text-[#0f172a]"}`}
+              className={`${choice} min-w-16 py-2 text-3xl font-medium tabular-nums ${part === "hour" ? "bg-[#e6f5f4] text-[#008577]" : "text-[#0f172a]"}`}
             >
               {pad(hour)}
             </button>
@@ -105,7 +105,7 @@ export function ClockTimePicker({
               aria-label="Select minute"
               aria-pressed={part === "minute"}
               onClick={() => setPart("minute")}
-              className={`${choice} min-w-16 py-2 text-4xl font-normal ${part === "minute" ? "bg-[#e6f5f4] text-[#008577]" : "text-[#0f172a]"}`}
+              className={`${choice} min-w-16 py-2 text-3xl font-medium tabular-nums ${part === "minute" ? "bg-[#e6f5f4] text-[#008577]" : "text-[#0f172a]"}`}
             >
               {pad(minute)}
             </button>

@@ -189,17 +189,6 @@ export default function LoginScreen() {
             <View style={styles.choices}>
               <OnboardingButton
                 variant="outline"
-                label="Continue with Google"
-                onPress={() =>
-                  setError(
-                    devPasswordLoginEnabled
-                      ? "Google sign-in is not configured yet. Use Dev (Email) for testing."
-                      : "Google sign-in is not configured yet."
-                  )
-                }
-              />
-              <OnboardingButton
-                variant="outline"
                 label="Continue with Phone"
                 onPress={() => router.push("/phone")}
               />

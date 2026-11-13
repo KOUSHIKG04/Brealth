@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -226,9 +227,10 @@ export function AppointmentPaymentPanel({ item }: { item: ClinicAppointment }) {
       ))}
       {mutation.isError ? (
         <Label>
-          {mutation.error instanceof Error
-            ? mutation.error.message
-            : "Could not update payment. Refresh and retry."}
+          {userErrorMessage(
+            mutation.error,
+            "Could not update payment. Refresh and retry."
+          )}
         </Label>
       ) : null}
       <Button

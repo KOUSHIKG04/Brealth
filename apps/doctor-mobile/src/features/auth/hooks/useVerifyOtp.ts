@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useToastFeedback } from "@startup/mobile-ui";
 import { useEffect, useRef, useState } from "react";
 import { TextInput } from "react-native";
@@ -27,9 +28,7 @@ export function useVerifyOtp() {
       await verifyPhoneOtp(supabase, phone, value);
       router.replace("/setup");
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Incorrect code. Try again."
-      );
+      setError(userErrorMessage(cause, "Incorrect code. Try again."));
       setCode("");
     } finally {
       setBusy(false);
@@ -43,9 +42,7 @@ export function useVerifyOtp() {
       setSeconds(30);
       setError("");
     } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not resend the code."
-      );
+      setError(userErrorMessage(cause, "Could not resend the code."));
     } finally {
       setResending(false);
     }

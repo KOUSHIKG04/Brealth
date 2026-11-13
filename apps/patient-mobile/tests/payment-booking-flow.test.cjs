@@ -10,6 +10,10 @@ const vm = require("node:vm");
 
 const ts = require("typescript");
 
+const {
+  withErrorDoubles,
+} = require("../../../packages/contracts/tests/support/errorTestDoubles.cjs");
+
 function load(file, mocks) {
   const exports = {};
   vm.runInNewContext(
@@ -29,6 +33,8 @@ function load(file, mocks) {
       Number,
       Map,
       require(name) {
+        const shared = withErrorDoubles(name, mocks);
+        if (shared) return shared;
         if (name in mocks) return mocks[name];
         throw new Error(`Unmocked import: ${name}`);
       },

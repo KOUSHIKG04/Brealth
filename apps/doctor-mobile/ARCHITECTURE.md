@@ -1,5 +1,68 @@
 # Doctor mobile architecture
 
+## Authentication hardening
+
+Password and OTP operations use the shared data-access Auth error mapping; profile
+and session restoration use the same safe, code-based messages. The unfinished
+Google sign-in button is hidden until its provider and native callback flow are
+implemented. Phone sign-in and the existing development-password gate are retained.
+These local changes do not verify hosted Auth settings or native-device behavior.
+
+## Smooth schedule updates
+
+`useScheduleEditor` keeps the saved copy each draft started from. When a newer
+copy arrives (live update, focus refetch or a `PT409`), the draft is merged with
+the shared `rebaseScheduleSettings`: settings changed only elsewhere are adopted,
+the doctor's edits are kept, and publishing retries once. Only a setting changed
+in both places stops the publish, keeping the doctor's value with a named notice.
+Drafts are never discarded on a version conflict.
+
+Conflict-free saves publish through `publishPreviewedDoctorSchedule` with the
+preview token, so an overlap published in between reopens the conflict dialog
+(`PT410`) instead of failing. `ScheduleBusyBlocks` lists other published
+services/practices and flags overlaps while editing; the dialog offers the
+preview's suggested start date. A ref guards against double submission. These
+are local source changes; the backing migration is not deployed and native
+device behavior is unverified.
+
+## Schedule conflict review
+
+Schedule saving previews conflicts through shared data-access before publishing.
+The feature-owned conflict dialog shows the practice, service, days, travel buffer,
+effective dates and remaining complete appointment blocks. Explicit confirmation
+uses a preview token; the backend rechecks versions, permissions and reservations
+under the doctor/session locks and updates both schedules atomically. Cancelling
+keeps the draft. Affected generated sessions with active reservations/payment holds
+or sessions already started require manual review or a later effective date.
+
+Schedule review notices persist in preferences and appear in Manage Schedule and
+the editor with links to the affected practice/service. Existing schedule signals
+invalidate their query. Publishing that service clears its notice. Other-service
+preferences are retained as an editable draft; remaining published rules are shown
+in the conflict preview and may differ by weekday. Both schedule-conflict and hybrid queue migrations were applied to the test
+project on 30 October 2026, with hosted rollback workflow checks passing. Native
+interaction checks remain separate.
+
+Manage Schedule uses clock selectors for working times, consultation durations,
+travel buffer and attendance grace. The feature-owned `RescheduleCutoffPicker`
+selects days, hours and minutes while retaining the full 0–10080 minute range.
+Booking counts and fees remain numeric controls. Native picker verification is
+separate from focused component checks.
+
+Schedule regression checks share `tests/schedule-duration.test.cjs`, covering
+duration/date handling, service-specific publishing and fees with one loader.
+
+## Hybrid clinic queue
+
+Appointment review consumes the shared `clinic_queue` projection for ready-patient
+counts, estimates and whether this patient can be called. Existing call/start
+coordination retains optimistic versions; the backend remains authoritative.
+Doctors can hold a waiting/called patient with a reason and explicitly admit a
+late arrival to the next available opening. Schedule recovery settings include
+clinic arrival grace separately from video attendance grace. Appointment list and
+review polling runs only while focused. Test-database migration and rollback checks passed on 30 October 2026; device
+checks remain pending. Issued tokens in existing sessions are retained.
+
 Home-visit appointment details display the server's booked address, instructions
 and optional receiver contact. This snapshot is shared with Patient and Facility
 views; saved-address edits do not redirect an existing visit. Payment reservations
@@ -272,3 +335,12 @@ ambulance worker alias fix. Marketplace/Route activation remains disabled/test,
 with commission rates unconfigured. Provider/security mocks and rollback SQL checks cover
 rules, not actual Route transfers, native layout or cross-device behavior. See
 the [payment guide](../../APPOINTMENT_RECOVERY_PAYMENTS.md) for setup and limits.
+
+## Schedule changes with patient rescheduling
+
+ScheduleConflictDialog uses the existing keyboard-safe AppDialog for trim/pause
+confirmation, affected bookings and a required patient-facing reason. The existing
+schedule hook forwards the reviewed token, strategy and reason. Persistent waiting
+notices open Appointments; paused-service notices open the service's schedule.
+Appointment recovery displays the sent reason and uses the shared backend safety
+rules. Test migrations are deployed; native UI/keyboard acceptance remains unverified.

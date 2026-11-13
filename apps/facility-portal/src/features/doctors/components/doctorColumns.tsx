@@ -1,7 +1,8 @@
 "use client";
 
-import { type ColumnDef } from "@tanstack/react-table";
-import { MoreVertical, Phone, Stethoscope, Eye, Edit } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
+import { MoreVertical, Eye, Edit } from "lucide-react";
+import { FacilityDoctorScheduleDrawer } from "./FacilityDoctorScheduleDrawer";
 import {
   Avatar,
   AvatarFallback,
@@ -36,10 +37,11 @@ export const doctorColumns: ColumnDef<DoctorRecord>[] = [
             <p className="text-foreground truncate leading-tight font-semibold">
               {doctor.name}
             </p>
-            <p className="text-muted-foreground mt-0.5 flex items-center gap-1 truncate text-xs">
-              <Phone className="size-2.5 shrink-0" />
-              {doctor.phone}
-            </p>
+            {doctor.phone ? (
+              <p className="text-muted-foreground mt-0.5 truncate text-xs">
+                {doctor.phone}
+              </p>
+            ) : null}
           </div>
         </div>
       );
@@ -50,7 +52,6 @@ export const doctorColumns: ColumnDef<DoctorRecord>[] = [
     header: "Specialization",
     cell: ({ row }) => (
       <div className="text-foreground flex items-center gap-1.5 font-medium">
-        <Stethoscope className="text-primary/60 size-3.5 shrink-0" />
         <span>{row.original.specialization}</span>
       </div>
     ),
@@ -60,7 +61,7 @@ export const doctorColumns: ColumnDef<DoctorRecord>[] = [
     header: "Clinzo ID",
     cell: ({ row }) => (
       <span className="bg-muted text-primary rounded px-2 py-0.5 font-mono text-xs font-semibold">
-        {row.original.clinzoId}
+        {row.original.clinzoId.split("-").at(-1)}
       </span>
     ),
   },
@@ -90,6 +91,27 @@ export const doctorColumns: ColumnDef<DoctorRecord>[] = [
           <span className={`size-1.5 rounded-full ${dotColor}`} />
           {status}
         </span>
+      );
+    },
+  },
+  {
+    id: "schedule",
+    header: "Manage schedule",
+    cell: ({ row }) => {
+      const doctor = row.original;
+      return (
+        <div className="whitespace-nowrap">
+          {doctor.verified ? (
+            <FacilityDoctorScheduleDrawer
+              practiceId={doctor.practiceId}
+              doctorName={doctor.name}
+            />
+          ) : (
+            <p className="text-muted-foreground text-xs">
+              Schedule available after verification
+            </p>
+          )}
+        </div>
       );
     },
   },

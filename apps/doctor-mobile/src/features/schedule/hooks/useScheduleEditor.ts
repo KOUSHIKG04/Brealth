@@ -7,12 +7,25 @@ import {
   getMyDoctorProfile,
   listMyDoctorFacilityRequests,
   listMyPractices,
+  listMyScheduleBusyBlocks,
   publishMyDoctorSchedule,
+  publishPreviewedDoctorSchedule,
+  previewMyDoctorSchedule,
   saveMySchedulePreferences,
 } from "@startup/data-access";
-import type {
-  ClinicPractice,
-  DoctorSchedulePreferences,
+import {
+  preferencesToScheduleSettings,
+  rebaseScheduleSettings,
+  scheduleBusyOverlaps,
+  scheduleErrorCode,
+  scheduleErrorCodes,
+  scheduleErrorMessage,
+  scheduleSettingNames,
+  type ClinicPractice,
+  type DoctorScheduleSettings,
+  type DoctorSchedulePreferences,
+  type ScheduleChangePreview,
+  type ScheduleConflictDecision,
 } from "@startup/contracts";
 import { supabase, useMobileSession } from "../../../services/supabase";
 import {
@@ -22,6 +35,7 @@ import {
 import { selectedPracticeQueryKey } from "../../practices/utils/practiceQueryKeys";
 import { formatDisplayDate } from "@startup/contracts";
 import {
+  draftFromSettings,
   previewTimeBlock,
   scheduleError,
   suggestConsultationDuration,
@@ -104,52 +118,16 @@ export function useScheduleEditor({
   const dirty = useRef(false);
   const draftVersion = useRef(0);
   const draftPractice = useRef<string | null>(null);
+  // Saved copy the draft started from; the base of the three-way merge.
+  const baseSettings = useRef<DoctorScheduleSettings | null>(null);
   const applySchedule = useCallback(
     (p: DoctorSchedulePreferences) => {
+      const settings = preferencesToScheduleSettings(p);
       dirty.current = false;
       draftVersion.current = Number(p.row_version);
       draftPractice.current = p.practice_id;
-      setDraft({
-        timeBlocks:
-          mode === "clinic"
-            ? p.clinic_time_blocks
-            : mode === "online"
-              ? p.online_time_blocks
-              : p.home_time_blocks,
-        homeTravelBuffer: p.home_travel_buffer_minutes ?? 0,
-        days: (mode === "online"
-          ? (p.online_working_days ?? p.working_days)
-          : mode === "home"
-            ? (p.home_working_days ?? p.working_days)
-            : p.working_days
-        ).map((day) => day - 1),
-        start: (mode === "online"
-          ? (p.online_start ?? "13:00")
-          : mode === "home"
-            ? (p.home_start ?? "16:00")
-            : p.clinic_start
-        ).slice(0, 5),
-        end: (mode === "online"
-          ? (p.online_end ?? "15:00")
-          : mode === "home"
-            ? (p.home_end ?? "17:00")
-            : p.clinic_end
-        ).slice(0, 5),
-        duration: p.slot_minutes,
-        onlineDuration: p.online_slot_minutes,
-        homeDuration: p.home_slot_minutes,
-        online: p.online_daily_limit,
-        walkIn: p.walkin_daily_limit,
-        clinicApp: p.clinic_app_daily_limit ?? p.walkin_daily_limit,
-        clinicWalkin: p.clinic_walkin_daily_limit ?? 0,
-        autoAccept: p.auto_accept,
-        autoLimit: p.auto_accept_limit,
-        homeVisits: p.home_visits,
-        homeRadius: p.home_radius_km === null ? "" : String(p.home_radius_km),
-        onlineFee: String((p.online_fee_minor ?? 0) / 100),
-        clinicFee: String(p.clinic_fee_minor / 100),
-        homeFee: String((p.home_fee_minor ?? 0) / 100),
-      });
+      baseSettings.current = settings;
+      setDraft(draftFromSettings(settings, mode));
     },
     [mode]
   );
@@ -167,6 +145,7 @@ export function useScheduleEditor({
       dirty.current = false;
       draftVersion.current = 0;
       draftPractice.current = selectedPracticeId;
+      baseSettings.current = null;
       setDraft(initialSchedule(mode));
     }
   }, [
@@ -178,6 +157,9 @@ export function useScheduleEditor({
     mode,
   ]);
   const [busy, setBusy] = useState(false);
+  // Synchronous guard: state updates are too late to stop a fast double tap.
+  const inFlight = useRef(false);
+  const [conflict, setConflict] = useState<ScheduleChangePreview | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [availabilityDuration, setAvailabilityDuration] = useState<
     number | null
@@ -211,7 +193,33 @@ export function useScheduleEditor({
         (block) => previewTimeBlock(block.start, block.end, suggestedDuration)
       )
     : [];
+  const busyBlocks = useQuery({
+    queryKey: ["schedule-busy-blocks", selectedPracticeId, mode, startsFrom],
+    queryFn: () =>
+      listMyScheduleBusyBlocks(
+        supabase!,
+        selectedPracticeId!,
+        mode,
+        startsFrom
+      ),
+    enabled: Boolean(
+      supabase && selectedPracticeId && selectedPractice?.verified
+    ),
+    retry: false,
+  });
+  const busyOverlaps = scheduleBusyOverlaps(
+    busyBlocks.data ?? [],
+    draft.days.map((day) => day + 1),
+    draft.timeBlocks ?? [{ start: draft.start, end: draft.end }],
+    mode === "home" ? (draft.homeTravelBuffer ?? 0) : 0
+  );
+  // Saved elsewhere while this draft has unsaved edits; merged on publish.
+  const remoteChanged =
+    dirty.current &&
+    saved.data?.practice_id === draftPractice.current &&
+    Number(saved.data?.row_version ?? 0) > draftVersion.current;
   const update = (changes: Partial<Schedule>) => {
+    setConflict(null);
     dirty.current = true;
     setDraft((current) => ({ ...current, ...changes }));
   };
@@ -281,38 +289,140 @@ export function useScheduleEditor({
     clinicFeeMinor: Math.round(Number(draft.clinicFee) * 100),
     homeFeeMinor: Math.round(Number(draft.homeFee) * 100),
   });
-  async function save() {
+  /**
+   * Merges this draft onto a newer saved copy. Fields changed only elsewhere
+   * are adopted, fields changed only here are kept. Returns null when both
+   * sides changed the same setting; the draft keeps the doctor's values.
+   */
+  function rebaseOnto(
+    latest: DoctorSchedulePreferences,
+    mine: DoctorScheduleSettings
+  ) {
+    const theirs = preferencesToScheduleSettings(latest);
+    const { settings, conflicts } = rebaseScheduleSettings(
+      baseSettings.current ?? theirs,
+      mine,
+      theirs
+    );
+    baseSettings.current = theirs;
+    draftVersion.current = Number(latest.row_version);
+    draftPractice.current = latest.practice_id;
+    dirty.current = true;
+    setDraft(draftFromSettings(settings, mode));
+    if (!conflicts.length) return settings;
+    showToast({
+      title: "Changed in another app too",
+      message: `${scheduleSettingNames(conflicts).join(", ")} also changed elsewhere. Your values are kept; review them and publish again.`,
+      type: "error",
+    });
+    return null;
+  }
+
+  async function persist(
+    options: {
+      previewToken?: string;
+      decision?: ScheduleConflictDecision;
+      effectiveFrom?: string;
+    } = {}
+  ) {
     const problem = scheduleError(draft, mode);
     if (problem) {
       showToast({ title: "Schedule error", message: problem, type: "error" });
       return;
     }
-    if (!supabase || !selectedPracticeId || busy) return;
+    if (!supabase || !selectedPracticeId || inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
     setPendingAction("save");
+    const from = options.effectiveFrom ?? startsFrom;
+    let { previewToken, decision } = options;
+    let settings: DoctorScheduleSettings | null = scheduleSettings();
+    let version = draftVersion.current;
     try {
-      const publication = selectedPractice?.verified
-        ? await publishMyDoctorSchedule(
-            supabase,
-            selectedPracticeId,
-            mode,
-            scheduleSettings(),
-            draftVersion.current,
-            startsFrom
-          )
-        : null;
-      const settings =
+      // A newer copy already arrived (live update or focus refetch): merge first.
+      const known = saved.data;
+      if (
+        known?.practice_id === selectedPracticeId &&
+        Number(known.row_version) > version
+      ) {
+        settings = rebaseOnto(known, settings);
+        if (!settings) return;
+        version = draftVersion.current;
+        previewToken = undefined;
+        decision = undefined;
+      }
+      let publication = null;
+      for (let attempt = 0; ; attempt++) {
+        try {
+          if (selectedPractice?.verified && !previewToken) {
+            const preview = await previewMyDoctorSchedule(
+              supabase,
+              selectedPracticeId,
+              mode,
+              settings,
+              version,
+              from
+            );
+            if (preview.conflicts.length) {
+              setConflict(preview);
+              return;
+            }
+            publication = await publishPreviewedDoctorSchedule(
+              supabase,
+              selectedPracticeId,
+              mode,
+              settings,
+              version,
+              from,
+              preview.token
+            );
+          } else if (selectedPractice?.verified)
+            publication = await publishMyDoctorSchedule(
+              supabase,
+              selectedPracticeId,
+              mode,
+              settings,
+              version,
+              from,
+              previewToken,
+              decision
+            );
+          break;
+        } catch (cause) {
+          const code = scheduleErrorCode(cause);
+          if (attempt > 0) throw cause;
+          if (code === scheduleErrorCodes.changedElsewhere) {
+            const latest = (await saved.refetch()).data;
+            if (!latest) throw cause;
+            settings = rebaseOnto(latest, settings);
+            if (!settings) return;
+            version = draftVersion.current;
+          } else if (code !== scheduleErrorCodes.newConflict) throw cause;
+          // Re-preview: new overlaps reopen the conflict dialog with a fresh token.
+          previewToken = undefined;
+          decision = undefined;
+        }
+      }
+      const result =
         publication?.settings ??
         (await saveMySchedulePreferences(
           supabase,
           selectedPracticeId,
-          scheduleSettings(),
-          draftVersion.current
+          settings,
+          version
         ));
-      applySchedule(settings);
+      applySchedule(result);
+      setConflict(null);
+      await queryClient.invalidateQueries({ queryKey: ["my-doctor-schedule"] });
+      await queryClient.invalidateQueries({
+        queryKey: ["schedule-adjustments"],
+      });
+      await queryClient.invalidateQueries({
+        queryKey: ["schedule-busy-blocks"],
+      });
       queryClient.setQueryData(
         ["my-doctor-schedule", selectedPracticeId],
-        settings
+        result
       );
       const active = publication?.settings.published_modes?.includes(mode);
       showToast({
@@ -321,40 +431,34 @@ export function useScheduleEditor({
             ? "Schedule published"
             : "Schedule paused"
           : "Schedule saved",
-        message: publication
-          ? active
-            ? `Schedule published from ${formatDisplayDate(startsFrom)} for this practice and visit type. Existing appointments keep their times.`
-            : "Future unbooked slots are withdrawn. Existing appointments keep their times."
-          : "Publish after your practice is verified.",
+        message: options.previewToken
+          ? "Schedule saved. Conflicting availability was adjusted. Review the affected service schedules below."
+          : publication
+            ? active
+              ? `Schedule published from ${formatDisplayDate(from)} for this practice and visit type. Existing appointments keep their times.`
+              : "Future unbooked slots are withdrawn. Existing appointments keep their times."
+            : "Publish after your practice is verified.",
         type: "success",
       });
     } catch (cause) {
-      if (
-        typeof cause === "object" &&
-        cause !== null &&
-        "code" in cause &&
-        cause.code === "PT409"
-      ) {
-        const latest = await saved.refetch();
-        if (latest.data) applySchedule(latest.data);
-        showToast({
-          title: "Schedule changed",
-          message:
-            "Another app updated this schedule. Review the latest settings and publish again.",
-          type: "error",
-        });
-      } else
-        showToast({
-          title: "Could not publish schedule",
-          message: cause instanceof Error ? cause.message : "Try again.",
-          type: "error",
-        });
+      setConflict(null);
+      showToast({
+        title: "Could not publish schedule",
+        message: scheduleErrorMessage(cause, "Try again."),
+        type: "error",
+      });
     } finally {
+      inFlight.current = false;
       setBusy(false);
       setPendingAction(null);
     }
   }
+
+  async function save() {
+    await persist();
+  }
   function selectPractice(practice: ClinicPractice) {
+    setConflict(null);
     setPracticeId(practice.practice_id);
     if (doctorId && practice.is_clinician && practice.verified)
       void setSelectedPracticeId(doctorId, practice.practice_id)
@@ -405,5 +509,23 @@ export function useScheduleEditor({
     suggestedTimes,
     update,
     save,
+    conflict,
+    busyBlocks: busyBlocks.data ?? [],
+    busyOverlaps,
+    remoteChanged,
+    dismissConflict: () => setConflict(null),
+    confirmConflict: (decision?: ScheduleConflictDecision) =>
+      conflict?.can_replace || (decision && conflict?.can_request)
+        ? persist({
+            previewToken: conflict!.token,
+            decision,
+            effectiveFrom: conflict!.effective_from,
+          })
+        : Promise.resolve(),
+    startFromSuggestedDate: (date: string) => {
+      setConflict(null);
+      setEffectiveDate(date);
+      return persist({ effectiveFrom: date });
+    },
   };
 }

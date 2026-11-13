@@ -1,5 +1,147 @@
 # Shared Supabase backend
 
+## Schedule update smoothness (local, not deployed)
+
+`20261113103000_schedule_update_smoothness.sql` adds no tables. It recreates
+`preview_doctor_schedule_change` with an optional `suggested_effective_from`:
+the day after the last booked, held or started session in the conflicting rules,
+offered only when a later date alone clears every blocking conflict. New
+`publish_previewed_doctor_schedule` reruns the preview under the same doctor,
+session and rule locks before publishing: a new overlap raises `PT410` and a
+stale token or version raises `PT409`. Read-only `list_my_schedule_busy_blocks`
+returns the doctor's other published blocks (no patient details) for the editors.
+Existing RPC names, arguments and grants are unchanged; data-access falls back to
+the unchecked publisher and an empty busy list while the migration is absent.
+
+The migration and `tests/smoke/schedule-update-smoothness.cli-smoke.sql` were
+written without a database run. They have not been applied to test or checked
+against a hosted project. Consolidating the text-patched schedule publisher into
+one readable `CREATE OR REPLACE` remains a follow-up: take its exact current
+definition with `pg_get_functiondef` from the approved test project first.
+
+## Driver evidence integrity fix verified on test
+
+Applied 20261101075451_driver_evidence_review_immutability.sql to the explicitly approved test project. SQL regression PASS. Actual owner API DELETE removed zero submitted objects; replacement POST returned HTTP 400. Original bytes and approved/version-1 metadata stayed unchanged. Fresh random-path upload and deletion succeeded. All six fixture counts zero. Reviewer UI, concurrency and production remain unverified.
+
+The helper keeps schema isolation and guards all referenced statuses and historical versions. Approved metadata was seeded for the API test; the pre-fix normal reviewer control ran inside rollback.
+
+## Security fixes verified on the test project
+
+`20261101055806_security_booking_and_video_boundaries.sql` contains two
+security fixes. It rejects new rescheduling of payment-pending reservations, while
+preserving successful idempotent replays, and independently requires the assigned
+doctor to be active with verified clinical credentials before returning a fresh
+online join context. Facility owner/admin membership does not replace clinical
+eligibility. Patient access and existing payment/time/state gates remain in place.
+
+Both failures were independently reproduced with synthetic records. The reviewed
+migration was applied to **test** (`enjafragbcrrgaclwopd`) on 1 November 2026 and
+both focused rollback suites passed: unpaid holds cannot move, ordinary moves and
+replays work, revoked/inactive doctors are denied fresh context, and eligible
+patients and verified doctors retain access. Function grants were preserved.
+
+The additional all-synthetic reception suite passed scope, retry, amount,
+capture-versus-authorization, cash and cursor checks. Fixture counts were zero
+following rollback. No payment or media provider calls were made. These checks do
+not establish device/browser behavior, provider quotas or revocation of previously
+issued video tokens. The deployed migration version is `20261101055806`; its
+local filename matches that recorded version to avoid a duplicate migration push.
+
+## Environment and launch policy
+
+Current implementation and feature verification use the project named **test**,
+`enjafragbcrrgaclwopd`. The local linked marker and the Patient, Doctor, Driver
+and Facility Portal environment URLs point there. Verify that identity before
+any future migration; a local linked marker alone is not target approval.
+
+When feature work and acceptance testing are complete and global hosting is ready,
+create a separate production database. Apply the reviewed versioned migration
+history and configure production Auth, provider secrets, functions and app public
+URLs/keys separately. Do not copy test users, credentials or fixture bookings into
+production. Detailed setup and rollout instructions will be prepared at that
+stage; no production project was created or changed for this deployment.
+
+## Schedule conflict replacement
+
+Migration `20261030081657_schedule_conflict_resolution.sql` adds authorized
+`preview_doctor_schedule_change`, `replace_doctor_schedule_conflicts` and
+`list_my_schedule_adjustments` RPCs. Preview reuses canonical settings validation
+inside a rolled-back subtransaction. Confirmation rechecks the preview token and
+permissions under doctor/session/rule locks before retiring conflicting rules,
+preserving unaffected weekdays and complete appointment blocks, and publishing
+the requested schedule in the same transaction. Travel buffers are included.
+
+No appointment is automatically moved or cancelled. The legacy replacement path
+blocks active bookings. The explicit rescheduling-request flow below can publish
+unaffected time while preserving booked sessions. Active payment holds, already
+started sessions, manual rules and unauthorized practices still block replacement. Other-service
+settings remain as drafts; their published rules hold the remaining availability.
+Persistent review notices are cleared when that service is published again.
+
+Both this migration and `20261029085810_hybrid_clinic_queue.sql` were applied to
+the confirmed **test** project (`enjafragbcrrgaclwopd`) on 30 October 2026. The
+CLI reports no pending migrations. The first queue-migration attempt rolled back
+because its function-text guard assumed unspaced SQL; the unapplied migration was
+corrected to tolerate whitespace before both migrations were successfully applied.
+
+Five hosted rollback suites passed: multi-block scheduling/conflict replacement,
+clinic channel capacity/queue numbering, appointment recovery, consultation
+availability/signed records, and schedule publication performance. The expanded
+schedule suite exercises authenticated callers, denied identities, stale consent,
+a payment hold arriving after preview, partial/full removal and notice clearing.
+Existing counts remained unchanged after tests: 23 appointments, 8 patients,
+281 sessions, 17 schedule rules, 11 check-ins, 9 consultations and 18 queue entries.
+No real provider requests or charges were made. Browser/native interaction,
+physical QR/device flows and multi-connection contention remain separate checks.
+
+Security advisories were compared before/after. The four additional authenticated
+SECURITY DEFINER entries are the three intentionally exposed schedule RPCs and the
+new recovery-policy overload; anonymous grants and private-helper grants were
+checked. Existing anonymous-function and Auth configuration advisories remain
+outside this feature's deployment scope. See the
+[function access advisory](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+
+## Hybrid clinic queue (test deployment)
+
+`20261029085810_hybrid_clinic_queue.sql` adds numbered clinic reservations. The
+existing consultation duration, time blocks, breaks and channel quotas continue
+to define available capacity; no extra booking capacity is manufactured.
+
+- New sessions reserve stable positions across their appointment windows under
+  the session lock. A pending request/payment hold occupies its position too.
+  Confirmation and payment capture inherit that number. Cancellation/rejection
+  releases the position while retaining appointment history. Completed visits
+  remain consumed capacity. Expired unused windows cannot create new priority.
+- Existing sessions with appointments keep previously issued tokens. Never
+  renumber patients as a migration side effect. Numbers identify a reservation
+  within a session, not guaranteed serving order or a global daily sequence.
+- Checked-in, due patients are ordered by clinical priority, planned time and
+  token. Absent patients do not block service. If nobody due is ready, staff can
+  offer early service to the next ready patient; obtain their agreement first.
+  Earlier due patients at the same practice remain ahead across clinic blocks.
+- Clinic grace defaults to ten minutes after the booked start. Reception-created
+  bookings in the current window use the later of start/registration time.
+  Check-in after grace records arrival but places the visit on hold for review.
+  Explicit staff admission uses recovery time for ordering, preserving the token
+  without restoring unlimited historical priority. Skipping before the booked
+  time is not a no-show; the existing explicit attendance-resolution flow remains.
+- One private queue-ordering function supplies call validation and ready-patient
+  counts. Calling serializes by doctor; an active call cannot be silently displaced
+  by another service starting. Current exceptions and other-site/video/home
+  commitments prevent new clinic calls. Consultation estimates are approximate
+  ranges based on configured window duration and currently ready patients.
+- Only existing authorized appointment projections expose queue metadata. Private
+  helpers remain unavailable to app roles. The versioned recovery-policy RPC has
+  a six-argument overload for clinic grace; old five-argument clients still work.
+
+Applied to the test project on 30 October 2026. The maintained
+`tests/smoke/clinic-channel-capacity.cli-smoke.sql` fixture passed against actual
+tables, triggers, authorization helpers and booking RPCs. It covers channel quotas,
+reserved numbering, absent/late arrival handling, cancellation reuse and grants.
+Its fixture data rolled back. Existing issued tokens were preserved by migration;
+new sessions use reserved positions. Native QR flows and multi-connection call/
+allocation scenarios are not established by these single-connection SQL suites.
+
 ## Schedule publication performance
 
 `20261027143412_schedule_publication_performance.sql` was deployed to the linked
@@ -138,7 +280,9 @@ Save successful TypeScript output to
 `packages/data-access/src/generated/supabase.types.ts`. The separate
 `database.types.ts` file is a handwritten compatibility overlay importing that
 output; do not overwrite it. Review both the generated diff and app typechecks.
-This cleanup does not regenerate types or query a hosted database.
+The public wire types were regenerated from the migrated test schema on
+30 October 2026. Compatibility signatures override matching generated entries so
+explicit-null inputs and existing clients retain their supported call shapes.
 
 ## Upcoming integrations
 
@@ -150,9 +294,47 @@ Payment models already belong to `packages/database/src/schema/payments.ts`;
 shared payment contracts and operations belong to their corresponding packages.
 
 Structural checks do not replace hosted migration, SQL/RLS, provider, browser or
-multi-device verification. No migrations, seeds or function deployments run as
-part of this cleanup.
+multi-device verification. Structural cleanup does not implicitly deploy changes;
+the explicit test deployment and its verification evidence are recorded above.
 
 References: [Supabase migrations](https://supabase.com/docs/guides/local-development/database-migrations),
 [database testing](https://supabase.com/docs/guides/database/testing), and
 [generated types](https://supabase.com/docs/guides/api/rest/generating-types).
+
+## Schedule changes with patient rescheduling
+
+Doctor mobile and Facility Portal offer editing, trimming overlapping availability,
+or publishing the new schedule while pausing the affected other-service blocks on
+the selected weekdays. Other weekdays retain their hours. Both confirmation paths
+show affected bookings and require a patient-facing reason before requesting moves.
+Active payment holds, started sessions and unauthorized/manual schedule conflicts
+remain blocked. Existing appointment IDs, windows, fees and paid credit are preserved.
+
+The shared backend keeps the old booked session reserved until its last active
+reservation is explicitly rescheduled or cancelled. The new recurring schedule can
+publish elsewhere; conflicting slots are omitted from materialization. Future time
+is refilled after resolution, preserving cancelled session/appointment history.
+This is conservative at the session boundary: an unaffected part of the old booked
+session can also remain unavailable until the reservations are resolved.
+
+Patient's notification drawer shows the reason and opens Appointment Details;
+push taps also open that booking. Details offer the existing time picker with a
+separate confirmation and preserve payment transfer/refund rules. Doctor-requested
+moves do not consume the patient's self-service allowance. Cancellation/rejection
+cannot be reversed merely because an old doctor request exists. Sending or reading
+a notification does not accept a new time. Persistent waiting notices link to
+Appointments; paused-service notices link to setting new hours.
+
+Migrations `20261030095556_schedule_change_rescheduling_requests.sql` and
+`20261030111217_schedule_request_terminal_guard.sql`, plus the updated
+`send-notification` worker, are deployed to the approved **test** project
+`enjafragbcrrgaclwopd` on 30 October 2026. Rollback SQL checks verify the
+booking-preservation and patient-confirmed reopening path. Browser, native keyboard,
+real device push delivery and concurrent-connection acceptance remain unverified.
+No production database was created and no app server was started for this work.
+
+The follow-up `20261030112058_schedule_refresh_after_rescheduling.sql` defers
+resolved-session cleanup until transaction completion, so a replacement inserted
+in the same session is visible before cleanup. Both cross-session paid-credit
+rescheduling and same-session reservation protection passed rollback checks.
+The follow-up is applied to the approved test project.

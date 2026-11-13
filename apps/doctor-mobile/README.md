@@ -2,7 +2,7 @@
 
 Expo / React Native doctor app, following the patient app's route and screen structure. Icons use `lucide-react-native`, as in patient-mobile.
 
-Phone OTP, credential onboarding/review gating, and the separate **Clinic operations** route now use the shared Supabase backend. The older home statistics, patient cards, schedule, prescription and home-visit screens are still design previews. Set this app's `.env.local` from `.env.example`; setup and current deployment blockers are in [mobile-backend-integration.md](../../plans/mobile-backend-integration.md).
+Phone sign-in, credential review gates, schedules, appointments and clinical workflows use shared backend operations. See [ARCHITECTURE.md](ARCHITECTURE.md) for current ownership and integration boundaries, and [mobile setup](../../plans/mobile-backend-integration.md) for environment configuration. Local implementation does not establish hosted deployment or device verification.
 
 From the workspace root:
 

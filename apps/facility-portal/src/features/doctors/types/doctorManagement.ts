@@ -1,5 +1,6 @@
 export interface DoctorRecord {
   id: string;
+  practiceId: string;
   name: string;
   specialization: string;
   clinzoId: string;

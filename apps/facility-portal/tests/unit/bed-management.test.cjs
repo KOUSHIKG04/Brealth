@@ -6,6 +6,10 @@ const assert = require("node:assert/strict"),
   ts = require("typescript"),
   path = require("node:path");
 
+const {
+  withErrorDoubles,
+} = require("../../../../packages/contracts/tests/support/errorTestDoubles.cjs");
+
 const defer = () => {
   let resolve, reject;
   const promise = new Promise((yes, no) => {
@@ -102,7 +106,13 @@ function fixture() {
         target: ts.ScriptTarget.ES2022,
       },
     }).outputText,
-    { exports, require: (n) => mocks[n], FormData, Error, BigInt }
+    {
+      exports,
+      require: (n) => withErrorDoubles(n, mocks) ?? mocks[n],
+      FormData,
+      Error,
+      BigInt,
+    }
   );
   return {
     requests,

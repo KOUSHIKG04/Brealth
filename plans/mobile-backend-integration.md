@@ -1,45 +1,41 @@
-# Mobile backend integration (25 September 2026)
+# Mobile backend setup
 
-One Supabase project serves the web, patient, doctor and driver apps in each environment. All three Expo apps load public config from their own `.env.local`:
+Patient, Doctor and Driver use shared domain contracts and data-access operations.
+Each app owns its session client. See the current architecture documents for
+implemented workflows and remaining integration boundaries:
 
-```text
-EXPO_PUBLIC_SUPABASE_URL=https://<project-ref>.supabase.co
-EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<publishable-key>
-```
+- [Patient](../apps/patient-mobile/ARCHITECTURE.md)
+- [Doctor](../apps/doctor-mobile/ARCHITECTURE.md)
+- [Driver](../apps/driver-mobile/ARCHITECTURE.md)
 
-Copy each app's `.env.example` to `.env.local` and enter the **same intended development project** URL/key. These values are public client identifiers; never place a database password, service-role key, or secret key in an Expo variable. Restart Expo after changing the files. The web `.env.local` currently points at the disposable verification project, so do not use it as the source for mobile development config.
+## Environment and startup
 
-The patient, doctor and driver app auth screens normally call the shared Supabase phone OTP adapters. Supabase Phone Auth must be enabled with a working SMS provider before codes can arrive. For disposable-project workflow testing before SMS is configured, use the guarded email/password fixture path below. The code for sign-in is distinct from the persistent four-digit patient trip/home-visit completion PIN. Supabase sessions persist in Expo SecureStore, and profile/role data comes from `get_my_profile`; client-side route guards are only navigation, while the RPCs enforce authorization.
+1. Copy each target app's `.env.example` to its ignored `.env.local`.
+2. Set `EXPO_PUBLIC_SUPABASE_URL` and
+   `EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY` to the intended environment's URL and
+   publishable key. Apps participating in the same workflow must use that same
+   environment. Do not infer the target from another app's existing local file.
+3. Keep database passwords, service-role keys and provider secrets out of Expo
+   variables. Leave optional development flags at their example defaults unless
+   explicitly setting up their guarded test flow.
+4. From the repository root, run `pnpm dev:patient`, `pnpm dev:doctor` or
+   `pnpm dev:driver`. Restart Expo after environment changes.
 
-## Disposable-project mobile sign-in test
+Phone sign-in requires the target environment's SMS configuration. Authentication
+does not approve a doctor, driver or facility. Those workflows retain their
+server-enforced review gates. Development password login has additional source
+and target guards; changing its public flag alone does not enable it everywhere.
 
-The development-only email/password form is visible only when Expo is running in development mode, `EXPO_PUBLIC_ENABLE_DEV_PASSWORD_LOGIN=true`, and the app URL is exactly `https://enjafragbcrrgaclwopd.supabase.co`. Release builds and other Supabase projects retain phone OTP. All three apps now offer **Create account**. A confirmed-email account can create a patient profile when the private `clinzo.patient_email_dev_auth` switch is enabled, or a doctor or driver registration application when the separate private `clinzo.mobile_email_dev_auth` switch is enabled. Both switches default to false; the client cannot change them. They are enabled only on the disposable project. Email-only onboarding does not test phone ownership; an operator invitation remains phone-bound.
+## Verification boundaries
 
-To create a disposable profile: open the matching patient, doctor, or driver app → Continue with Email → Create an account; use an email you can receive and a password of at least 12 characters. Supabase email confirmation is enabled, so open the confirmation link, return to the app, sign in with the same email/password, and complete its profile. If the confirmation email does not arrive, check spam and the disposable project's **Authentication → Users** entry; the built-in email sender is rate-limited. The driver flow asks for personal details, vehicle details, and private document uploads, then waits for manual company review. Patient and doctor profile screens and the driver profile screen now offer edits. This email-only path does not verify a phone; keep real-service actions inside controlled test data. Do not turn off email confirmation to bypass the check.
+Use [the backend guide](../supabase/README.md) for deployment boundaries and
+[the SQL test guide](../supabase/tests/README.md) for disposable fixtures.
+Published schedules, approved test identities and required provider configuration
+must exist before checking bookings or dispatch. Do not infer hosted readiness
+from local migrations or a successful sign-in.
 
-1. Confirm the disposable project `enjafragbcrrgaclwopd` has the expected migrations. Keep the linked project `ilbnouxjyurkmsviwbfd` separate. Use only test data and phone numbers you control; leave `EXPO_PUBLIC_ENABLE_SOS_DISPATCH=false`.
-2. In each mobile app's ignored `.env.local`, set `EXPO_PUBLIC_SUPABASE_URL=https://enjafragbcrrgaclwopd.supabase.co`, that project's publishable key, and `EXPO_PUBLIC_ENABLE_DEV_PASSWORD_LOGIN=true`. No service-role key belongs in any app or `.env.local`.
-3. From PowerShell at `C:\startup`, create three distinct fixture users:
-
-   ```powershell
-   $env:TEST_PROJECT_REF = "enjafragbcrrgaclwopd"
-   & .\packages\database\tooling\create-disposable-auth-user.ps1 -Kind patient
-   & .\packages\database\tooling\create-disposable-auth-user.ps1 -Kind doctor
-   & .\packages\database\tooling\create-disposable-auth-user.ps1 -Kind driver
-   ```
-
-   The command prompts separately for each email, phone, password, and the disposable project's secret key (`sb_secret_…`; a legacy `service_role` key also works). Find it in **Supabase Dashboard → Project Settings → API Keys** for the disposable project. Do not paste it into a command, source file, app environment variable, or chat. The script refuses the linked primary project and does not print credentials.
-4. Restart each Expo server (`pnpm dev:patient`, `pnpm dev:doctor`, `pnpm dev:driver`). Sign in with each fixture's email/password and complete the matching onboarding. The app continues using its regular Supabase session, RLS and RPCs after sign-in.
-5. Walk through Patient Home → Find Doctor → Doctor Details → Book Slots → My Bookings. In the Doctor app, use Home → Schedule to publish clinic slots and Appointments to manage requests and the queue. In the Driver app, Home shows availability and offers, Trip shows the active trip, and Profile manages vehicle review. Doctor credentials and driver/vehicle/crew remain subject to company review; an Auth fixture alone does not approve them. Test those approval transitions only with the authorized manual-review process.
-
-This path verifies application and database behavior but does not verify SMS delivery, real phone ownership, Google OAuth, notifications, or background location. Remove fixture accounts when the disposable project is retired. Disable the flag in `.env.local` to return to the phone OTP form.
-
-After OTP, patients complete a health profile with an age snapshot, gender, blood group, optional email and address. They may add family profiles, which remain unverified and cannot access clinical actions until consent/review is implemented. Doctors submit registration credentials, claimed specialty/language/facility and a private license document, or create a solo clinic; their waiting screen reflects pending manual review. The driver UI from `main` saves personal details and eight private evidence uploads as a pending registration application. It does not ask the driver to transcribe licence expiry, vehicle inspection expiry, equipment or clinical crew details. Those remain required for the eventual trusted company review and driver/fleet activation; a submitted application alone creates no dispatch-capable driver. The reviewer workflow to turn an application into an approved driver and vehicle remains to be built.
-
-The existing patient Doctor Results, Doctor Details and My Bookings screens now use server data. Doctor Schedule publishes date-specific clinic sessions and Doctor Appointments manages pending/confirmed bookings, queue and consultation actions. A booking sends the selected window/service IDs, patient ID, visit reason and a random idempotency key. Check-in and consultation actions remain subject to database rules, including same-day arrival and a signed assessment on completion. Clinic status uses bounded polling; realtime delivery is future work. Empty lists are expected until company review verifies a doctor and practice, a service is published, a clinic session creates slots, and a patient books one. The three Auth fixtures alone create none of that data.
-
-The patient ambulance route requests BLS/ALS/NICU transport and displays driver/trip status and the completion PIN during an active trip. The driver route lists dispatch offers, moves the trip through pickup/start/destination and submits the patient PIN only at completion. Driver location reporting currently works in the foreground and expires from matching when stale. The authenticated patient SOS migration and SQL smoke passed on the disposable project only. `EXPO_PUBLIC_ENABLE_SOS_DISPATCH` defaults to `false`; set it to `true` only in a disposable test build for controlled device verification, and keep it off in any real-user build until the intended target project is migrated and device and operational review pass. The sign-in screen always offers an emergency phone call without requiring OTP. Guest SOS is not implemented.
-
-The linked development project still has only the three baseline migrations. The disposable project has 42 migrations through `20260930190000_optional_clinic_booking_reason.sql`; the four later UI-data migrations through `20260930230000_prescription_doctor_card_details.sql` remain unapplied. The hospital web portal also needs a verified email Auth user with an active facility owner/admin/receptionist membership; setting public values alone does not create access. There is no `/hospital` route in the web app: its current portal entry is `/`, and bed inventory is `/bed-management` after sign-in.
-
-Validation available without SMS: `pnpm --filter @startup/data-access typecheck`, `pnpm --filter patient-mobile exec tsc --noEmit`, `pnpm --filter doctor-mobile typecheck`, `pnpm --filter driver-mobile typecheck`, and the package tests. The disposable clinic, inventory, ambulance/SOS, onboarding, patient-email, mobile-email/driver, doctor-schedule, and driver-application rollback smoke fixtures passed through migration `20260930190000`; new ambulance review-specific smoke assertions and later migrations have not been run remotely. The guarded fixture path enables onboarding and cross-app workflow testing there; actual OTP delivery still needs an SMS provider. Google OAuth, family consent approval, notifications, background tracking, guest SOS, home-visit PIN completion, payments and real-device journeys remain incomplete; do not use preview data as operational records.
+Verify sign-in, session restoration and sign-out on a device. Then follow the
+[schedule](service-scheduling-testing.md) and
+[live-update](realtime-mvp-testing.md) checklists using controlled test accounts.
+SMS delivery, payment checkout, calls, push delivery, location and background
+behavior require their own configured provider/device checks.

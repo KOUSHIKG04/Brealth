@@ -1,4 +1,4 @@
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.0";
 import {
   PaymentError,
   digestHex,
@@ -150,7 +150,7 @@ export default {
       }
       return Response.json({ received: true });
     } catch (error) {
-      return paymentFailure(error);
+      return paymentFailure(error, "razorpay-webhook", request);
     }
   }),
 };

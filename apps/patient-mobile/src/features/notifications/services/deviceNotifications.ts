@@ -69,8 +69,16 @@ export async function register() {
 
 export function openNotification(response: NotificationResponse) {
   const route = response.notification.request.content.data?.route;
-  if (route === "/appointments") router.push("/appointments");
-  else if (route === "/ambulance") router.push("/ambulance");
+  if (route === "/appointments") {
+    const appointmentId =
+      response.notification.request.content.data?.appointmentId;
+    if (typeof appointmentId === "string" && appointmentId)
+      router.push({
+        pathname: "/appointment-details/[id]",
+        params: { id: appointmentId },
+      });
+    else router.push("/appointments");
+  } else if (route === "/ambulance") router.push("/ambulance");
   else if (route === "/booking-status") router.push("/booking-status");
   else if (route === "/visit-session") router.push("/visit-session");
 }

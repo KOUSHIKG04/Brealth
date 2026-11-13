@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { LogoutModalProps } from "../types/logout-modal";
 import { AppText as Text } from "@startup/mobile-ui";
 import { useToastFeedback } from "@startup/mobile-ui";
@@ -31,9 +32,7 @@ export function LogoutModal({ visible, onClose }: LogoutModalProps) {
       onClose();
     } catch (cause) {
       setError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not sign out. Please try again."
+        userErrorMessage(cause, "Could not sign out. Please try again.")
       );
     } finally {
       setBusy(false);

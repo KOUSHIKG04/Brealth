@@ -34,6 +34,14 @@ export const mapSearchResultSchema = z.object({
 
 export type MapPlace = z.infer<typeof mapPlaceSchema>;
 
+export function mapAttributionKey(attribution: MapPlace["attributions"][number]): string {
+  return JSON.stringify([attribution.provider, attribution.uri ?? null]);
+}
+
+export function uniqueMapAttributions(attributions: MapPlace["attributions"]): MapPlace["attributions"] {
+  return [...new Map(attributions.map((attribution) => [mapAttributionKey(attribution), attribution])).values()];
+}
+
 export const mapPointInputSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),

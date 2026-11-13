@@ -1,5 +1,49 @@
 # Shared package ownership
 
+## Authentication error presentation
+
+`data-access/src/auth/errorMessages.ts` maps stable Auth codes/client error types
+to safe display messages and otherwise uses a caller-owned fallback. Password/OTP
+operations normalize both returned and rejected provider errors at their shared
+owner, so mobile forms do not display arbitrary provider text. The shared mobile
+session controller uses the same mapping for profile and restoration failures;
+its account-switch/version/lifecycle behavior is retained. Regression fixtures
+cover mapping, operation outcomes and existing session lifecycle behavior; their
+execution passed during the explicitly approved ordinary-workspace validation on 1 November 2026 (52 shared data-access tests and its typecheck).
+
+## Error handling helpers
+
+`contracts` exports `errorCode`, `isNetworkError`, `isTimeoutError`,
+`isExpectedError`, `shouldRetryRequest` and `userErrorMessage`;
+`scheduleErrorMessage` delegates to it. `data-access` exports `reportError`,
+`setErrorReporter`, `scrubSensitiveText`, `scrubEventData`, `createTimeoutFetch`
+and `requestTimeouts`; `createSupabaseClient` applies the timeout unless a caller
+supplies `global.fetch`. `mobile-ui` adds presentation-only `ErrorFallback` and
+`OfflineBanner`; `web-ui` adds `RouteErrorState`. None of them import app code
+or monitoring SDKs. App suites that hand-mock modules use
+`contracts/tests/support/errorTestDoubles.cjs` for the real error helpers.
+
+## Schedule editing helpers
+
+`contracts/src/doctor-schedule.ts` owns the client-safe schedule editing rules
+shared by Doctor mobile and Facility Portal: `preferencesToScheduleSettings`,
+the three-way `rebaseScheduleSettings`, `scheduleBusyOverlaps` (the preview's
+overlap test with travel buffers), readable setting names and
+`scheduleErrorMessage`/`scheduleErrorCodes` for `PT409`/`PT410`. Data-access adds
+`listMyScheduleBusyBlocks` and `publishPreviewedDoctorSchedule`; both degrade to
+the previous behavior when the database lacks the new RPCs.
+
+## Facility appointment collections
+
+`contracts/src/appointment-payments.ts` owns validated portal payment summaries,
+transaction rows and seek cursors. `data-access/src/clinic/payments.ts` batches
+authorized summaries and reads transaction pages through public package exports.
+The appointment contract accepts an optional payment summary; existing mobile
+projections and booking arguments are unchanged. Facility UI and browser SDK
+lifecycle stay in the Facility Portal's appointment/transaction features.
+The existing payment backend owns order creation, capture, refunds and splits;
+staff clinic collection reuses its locking, amount and authorization checks.
+
 ## Native toast feedback
 
 `mobile-ui/src/primitives/Toast.tsx` retains the existing `ToastProvider`,
@@ -335,3 +379,27 @@ linked schema without replaying DDL. Neither mode changes migration history or
 retains fixture rows. Read-only provider and endpoint checks passed; native UI,
 actual captures/refunds and Route transfers remain unverified. See
 the [payment guide](../APPOINTMENT_RECOVERY_PAYMENTS.md) for complete setup/limits.
+
+## Schedule changes with patient rescheduling
+
+The existing doctor-schedule contracts and data-access schedule owner now expose
+trim/pause decisions and affected bookings. Appointment recovery projects the
+doctor's reason and unresolved request; those moves retain the existing payment
+transfer owner and do not consume the patient's own move allowance. Generated RPC
+types were refreshed from the test database. Doctor uses the shared keyboard-safe
+AppDialog for reason entry. The deployed backend preserves old sessions until their
+last reservation is resolved. See [backend details](../supabase/README.md).
+
+## Web drawer
+
+`web-ui/src/components/ui/drawer.tsx` uses the official shadcn Base UI drawer
+composition with the existing `@base-ui/react` dependency. The formerly unused
+Vaul wrapper was replaced after confirming it had no consumers. Public component
+names remain; the Base UI API uses `swipeDirection` and `render`. Facility Portal
+uses the right-side drawer to compose its existing doctor schedule workflow.
+
+The web DataTable owns optional mouse, touch and keyboard column resizing through
+TanStack columnSizing. Dividers adjust widths immediately and support reset.
+Display-column adapters keep feature-owned cells and handlers mounted under
+stable row/column IDs. Other applications retain the existing non-resizable
+sorting and pagination defaults.

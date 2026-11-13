@@ -1,15 +1,12 @@
 -- Run inside BEGIN/ROLLBACK. All patients, bookings and records are temporary.
+BEGIN;
+
 DO $$
-DECLARE baseline record; actual jsonb; old_slots jsonb; target record; slot jsonb;
+DECLARE actual jsonb; old_slots jsonb; target record; slot jsonb;
   patient_key uuid; appointment_key uuid; consultation_key uuid; actor_key uuid;
-  doctor_identity uuid; remaining_before int; result jsonb; denied boolean; stranger uuid;
+  doctor_identity uuid; billing jsonb; payment_attempt uuid; order_key text; payment_amount bigint; remaining_before int; result jsonb; denied boolean; stranger uuid;
 BEGIN
-  FOR baseline IN SELECT * FROM consultation_availability_baseline LOOP
-    actual:=public.list_practice_service_slots(baseline.practice_id,baseline.mode,NULL,now(),10000);
-    SELECT coalesce(jsonb_agg(x-'daily_bookings_remaining' ORDER BY ordinality),'[]'::jsonb) INTO old_slots
-      FROM jsonb_array_elements(actual) WITH ORDINALITY a(x,ordinality);
-    IF old_slots IS DISTINCT FROM baseline.slots THEN RAISE EXCEPTION 'Time choices changed for %',baseline.mode; END IF;
-  END LOOP;
+
   SELECT p.id AS practice_id,d.id AS doctor_id,d.identity_id,d.booking_timezone,i.subject::uuid AS auth_id
     INTO target FROM clinzo.doctor d JOIN clinzo.doctor_facility p ON p.doctor_id=d.id
     JOIN clinzo.identity i ON i.id=d.identity_id JOIN auth.users u ON u.id::text=i.subject
@@ -23,6 +20,9 @@ BEGIN
   PERFORM set_config('request.jwt.claim.sub',actor_key::text,true);
   slot:=public.list_practice_service_slots(target.practice_id,'online',NULL,now()+interval '1 day',10000)->0;
   remaining_before:=(slot->>'daily_bookings_remaining')::int;
+  -- Snapshot the real public time choices before a reservation and compare after cancellation.
+  SELECT coalesce(jsonb_agg(x-'daily_bookings_remaining' ORDER BY ordinality),'[]'::jsonb) INTO old_slots
+    FROM jsonb_array_elements(public.list_practice_service_slots(target.practice_id,'online',NULL,now()+interval '1 day',10000)) WITH ORDINALITY a(x,ordinality);
   IF remaining_before<1 THEN RAISE EXCEPTION 'Missing remaining daily booking allowance'; END IF;
   INSERT INTO clinzo.patient(public_code,full_name) VALUES(gen_random_uuid()::text,'Consultation record rollback fixture') RETURNING id INTO patient_key;
   INSERT INTO clinzo.patient_access(patient_id,identity_id,relationship,verified_at) VALUES(patient_key,doctor_identity,'delegate',now());
@@ -32,10 +32,27 @@ BEGIN
   PERFORM public.transition_clinic_appointment(appointment_key,(SELECT row_version FROM clinzo.appointment WHERE id=appointment_key),'cancel',NULL);
   IF (SELECT clinzo.remaining_daily_booking_capacity(session_id) FROM clinzo.appointment WHERE id=appointment_key)<>remaining_before THEN
     RAISE EXCEPTION 'Cancellation did not restore allowance'; END IF;
+  SELECT coalesce(jsonb_agg(x-'daily_bookings_remaining' ORDER BY ordinality),'[]'::jsonb) INTO actual
+    FROM jsonb_array_elements(public.list_practice_service_slots(target.practice_id,'online',NULL,now()+interval '1 day',10000)) WITH ORDINALITY a(x,ordinality);
+  IF actual IS DISTINCT FROM old_slots THEN RAISE EXCEPTION 'Cancellation did not restore the original online time choices'; END IF;
   -- Seed a synthetic active consultation, then use the actual clinical owners.
   slot:=public.list_practice_service_slots(target.practice_id,'online',NULL,now()+interval '1 day',10000)->0;
   appointment_key:=public.book_clinic_appointment(patient_key,(slot->>'window_id')::uuid,(slot->>'practice_service_id')::uuid,'Rollback clinical fixture',gen_random_uuid());
-  UPDATE clinzo.appointment SET status='in_consultation',confirmed_at=now() WHERE id=appointment_key;
+  -- Exercise the real payment confirmation owner with synthetic provider data;
+  -- no provider HTTP call or real charge is made, and all rows roll back.
+  billing:=public.get_appointment_billing(appointment_key);
+  IF coalesce((billing->>'due_minor')::bigint,0)>0 THEN
+    result:=public.prepare_appointment_payment(appointment_key,billing->>'policy_version');
+    payment_attempt:=(result->>'id')::uuid;
+    SELECT amount_minor INTO payment_amount FROM clinzo.appointment_payment_attempt WHERE id=payment_attempt;
+    order_key:='order_'||replace(payment_attempt::text,'-','');
+    PERFORM public.appointment_provider_command('order_ready',jsonb_build_object('attempt_id',payment_attempt,
+      'entity',jsonb_build_object('id',order_key,'receipt',payment_attempt::text,'amount',payment_amount,'currency','INR')));
+    PERFORM public.appointment_provider_command('payment',jsonb_build_object('mode','test',
+      'entity',jsonb_build_object('id','pay_'||replace(payment_attempt::text,'-',''),'order_id',order_key,
+        'amount',payment_amount,'currency','INR','status','captured','captured',true)));
+  END IF;
+  UPDATE clinzo.appointment SET status='in_consultation',confirmed_at=coalesce(confirmed_at,now()) WHERE id=appointment_key;
   INSERT INTO clinzo.consultation(appointment_id,patient_id,doctor_id,status,started_at)
     VALUES(appointment_key,patient_key,target.doctor_id,'active',now()) RETURNING id INTO consultation_key;
   PERFORM public.record_consultation_intake(appointment_key,'[{"code":"pulse_bpm","value":72,"unit":"bpm"}]','Fixture diagnosis');
@@ -67,3 +84,4 @@ BEGIN
     RAISE EXCEPTION 'Private read/calculation grants exposed'; END IF;
 END $$;
 SELECT true AS consultation_availability_and_signed_records_passed;
+ROLLBACK;

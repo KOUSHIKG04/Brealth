@@ -3,8 +3,86 @@ import {
   appointmentCheckoutSchema,
   appointmentPaymentCommandSchema,
   uuidSchema,
+  portalAppointmentPaymentSummarySchema,
+  portalTransactionCursorSchema,
+  portalTransactionsSchema,
+  portalWalkInPaymentPolicySchema,
+  portalPaidWalkInBookingSchema,
+  preparedAppointmentBookingSchema,
+  type ClinicAppointment,
+  type PortalTransactionCursor,
+  type PortalPaidWalkInBookingInput,
 } from "@startup/contracts";
 import type { AppSupabaseClient } from "../client/createSupabaseClient";
+
+export async function getPortalWalkInPaymentPolicy(
+  client: AppSupabaseClient,
+  practiceId: string
+) {
+  const { data, error } = await client.rpc(
+    "get_portal_walk_in_payment_policy",
+    { p_practice_id: uuidSchema.parse(practiceId) }
+  );
+  if (error) throw error;
+  return portalWalkInPaymentPolicySchema.parse(data);
+}
+
+export async function preparePortalWalkInAppointment(
+  client: AppSupabaseClient,
+  input: PortalPaidWalkInBookingInput
+) {
+  const request = portalPaidWalkInBookingSchema.parse(input);
+  const { data, error } = await client.rpc("prepare_portal_walk_in_booking", {
+    p_input: request,
+  });
+  if (error) throw error;
+  return preparedAppointmentBookingSchema.parse(data);
+}
+
+export async function attachPortalAppointmentPayments(
+  client: AppSupabaseClient,
+  appointments: ClinicAppointment[]
+) {
+  const summaries = new Map<
+    string,
+    ReturnType<typeof portalAppointmentPaymentSummarySchema.parse>
+  >();
+  for (let offset = 0; offset < appointments.length; offset += 100) {
+    const { data, error } = await client.rpc(
+      "get_portal_appointment_payment_summaries",
+      {
+        p_appointment_ids: appointments
+          .slice(offset, offset + 100)
+          .map((item) => item.id),
+      }
+    );
+    if (error) throw error;
+    for (const summary of portalAppointmentPaymentSummarySchema
+      .array()
+      .parse(data))
+      summaries.set(summary.appointment_id, summary);
+  }
+  return appointments.map((item) => ({
+    ...item,
+    payment_summary: summaries.get(item.id),
+  }));
+}
+
+export async function listPortalAppointmentTransactions(
+  client: AppSupabaseClient,
+  cursor?: PortalTransactionCursor
+) {
+  const parsed = cursor ? portalTransactionCursorSchema.parse(cursor) : null;
+  const { data, error } = await client.rpc(
+    "list_portal_appointment_transactions",
+    {
+      p_before_created_at: parsed?.created_at ?? null,
+      p_before_id: parsed?.id ?? null,
+    }
+  );
+  if (error) throw error;
+  return portalTransactionsSchema.parse(data);
+}
 
 export async function getAppointmentBilling(
   client: AppSupabaseClient,

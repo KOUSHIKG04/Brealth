@@ -1,7 +1,7 @@
 import { dayKey } from "../utils/appointmentDates";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ScrollView } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { listMyPracticeAppointments } from "@startup/data-access";
 import type { VisitMode } from "../../../types/doctor";
@@ -26,6 +26,13 @@ export function useAppointments() {
     queryFn: () => listMyPracticeAppointments(supabase!),
     enabled: Boolean(supabase),
   });
+  useFocusEffect(
+    useCallback(() => {
+      void appointments.refetch();
+      const timer = setInterval(() => void appointments.refetch(), 15000);
+      return () => clearInterval(timer);
+    }, [appointments.refetch])
+  );
   useEffect(() => {
     if (
       !appointmentId ||

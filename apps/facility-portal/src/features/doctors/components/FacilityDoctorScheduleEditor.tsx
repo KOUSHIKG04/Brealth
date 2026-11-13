@@ -20,15 +20,21 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@startup/web-ui/components/ui/dialog";
-import { ClockTimePicker } from "./ClockTimePicker";
+import { ScheduleTimeBlocks } from "./ScheduleTimeBlocks";
 import { AppointmentRecoveryPolicy } from "./AppointmentRecoveryPolicy";
 import { ClockDurationPicker } from "./ClockDurationPicker";
 import { UnavailableDatePicker } from "./UnavailableDatePicker";
 import { card } from "../utils/facilityScheduleEditorConstants";
 
+import { ScheduleConflictDialog } from "./ScheduleConflictDialog";
+import { ScheduleBusyBlocks } from "./ScheduleBusyBlocks";
+import { ScheduleAdjustmentNotices } from "./ScheduleAdjustmentNotices";
+
 export function FacilityDoctorScheduleEditor({
   practiceId,
   mode,
+  onSelectMode,
+  transition,
 }: FacilityDoctorScheduleEditorProps) {
   const {
     schedule,
@@ -62,7 +68,14 @@ export function FacilityDoctorScheduleEditor({
     fee,
     feeLabel,
     save,
-  } = useFacilityDoctorSchedule({ practiceId, mode });
+    conflict,
+    busyBlocks,
+    busyOverlaps,
+    remoteChanged,
+    dismissConflict,
+    confirmConflict,
+    startFromSuggestedDate,
+  } = useFacilityDoctorSchedule({ practiceId, mode, transition });
   const blocksKey =
     mode === "clinic"
       ? "clinicTimeBlocks"
@@ -80,9 +93,9 @@ export function FacilityDoctorScheduleEditor({
       [endKey]: [...blocks].sort((a, b) => b.end.localeCompare(a.end))[0].end,
     });
   return (
-    <div className="w-full max-w-full min-w-0 space-y-6 pb-12">
+    <div className="w-full max-w-full min-w-0 space-y-7 pb-4">
       <div className="space-y-1">
-        <h1 className="text-2xl font-bold text-[#0f172a]">
+        <h1 className="text-foreground text-xl leading-7 font-semibold tracking-tight">
           {mode === "clinic"
             ? "Clinic Schedule"
             : mode === "online"
@@ -93,6 +106,23 @@ export function FacilityDoctorScheduleEditor({
           <p className="text-sm text-[#475569]">{result.doctor.name}</p>
         ) : null}
       </div>
+      <ScheduleAdjustmentNotices
+        practiceId={practiceId}
+        onSelectMode={onSelectMode}
+      />
+      <ScheduleConflictDialog
+        preview={conflict}
+        pending={pending}
+        onClose={dismissConflict}
+        onConfirm={confirmConflict}
+        onStartFromSuggestedDate={startFromSuggestedDate}
+      />
+      {remoteChanged ? (
+        <p className="text-muted-foreground text-sm" role="status">
+          This schedule was updated in another app. Your edits are kept and will
+          be merged with that update when you publish.
+        </p>
+      ) : null}
       {schedule.isPending ? (
         <div className={card} aria-label="Loading schedule">
           <Skeleton className="h-6 w-64" />
@@ -107,8 +137,10 @@ export function FacilityDoctorScheduleEditor({
           }}
         >
           <ScheduleSection title="Working Days">
-            <p className="text-xs text-[#475569]">Select your working days.</p>
-            <div className="flex gap-2 overflow-x-auto py-1">
+            <p className="text-muted-foreground text-sm leading-6">
+              Select your working days.
+            </p>
+            <div className="grid grid-cols-7 gap-1.5 py-1">
               {workingDayLabels.map((day, index) => {
                 const selected = serviceDays.includes(index + 1);
                 return (
@@ -126,7 +158,7 @@ export function FacilityDoctorScheduleEditor({
                           : [...serviceDays, index + 1].sort((a, b) => a - b),
                       })
                     }
-                    className={`flex h-16 w-[54px] shrink-0 items-center justify-center rounded-[14px] border text-[13px] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#008577] disabled:opacity-50 ${selected ? "border-[#173d3a] bg-[#173d3a] text-white" : "border-[#d2d2d2] bg-white text-[#0f172a]"}`}
+                    className={`flex h-11 min-w-0 items-center justify-center rounded-lg border text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#008577] disabled:opacity-50 ${selected ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-foreground hover:bg-muted"}`}
                   >
                     {day.slice(0, 3)}
                   </button>
@@ -143,75 +175,18 @@ export function FacilityDoctorScheduleEditor({
                   : "Home Visit Hours"
             }
           >
-            <p className="text-xs text-[#475569]">
+            <p className="text-muted-foreground text-sm leading-6">
               Add separate time blocks for these working days. Leave gaps for
               other appointment types or breaks.
             </p>
-            {timeBlocks.map((block, index) => (
-              <div key={index} className="space-y-3">
-                <p className="text-sm font-medium">Time block {index + 1}</p>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <ClockTimePicker
-                    label="Start Time"
-                    value={block.start}
-                    disabled={pending}
-                    onChange={(value) =>
-                      changeBlocks(
-                        timeBlocks.map((item, i) =>
-                          i === index ? { ...item, start: value } : item
-                        )
-                      )
-                    }
-                  />
-                  <ClockTimePicker
-                    label="End Time"
-                    value={block.end}
-                    disabled={pending}
-                    endOfDay
-                    onChange={(value) =>
-                      changeBlocks(
-                        timeBlocks.map((item, i) =>
-                          i === index ? { ...item, end: value } : item
-                        )
-                      )
-                    }
-                  />
-                </div>
-                {timeBlocks.length > 1 ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() =>
-                      changeBlocks(timeBlocks.filter((_, i) => i !== index))
-                    }
-                  >
-                    Remove time block {index + 1}
-                  </Button>
-                ) : null}
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              disabled={
-                pending || timeBlocks.length >= 8 || draft[endKey] === "24:00"
-              }
-              onClick={() => {
-                const start = draft[endKey] ?? "17:00";
-                const [h, m] = start.split(":").map(Number);
-                const finish = Math.min(h * 60 + m + 60, 1440);
-                changeBlocks([
-                  ...timeBlocks,
-                  {
-                    start,
-                    end: `${String(Math.floor(finish / 60)).padStart(2, "0")}:${String(finish % 60).padStart(2, "0")}`,
-                  },
-                ]);
-              }}
-            >
-              Add time block
-            </Button>
+            <ScheduleTimeBlocks
+              key={`${practiceId}:${mode}:${saved?.row_version ?? 0}`}
+              initialBlocks={timeBlocks}
+              end={draft[endKey] ?? "17:00"}
+              pending={pending}
+              onChange={changeBlocks}
+            />
+            <ScheduleBusyBlocks blocks={busyBlocks} overlaps={busyOverlaps} />
             {mode === "home" ? (
               <NumberSetting
                 title="Travel buffer before and after each block"
@@ -224,170 +199,35 @@ export function FacilityDoctorScheduleEditor({
               />
             ) : null}
           </ScheduleSection>
-          <ScheduleSection title="Appointment slots">
-            <p className="text-xs text-[#475569]">
-              {mode === "home"
-                ? "Set your visit duration."
-                : "Duration sets appointment times. The daily limit caps bookings."}
-            </p>
-            <div className="flex flex-col items-start gap-3 sm:flex-row">
-              <ClockDurationPicker
-                label={
-                  mode === "home"
-                    ? "Home-visit slot duration"
-                    : "Consultation duration"
-                }
-                value={duration}
-                min={mode === "home" ? 30 : 5}
-                max={120}
-                disabled={pending}
-                onChange={(minutes) => {
-                  update({ [durationKey]: minutes });
-                  setAvailabilityDuration(minutes);
-                }}
-              />
-              {mode !== "home" ? (
-                <NumberSetting
-                  title={
-                    mode === "clinic"
-                      ? "Total clinic capacity"
-                      : "Daily booking limit"
-                  }
-                  value={draft[limitKey]}
-                  min={0}
-                  max={100}
-                  suffix="bookings"
-                  disabled={pending}
-                  onChange={(value) => update({ [limitKey]: value })}
-                />
-              ) : null}
-            </div>
-            {mode === "clinic" ? (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <NumberSetting
-                  title="App booking quota"
-                  value={draft.clinicAppDailyLimit ?? draft.walkinDailyLimit}
-                  min={0}
-                  max={100}
-                  suffix="bookings"
-                  disabled={pending}
-                  onChange={(clinicAppDailyLimit) =>
-                    update({ clinicAppDailyLimit })
-                  }
-                />
-                <NumberSetting
-                  title="Reception walk-in quota"
-                  value={draft.clinicWalkinDailyLimit ?? 0}
-                  min={0}
-                  max={100}
-                  suffix="bookings"
-                  disabled={pending}
-                  onChange={(clinicWalkinDailyLimit) =>
-                    update({ clinicWalkinDailyLimit })
-                  }
-                />
-                <p className="text-muted-foreground text-sm sm:col-span-2">
-                  App and walk-in quotas must fit within total clinic capacity.
-                  Set a walk-in quota to accept reception registrations.
-                </p>
-              </div>
-            ) : null}
-            {mode !== "home" ? (
-              <>
-                <p className="text-xs text-[#475569]">
-                  Changing the daily limit does not change appointment times.
-                </p>
-                {!saved?.published_modes?.includes(mode) ? (
-                  <div className="space-y-2">
-                    <p className="text-xs text-[#475569]">
-                      Preview a duration based on your hours and daily limit.
-                    </p>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={pending || suggestion === null}
-                      onClick={() => setSuggestedDuration(suggestion)}
-                    >
-                      Suggest duration
-                    </Button>
-                  </div>
-                ) : null}
-              </>
-            ) : null}
-          </ScheduleSection>
-          <ScheduleSection title="Auto Accept Bookings">
-            <ToggleSetting
-              title="Enable automatic acceptance"
-              checked={draft.autoAccept}
-              disabled={pending}
-              onChange={(checked) =>
-                update({
-                  autoAccept: checked,
-                  autoAcceptLimit: checked
-                    ? Math.max(1, draft.autoAcceptLimit)
-                    : 0,
-                })
-              }
-            />
-            <p className="text-xs text-[#475569]">
-              Set your daily auto-booking limit.
-            </p>
-            {draft.autoAccept ? (
-              <>
-                <NumberSetting
-                  title="Shared daily auto-accept limit"
-                  value={draft.autoAcceptLimit}
-                  min={1}
-                  max={100}
-                  suffix="bookings"
-                  disabled={pending}
-                  onChange={(value) => update({ autoAcceptLimit: value })}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={pending}
-                  onClick={() => setShowAutoBookingHelp(true)}
-                >
-                  Set auto-booking limit
-                </Button>
-              </>
-            ) : null}
-          </ScheduleSection>
-          {mode === "home" ? (
-            <ScheduleSection title="Home Visit Appointments">
-              <ToggleSetting
-                title="Enable home visits"
-                checked={draft.homeVisits}
-                disabled={pending}
-                onChange={(homeVisits) => update({ homeVisits })}
-              />
-              <p className="text-xs text-[#475569]">
-                Set your home-visit travel radius.
-              </p>
-              {draft.homeVisits ? (
-                <div className="space-y-2">
-                  <label
-                    htmlFor="home-radius"
-                    className="block text-sm font-medium"
-                  >
-                    Travel radius from practice (km)
-                  </label>
-                  <DecimalSetting
-                    id="home-radius"
-                    label="Home visit travel radius in kilometres"
-                    value={draft.homeRadiusKm}
-                    max={9999.99}
-                    nullable
-                    disabled={pending}
-                    onChange={(homeRadiusKm) => update({ homeRadiusKm })}
-                  />
-                </div>
-              ) : null}
-            </ScheduleSection>
-          ) : null}
+          <AppointmentSlotSettings
+            mode={mode}
+            duration={duration}
+            pending={pending}
+            durationKey={durationKey}
+            update={update}
+            setAvailabilityDuration={setAvailabilityDuration}
+            draft={draft}
+            limitKey={limitKey}
+            saved={saved}
+            suggestion={suggestion}
+            setSuggestedDuration={setSuggestedDuration}
+          />
+          <ScheduleAutoAcceptance
+            draft={draft}
+            pending={pending}
+            update={update}
+            setShowAutoBookingHelp={setShowAutoBookingHelp}
+          />
+          <HomeVisitSettings
+            mode={mode}
+            draft={draft}
+            pending={pending}
+            update={update}
+          />{" "}
           <ScheduleSection title="Consultation Charges">
-            <p className="text-xs text-[#475569]">Set your appointment fee.</p>
+            <p className="text-muted-foreground text-sm leading-6">
+              Set your appointment fee.
+            </p>
             <div className="flex items-center justify-between gap-3 text-sm">
               <label htmlFor="consultation-fee">{feeLabel}</label>
               <div className="flex w-36 items-center gap-2">
@@ -406,7 +246,7 @@ export function FacilityDoctorScheduleEditor({
             </div>
           </ScheduleSection>
           <ScheduleSection title="Apply changes from">
-            <p className="text-xs text-[#475569]">
+            <p className="text-muted-foreground text-sm leading-6">
               New appointment times apply from this date. Existing appointments
               and pending requests keep their times. Daily booking limits apply
               when saved.
@@ -423,7 +263,7 @@ export function FacilityDoctorScheduleEditor({
           <Button
             type="submit"
             disabled={pending || schedule.isFetching}
-            className="min-h-12 w-full sm:w-auto"
+            className="min-h-11 w-full sm:w-auto"
           >
             {pending ? <Spinner /> : <CalendarDays size={17} />}
             Publish Schedule
@@ -527,5 +367,221 @@ export function FacilityDoctorScheduleEditor({
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+type ScheduleEditor = ReturnType<typeof useFacilityDoctorSchedule>;
+
+function AppointmentSlotSettings({
+  mode,
+  duration,
+  pending,
+  durationKey,
+  update,
+  setAvailabilityDuration,
+  draft,
+  limitKey,
+  saved,
+  suggestion,
+  setSuggestedDuration,
+}: Pick<
+  ScheduleEditor,
+  | "duration"
+  | "pending"
+  | "durationKey"
+  | "update"
+  | "setAvailabilityDuration"
+  | "draft"
+  | "limitKey"
+  | "saved"
+  | "suggestion"
+  | "setSuggestedDuration"
+> &
+  Pick<FacilityDoctorScheduleEditorProps, "mode">) {
+  return (
+    <ScheduleSection title="Appointment slots">
+      <p className="text-muted-foreground text-sm leading-6">
+        {mode === "home"
+          ? "Set your visit duration."
+          : "Duration sets appointment times. The daily limit caps bookings."}
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <ClockDurationPicker
+          label={
+            mode === "home"
+              ? "Home-visit slot duration"
+              : "Consultation duration"
+          }
+          value={duration}
+          min={mode === "home" ? 30 : 5}
+          max={120}
+          disabled={pending}
+          onChange={(minutes) => {
+            update({ [durationKey]: minutes });
+            setAvailabilityDuration(minutes);
+          }}
+        />
+        {mode !== "home" ? (
+          <NumberSetting
+            title={
+              mode === "clinic"
+                ? "Total clinic capacity"
+                : "Daily booking limit"
+            }
+            value={draft[limitKey]}
+            min={0}
+            max={100}
+            suffix="bookings"
+            disabled={pending}
+            onChange={(value) => update({ [limitKey]: value })}
+          />
+        ) : null}
+      </div>
+      {mode === "clinic" ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <NumberSetting
+            title="App booking quota"
+            value={draft.clinicAppDailyLimit ?? draft.walkinDailyLimit}
+            min={0}
+            max={100}
+            suffix="bookings"
+            disabled={pending}
+            onChange={(clinicAppDailyLimit) => update({ clinicAppDailyLimit })}
+          />
+          <NumberSetting
+            title="Reception walk-in quota"
+            value={draft.clinicWalkinDailyLimit ?? 0}
+            min={0}
+            max={100}
+            suffix="bookings"
+            disabled={pending}
+            onChange={(clinicWalkinDailyLimit) =>
+              update({ clinicWalkinDailyLimit })
+            }
+          />
+          <p className="text-muted-foreground text-sm sm:col-span-2">
+            App and walk-in quotas must fit within total clinic capacity. Set a
+            walk-in quota to accept reception registrations.
+          </p>
+        </div>
+      ) : null}
+      {mode !== "home" ? (
+        <>
+          <p className="text-muted-foreground text-sm leading-6">
+            Changing the daily limit does not change appointment times.
+          </p>
+          {!saved?.published_modes?.includes(mode) ? (
+            <div className="space-y-2">
+              <p className="text-muted-foreground text-sm leading-6">
+                Preview a duration based on your hours and daily limit.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending || suggestion === null}
+                onClick={() => setSuggestedDuration(suggestion)}
+              >
+                Suggest duration
+              </Button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </ScheduleSection>
+  );
+}
+
+function ScheduleAutoAcceptance({
+  draft,
+  pending,
+  update,
+  setShowAutoBookingHelp,
+}: Pick<
+  ScheduleEditor,
+  "draft" | "pending" | "update" | "setShowAutoBookingHelp"
+>) {
+  return (
+    <ScheduleSection title="Auto Accept Bookings">
+      <ToggleSetting
+        title="Enable automatic acceptance"
+        checked={draft.autoAccept}
+        disabled={pending}
+        onChange={(checked) =>
+          update({
+            autoAccept: checked,
+            autoAcceptLimit: checked ? Math.max(1, draft.autoAcceptLimit) : 0,
+          })
+        }
+      />
+      <p className="text-muted-foreground text-sm leading-6">
+        Set your daily auto-booking limit.
+      </p>
+      {draft.autoAccept ? (
+        <>
+          <NumberSetting
+            title="Shared daily auto-accept limit"
+            value={draft.autoAcceptLimit}
+            min={1}
+            max={100}
+            suffix="bookings"
+            disabled={pending}
+            onChange={(value) => update({ autoAcceptLimit: value })}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={() => setShowAutoBookingHelp(true)}
+          >
+            Set auto-booking limit
+          </Button>
+        </>
+      ) : null}
+    </ScheduleSection>
+  );
+}
+
+function HomeVisitSettings({
+  mode,
+  draft,
+  pending,
+  update,
+}: Pick<ScheduleEditor, "draft" | "pending" | "update"> &
+  Pick<FacilityDoctorScheduleEditorProps, "mode">) {
+  return (
+    <>
+      {mode === "home" ? (
+        <ScheduleSection title="Home Visit Appointments">
+          <ToggleSetting
+            title="Enable home visits"
+            checked={draft.homeVisits}
+            disabled={pending}
+            onChange={(homeVisits) => update({ homeVisits })}
+          />
+          <p className="text-muted-foreground text-sm leading-6">
+            Set your home-visit travel radius.
+          </p>
+          {draft.homeVisits ? (
+            <div className="space-y-2">
+              <label
+                htmlFor="home-radius"
+                className="block text-sm font-medium"
+              >
+                Travel radius from practice (km)
+              </label>
+              <DecimalSetting
+                id="home-radius"
+                label="Home visit travel radius in kilometres"
+                value={draft.homeRadiusKm}
+                max={9999.99}
+                nullable
+                disabled={pending}
+                onChange={(homeRadiusKm) => update({ homeRadiusKm })}
+              />
+            </div>
+          ) : null}
+        </ScheduleSection>
+      ) : null}
+    </>
   );
 }

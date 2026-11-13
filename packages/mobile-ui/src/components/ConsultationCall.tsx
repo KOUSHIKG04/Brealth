@@ -67,7 +67,6 @@ export function ConsultationCall(props: ConsultationCallProps) {
         });
       }
     }
-    if (chat) setUnread(0);
   }, [messages, identityId, chat, name, showToast]);
   async function send() {
     if (

@@ -32,6 +32,7 @@ function picker(sourcePath) {
       useMemo: (f) => f(),
       useCallback: (f) => f,
       useEffect: () => {},
+      useEffectEvent: (callback) => callback,
     },
     "react/jsx-runtime": { jsx, jsxs: jsx },
     "react-native": {

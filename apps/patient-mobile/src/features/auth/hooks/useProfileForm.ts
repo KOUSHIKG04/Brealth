@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { ProfileFormProps } from "../types/profile-form";
 import {
   getInitialFormValues,
@@ -104,9 +105,7 @@ export function useProfileForm({
         photo,
       });
     } catch (cause) {
-      setSubmitError(
-        cause instanceof Error ? cause.message : "Could not save the profile."
-      );
+      setSubmitError(userErrorMessage(cause, "Could not save the profile."));
     }
   };
 

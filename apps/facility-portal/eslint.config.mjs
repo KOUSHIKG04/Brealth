@@ -6,6 +6,13 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   {
+    // Node's CommonJS test harnesses intentionally use require().
+    files: ["tests/**/*.test.cjs"],
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  {
     files: [
       "src/features/**/*.{ts,tsx}",
       "src/components/**/*.{ts,tsx}",

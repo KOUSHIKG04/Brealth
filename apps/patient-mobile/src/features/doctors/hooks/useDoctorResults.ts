@@ -92,7 +92,7 @@ export function useDoctorResults({
   }, [isOnline, onlineOffset, onlineQuery.data]);
   const isLoading = isOnline ? onlineQuery.isLoading : query.isLoading;
   const isError = isOnline ? onlineQuery.isError : query.isError;
-  const rows = isOnline ? onlineRows : (query.data ?? []);
+  const rows = useMemo(() => isOnline ? onlineRows : (query.data ?? []), [isOnline, onlineRows, query.data]);
   useToastFeedback({
     error:
       locationError ||

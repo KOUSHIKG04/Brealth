@@ -1,5 +1,14 @@
+import { userErrorMessage } from "@startup/contracts";
+import { uniqueMapAttributions, mapAttributionKey } from "@startup/contracts";
 import { StatusBar } from "expo-status-bar";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   Keyboard,
@@ -191,14 +200,14 @@ export default function ClinicLocationScreen() {
       if (mounted.current && request === operation.current)
         showToast({
           title: "Could not find address",
-          message: cause instanceof Error ? cause.message : "Try again.",
+          message: userErrorMessage(cause, "Try again."),
           type: "error",
         });
     } finally {
       if (mounted.current && request === operation.current) setSearching(false);
     }
   }
-  async function useDeviceLocation() {
+  async function locateDevice() {
     if (locating || searching) return;
     const request = ++operation.current;
     setLocating(true);
@@ -221,7 +230,7 @@ export default function ClinicLocationScreen() {
       if (mounted.current && request === operation.current)
         showToast({
           title: "Could not find your location",
-          message: cause instanceof Error ? cause.message : "Try again.",
+          message: userErrorMessage(cause, "Try again."),
           type: "error",
         });
     } finally {
@@ -229,11 +238,20 @@ export default function ClinicLocationScreen() {
     }
   }
 
+  const locateInitialPoint = useEffectEvent(() => {
+    if (!initialPoint) void locateDevice();
+  });
   useEffect(() => {
-    if (!initialPoint) void useDeviceLocation();
+    locateInitialPoint();
   }, []);
 
+  const reverseLatitude = point?.latitude;
+  const reverseLongitude = point?.longitude;
   useEffect(() => {
+    const point =
+      reverseLatitude == null || reverseLongitude == null
+        ? null
+        : { latitude: reverseLatitude, longitude: reverseLongitude };
     if (!point) return;
     const found = selectedPlace.current;
     if (
@@ -275,10 +293,10 @@ export default function ClinicLocationScreen() {
             setAddressLabel("");
             showToast({
               title: "Could not fill this address",
-              message:
-                cause instanceof Error
-                  ? cause.message
-                  : "Retry the lookup or enter the address manually.",
+              message: userErrorMessage(
+                cause,
+                "Retry the lookup or enter the address manually."
+              ),
               type: "error",
             });
           }
@@ -291,7 +309,7 @@ export default function ClinicLocationScreen() {
       active = false;
       clearTimeout(timer);
     };
-  }, [point?.latitude, point?.longitude, lookupVersion]);
+  }, [reverseLatitude, reverseLongitude, lookupVersion, showToast]);
 
   const onMapPoint = useCallback(
     (
@@ -455,16 +473,16 @@ export default function ClinicLocationScreen() {
                 </Pressable>
               ))}
               <Text style={styles.googleAttribution}>Google Maps</Text>
-              {searchResults
-                .flatMap((p) => p.attributions)
-                .map((a, i) => (
-                  <Text
-                    key={`${a.provider}-${i}`}
-                    style={styles.googleAttribution}
-                  >
-                    {a.provider}
-                  </Text>
-                ))}
+              {uniqueMapAttributions(
+                searchResults.flatMap((p) => p.attributions)
+              ).map((a) => (
+                <Text
+                  key={mapAttributionKey(a)}
+                  style={styles.googleAttribution}
+                >
+                  {a.provider}
+                </Text>
+              ))}
             </View>
           ) : null}
         </View>
@@ -481,7 +499,7 @@ export default function ClinicLocationScreen() {
             loading={locating}
             disabled={locating || searching}
             leftIcon={<LocateFixed size={19} color={colors.doctor.primary} />}
-            onPress={() => void useDeviceLocation()}
+            onPress={() => void locateDevice()}
           />
           {point ? (
             <View style={styles.place}>

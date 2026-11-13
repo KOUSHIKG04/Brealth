@@ -5,9 +5,12 @@ import { DoctorScreen, Heading, Label } from "../../../components/DoctorScreen";
 import { palette, ui } from "../../../components/theme";
 import { UnavailableTimeManager } from "../components/UnavailableTimeManager";
 
+import { ScheduleAdjustmentNotices } from "../components/ScheduleAdjustmentNotices";
+
 export function ScheduleOptionsScreen() {
   return (
     <DoctorScreen title="Manage Schedule">
+      <ScheduleAdjustmentNotices />
       {(
         [
           [

@@ -10,3 +10,9 @@ minimumReleaseAgeExclude:
   - expo-linear-gradient@57.0.2
 patchedDependencies:
   expo-router@57.0.24: patches/expo-router@57.0.24.patch
+
+overrides:
+  posthog-js>dompurify: 3.4.17
+  undici@7.29.1: 7.30.1
+  fast-uri@3.1.8: 3.1.9
+  source-map-js@1.2.1: 1.2.2

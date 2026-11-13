@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import type { LiveSosScreenProps } from "../types/live-sos-screen";
 import { sosDispatchEnabled } from "../utils/sosConstants";
 import { useState } from "react";
@@ -127,9 +128,10 @@ export function useLiveSos({
     },
     onError: (cause) =>
       report(
-        cause instanceof Error
-          ? cause.message
-          : "App dispatch is unavailable. Call emergency services now.",
+        userErrorMessage(
+          cause,
+          "App dispatch is unavailable. Call emergency services now."
+        ),
         "error"
       ),
   });

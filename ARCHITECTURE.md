@@ -1,8 +1,45 @@
 # Repository structure and ownership
 
+## Hybrid clinic queue
+
+Clinic reservations and serving order are owned by the shared appointment RPCs.
+The hybrid queue migration reserves a window-based token before confirmation or
+payment completes, then uses one database ordering function for call validation,
+people-ahead counts and waiting estimates. App and reception reservations have
+equal standing. Existing issued session tokens remain unchanged; new sessions
+use planned positions. Patient and Doctor mobile and Facility Portal consume the
+same optional `clinic_queue` projection. See [the backend guide](supabase/README.md).
+The queue and schedule-conflict migrations were applied to the test project on
+30 October 2026 and passed hosted rollback workflow checks. Browser/native-device
+acceptance and multi-connection contention checks remain separate.
+
 This document describes ownership in the existing codebase. It does not prescribe
 creating every possible subfolder. Each mobile app has an `ARCHITECTURE.md` with
 its current integration boundaries; the web apps have their own local guidance.
+
+## Error handling and monitoring
+
+- **User copy:** `contracts/src/errors.ts` owns `userErrorMessage`. RPC validation
+  copy and safe app/auth messages pass through; database internals, provider
+  text and unknown codes use the caller's fallback. Apps never render raw
+  `error.message`. `isExpectedError` and `shouldRetryRequest` classify the same codes.
+- **Reporting:** `data-access/src/monitoring` owns `reportError`, a no-op until an
+  app installs a sink. Each app's `services/monitoring.ts` (mobile) or
+  `instrumentation-client.ts` (web) installs PostHog only when its public key is
+  set: exceptions only, scrubbed by `scrubEventData`, with no identification,
+  screens/page views, replay or geolocation. Expected outcomes are never reported.
+- **Crash containment:** mobile root layouts export an Expo Router `ErrorBoundary`
+  using `mobile-ui` `ErrorFallback`; web apps have `error.tsx` and
+  `global-error.tsx` using `web-ui` `RouteErrorState` with the digest reference.
+  Web `instrumentation.ts` writes one scrubbed JSON line per server error.
+- **Network:** the shared Supabase client factory and web clients use
+  `createTimeoutFetch` (20 s reads, 45 s functions, 120 s storage). Mobile query
+  providers connect NetInfo to React Query's `onlineManager`, pausing queries
+  and mutations offline, and show `OfflineBanner`.
+- **Server:** Edge Functions log failures through `supabase/functions/_shared/log.ts`.
+
+Local implementation only: no PostHog project or keys are configured, and
+device, browser and hosted-log behavior is unverified.
 
 ## Shared ownership
 
@@ -59,6 +96,12 @@ owning features. An empty `services/location.ts` or `services/notifications.ts`
 does not supersede these implementations.
 
 ## Historical placeholders and cleanup
+
+`plans/` retains optional mobile/provider setup and manual verification guides,
+indexed by [its README](plans/README.md). Historical audits, generated UI/database
+inventories and the unapproved SQL draft have been removed. Use the architecture
+documents and backend test guide for current ownership and executable checks;
+planning notes are not build inputs or deployment evidence.
 
 Mobile `.gitkeep` markers, empty mobile location/notification service files, and
 unreferenced shared appointment/record/ambulance/clinical-contract stubs have been
@@ -133,6 +176,22 @@ used by Company Admin; this is tooling reuse, with no runtime app dependency.
 Empty web dispatch/staff and server scaffolds have been removed. Their future work
 is documented rather than represented by empty source files.
 
+## Test ownership and execution
+
+`pnpm test` runs the existing workspace test scripts through pnpm recursion,
+including Patient. Contract tests discover every suite in their tests directory.
+Database model/fixture checks run by default; real PostgreSQL integration and SQL
+smoke tests remain explicitly opt-in against a disposable target. A skipped
+integration suite is not a successful database verification.
+
+Mobile architecture suites are small app-specific entry points for the existing
+Facility Portal `scripts/feature-structure.mjs` inspector in mobile mode. This is
+test tooling reuse, with no runtime dependency between apps. Local private types
+can stay with their component/hook; exported feature contracts retain their owner.
+Queue control checks share the reception suite, and database queue checks share
+the existing clinic capacity smoke fixture. One-off verification tools and logs
+stay ignored; they are not additional permanent test suites.
+
 ## Backend composition boundaries
 
 The [Supabase guide](supabase/README.md) owns backend layout and environment
@@ -144,3 +203,14 @@ fixture SQL stays in `supabase/fixtures`. Automatic seeding remains disabled.
 `packages/database` remains optional Drizzle tooling for the same Supabase
 PostgreSQL database. It is not a separately deployed service or a client import.
 The Supabase CLI remains the only deployment migration runner.
+
+## Schedule changes with patient rescheduling
+
+Doctor mobile and Facility Portal now support trimming conflicts or pausing the
+affected other-service blocks, with explicit patient-facing rescheduling requests.
+Existing booked sessions keep conflicting new slots unavailable until patients
+explicitly reschedule or cancel; payment holds still block changes. Patient's
+notification drawer, push navigation and Appointment Details use the existing
+recovery/payment owners. The new migrations and notification worker are deployed to
+the approved test database. See [backend details](supabase/README.md). No app server
+was started; browser/device/push delivery verification remains separate.

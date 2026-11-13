@@ -7,6 +7,10 @@ const fs = require("node:fs"),
   ts = require("typescript"),
   path = require("node:path");
 
+const {
+  withErrorDoubles,
+} = require("../../../packages/contracts/tests/support/errorTestDoubles.cjs");
+
 function resolver(
   role,
   {
@@ -59,7 +63,7 @@ function resolver(
     }).outputText,
     {
       exports,
-      require: (n) => mocks[n],
+      require: (n) => withErrorDoubles(n, mocks) ?? mocks[n],
       setTimeout: (fn) => {
         queueMicrotask(fn);
       },

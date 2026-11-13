@@ -1,4 +1,4 @@
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.0";
 import { providerClient, providerConfig } from "../_shared/razorpay.ts";
 import {
   paymentFailure,
@@ -14,6 +14,7 @@ import {
   ambulanceCommand,
   reconcileAmbulance,
 } from "../_shared/ambulancePayments.ts";
+import { logFailure } from "../_shared/log.ts";
 
 export default {
   fetch: withSupabase({ auth: "secret" }, async (request, ctx) => {
@@ -37,8 +38,17 @@ export default {
             appointmentId
           );
           completed++;
-        } catch {
+        } catch (error) {
           /* Durable work stays reserved; uncertain POSTs are never replayed. */
+          logFailure(
+            "payment-reconcile",
+            "appointment-refund",
+            error,
+            {
+              appointment_id: appointmentId,
+            },
+            "warn"
+          );
         }
       }
       const payouts = await payoutCommand<string[]>(
@@ -58,8 +68,17 @@ export default {
             routeTransfersEnabled((name) => Deno.env.get(name), config)
           );
           payoutsChecked++;
-        } catch {
+        } catch (error) {
           /* Keep uncertain transfers reserved for read reconciliation. */
+          logFailure(
+            "payment-reconcile",
+            "payout",
+            error,
+            {
+              payout_entry_id: entryId,
+            },
+            "warn"
+          );
         }
       }
       const bookings = await ambulanceCommand<string[]>(
@@ -73,8 +92,17 @@ export default {
         try {
           await reconcileAmbulance(ctx.supabaseAdmin, api, config, bookingId);
           ambulanceChecked++;
-        } catch {
+        } catch (error) {
           /* Orders remain reserved; never duplicate a timed-out POST. */
+          logFailure(
+            "payment-reconcile",
+            "ambulance-order",
+            error,
+            {
+              booking_id: bookingId,
+            },
+            "warn"
+          );
         }
       }
       return Response.json({
@@ -86,7 +114,7 @@ export default {
         ambulanceCount: bookings.length,
       });
     } catch (error) {
-      return paymentFailure(error);
+      return paymentFailure(error, "payment-reconcile", request);
     }
   }),
 };

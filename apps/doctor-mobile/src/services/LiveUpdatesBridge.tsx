@@ -18,6 +18,8 @@ const queryKeys: Partial<Record<AppChangeKind, string[]>> = {
     "my-doctor-profile",
     "my-doctor-facility-requests",
     "my-doctor-schedule",
+    "schedule-adjustments",
+    "schedule-busy-blocks",
     "doctor-clinic-sessions",
     "doctor-daily-slot-usage",
     "doctor-clinic-unavailability",

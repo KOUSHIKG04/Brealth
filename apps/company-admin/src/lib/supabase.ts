@@ -1,7 +1,7 @@
 import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import type { Database } from "@startup/data-access";
+import { createTimeoutFetch, type Database } from "@startup/data-access";
 import { companyAdminAuthCookie } from "./supabase-cookie";
 
 export async function createClient() {
@@ -15,6 +15,7 @@ export async function createClient() {
 
   return createServerClient<Database>(url, key, {
     cookieOptions: { name: companyAdminAuthCookie },
+    global: { fetch: createTimeoutFetch() },
     cookies: {
       getAll: () => jar.getAll(),
       setAll: (items) => {

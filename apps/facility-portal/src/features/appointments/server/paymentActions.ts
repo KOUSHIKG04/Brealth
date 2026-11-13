@@ -1,10 +1,14 @@
 "use server";
 
+import { userErrorMessage } from "@startup/contracts";
 import "server-only";
 import { z } from "zod";
 import { revalidatePath } from "next/cache";
 import { unstable_rethrow } from "next/navigation";
-import { uuidSchema } from "@startup/contracts";
+import {
+  uuidSchema,
+  appointmentPaymentCommandSchema,
+} from "@startup/contracts";
 import {
   confirmAppointmentCashRefund,
   decideAppointmentRefund,
@@ -50,6 +54,26 @@ const financialAction = z.discriminatedUnion("action", [
     })
     .strict(),
 ]);
+
+export async function executePortalAppointmentCheckout(input: unknown) {
+  await requireApprovedFacility();
+  const action = appointmentPaymentCommandSchema.parse(input);
+  if (action.action === "process_refunds")
+    throw new Error("Invalid checkout action.");
+  const client = await createClient();
+  const billing = await getAppointmentBilling(client, action.appointmentId);
+  if (!billing?.can_manage)
+    throw new Error("Financial approval access required.");
+  if (action.action === "checkout" && !billing.can_pay)
+    throw new Error(
+      "This appointment has no payable online balance. Refresh its status."
+    );
+  const result = await processAppointmentPayment(client, action);
+  revalidatePath("/appointments");
+  revalidatePath("/transactions");
+  revalidatePath("/");
+  return result;
+}
 
 export async function loadPortalAppointmentBilling(appointmentId: string) {
   await requireApprovedFacility();
@@ -98,14 +122,15 @@ export async function changePortalAppointmentBilling(input: unknown) {
       await confirmAppointmentCashRefund(client, action.refundId, action.note);
     } else await processAppointmentPayment(client, action);
     revalidatePath("/appointments");
+    revalidatePath("/transactions");
     return { error: null };
   } catch (error) {
     unstable_rethrow(error);
     return {
-      error:
-        error instanceof Error
-          ? error.message
-          : "Could not update payment. Refresh the latest status before retrying.",
+      error: userErrorMessage(
+        error,
+        "Could not update payment. Refresh the latest status before retrying."
+      ),
     };
   }
 }

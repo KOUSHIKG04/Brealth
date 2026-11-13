@@ -4,6 +4,28 @@ Each implemented endpoint has its own `index.ts` and genuinely local helpers.
 These deploy to Supabase's Deno-compatible runtime; no separate Bun server is
 required. App-facing invocation adapters stay in `packages/data-access`.
 
+## Failure logging
+
+`_shared/log.ts` writes one JSON line per failure (`fn`, `stage`, scrubbed
+message and request id) to the function logs; key/token query parameters,
+emails, bearer tokens and phone numbers are redacted. Payment functions log
+5xx outcomes through `paymentFailure`; reconcile, push delivery/receipt and map
+lookups log their previously silent failures. `ambulance-hospitals` now returns
+fixed copy instead of raw provider errors. Not yet redeployed or checked in
+hosted logs.
+
+## Dependency pins
+
+Implemented Edge entrypoints and their import maps pin `@supabase/server` to
+`1.9.0`, matching the version already installed and recorded in the workspace
+lockfile. The TypeScript declaration shim uses the same exact npm specifier.
+These source pins have not been redeployed or checked in the hosted Deno runtime.
+
+The workspace pnpm lockfile does not lock Deno's complete dependency graph. No
+Deno lockfile has been generated here; payment import maps still contain the
+existing `jsr:@supabase/functions-js@^2` range. Resolve and review that graph with
+the approved Deno deployment toolchain before claiming reproducible Edge builds.
+
 ## Implemented source owners
 
 | Folder                | Responsibility                                                                                                              |

@@ -23,7 +23,7 @@ export function FloatingVideo({
     previewHeight: height,
   });
   useEffect(() => {
-    bounds.current = { ...frame, previewWidth: width, previewHeight: height };
+    bounds.current = { width: frame.width, height: frame.height, previewWidth: width, previewHeight: height };
     if (!frame.width || !frame.height) return;
     const next = initialized.current
       ? current.current

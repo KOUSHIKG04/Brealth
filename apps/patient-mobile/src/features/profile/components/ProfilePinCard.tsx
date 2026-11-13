@@ -6,6 +6,8 @@ import { ChevronDown, Lock } from "lucide-react-native";
 import { colors, fontFamilies, radius, surfaces } from "@startup/design-tokens";
 import { Button, Card, Input, Loader } from "@startup/mobile-ui";
 
+const pinPositions = ["first", "second", "third", "fourth"] as const;
+
 export function ProfilePinCard() {
   const { showPin, setShowPin, pin, setPin, loading, unavailable, digits } =
     useProfilePin();
@@ -52,14 +54,14 @@ export function ProfilePinCard() {
             Share this PIN only when an active service is ready to be completed.
           </Text>
           <View style={styles.pinRow}>
-            {digits.map((digit, index) => (
+            {pinPositions.map((position, index) => (
               <Input
-                key={index}
+                key={position}
                 accessibilityLabel={`PIN digit ${index + 1}`}
                 containerStyle={styles.pinContainer}
                 editable={false}
                 style={styles.pinInput}
-                value={digit}
+                value={digits[index]}
               />
             ))}
           </View>

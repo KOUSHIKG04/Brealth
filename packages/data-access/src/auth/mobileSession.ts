@@ -2,6 +2,7 @@ import type { Session } from "@supabase/supabase-js";
 import type { MyProfile } from "@startup/contracts";
 import type { AppSupabaseClient } from "../client/createSupabaseClient";
 import { getMyProfile } from "./operations";
+import { getAuthErrorMessage } from "./errorMessages";
 
 export type MobileSessionState = {
   loading: boolean;
@@ -62,10 +63,7 @@ export function createMobileSession(client: AppSupabaseClient | null) {
           loading: false,
           session,
           profile: sameAccount ? state.profile : null,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Could not load your profile.",
+          error: getAuthErrorMessage(error, "Could not load your profile."),
         });
       }
     }
@@ -84,7 +82,10 @@ export function createMobileSession(client: AppSupabaseClient | null) {
             loading: false,
             session: null,
             profile: null,
-            error: error.message,
+            error: getAuthErrorMessage(
+              error,
+              "Could not restore your session."
+            ),
           });
         else void refresh(data.session);
       })
@@ -94,10 +95,7 @@ export function createMobileSession(client: AppSupabaseClient | null) {
           loading: false,
           session: null,
           profile: null,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Could not restore your session.",
+          error: getAuthErrorMessage(error, "Could not restore your session."),
         });
       });
     // Supabase auth callbacks must not await another Supabase call.
@@ -129,10 +127,7 @@ export function createMobileSession(client: AppSupabaseClient | null) {
         emit({
           ...state,
           loading: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : "Could not restore your session.",
+          error: getAuthErrorMessage(error, "Could not restore your session."),
         });
       }
     },

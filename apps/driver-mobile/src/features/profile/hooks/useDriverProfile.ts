@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useState } from "react";
 import * as Location from "expo-location";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -85,10 +86,10 @@ export function useDriverProfile() {
         type: "success",
       });
     } catch (cause) {
-      const feedback =
-        cause instanceof Error
-          ? cause.message
-          : "Could not update availability.";
+      const feedback = userErrorMessage(
+        cause,
+        "Could not update availability."
+      );
       showToast({
         title: "Availability update failed",
         message: feedback,

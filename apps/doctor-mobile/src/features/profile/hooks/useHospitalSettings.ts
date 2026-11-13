@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useState } from "react";
 import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -101,7 +102,7 @@ export function useHospitalSettings() {
     } catch (error) {
       showToast({
         title: "Could not open practice schedule",
-        message: error instanceof Error ? error.message : "Try again.",
+        message: userErrorMessage(error, "Try again."),
         type: "error",
       });
     } finally {

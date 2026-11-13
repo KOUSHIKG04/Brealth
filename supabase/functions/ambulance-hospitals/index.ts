@@ -1,7 +1,9 @@
-import { withSupabase } from "npm:@supabase/server@1";
+import { withSupabase } from "npm:@supabase/server@1.9.0";
 import { normalizeHospital, hospitalFields, isHospital } from "./places.ts";
+import { logFailure, requestId } from "../_shared/log.ts";
 
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 const point = (lat: unknown, lng: unknown) =>
   typeof lat === "number" &&
   typeof lng === "number" &&
@@ -9,6 +11,7 @@ const point = (lat: unknown, lng: unknown) =>
   Number.isFinite(lng) &&
   Math.abs(lat) <= 90 &&
   Math.abs(lng) <= 180;
+
 async function google(path: string, key: string, body?: unknown) {
   const response = await fetch(`https://places.googleapis.com/v1/${path}`, {
     method: body ? "POST" : "GET",
@@ -31,6 +34,7 @@ async function google(path: string, key: string, body?: unknown) {
     );
   return response.json();
 }
+
 export default {
   fetch: withSupabase({ auth: "user" }, async (request, ctx) => {
     if (request.method !== "POST")
@@ -165,12 +169,15 @@ export default {
         { headers: { "cache-control": "no-store" } }
       );
     } catch (error) {
+      // Only provider lookups reach here; their raw errors can include the
+      // request URL and server key, so users get fixed copy.
+      logFailure("ambulance-hospitals", "provider-request", error, {
+        request_id: requestId(request),
+      });
       return Response.json(
         {
           error:
-            error instanceof Error
-              ? error.message
-              : "Hospital service unavailable",
+            "Google hospital lookup is unavailable. Try again or choose a registered hospital.",
         },
         { status: 502 }
       );

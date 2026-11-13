@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@startup/contracts";
 import { useToast, useToastFeedback } from "@startup/mobile-ui";
 import { useEffect, useState } from "react";
 import { router } from "expo-router";
@@ -23,18 +24,14 @@ export function useAccountSetup() {
       })
       .catch((cause) => {
         if (active)
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Could not load your account."
-          );
+          setError(userErrorMessage(cause, "Could not load your account."));
       });
     return () => {
       active = false;
     };
   }, [attempt]);
   useEffect(() => {
-    if (auth.loading || auth.error || !auth.session) return;
+    if (auth.loading || auth.error || !auth.session?.user.id) return;
     if (auth.profile?.patient_id && auth.profile.patient_profile_complete)
       router.replace("/(app)/(tabs)");
     else router.replace("/onboarding");

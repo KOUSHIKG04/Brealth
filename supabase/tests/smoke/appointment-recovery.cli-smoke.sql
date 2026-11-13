@@ -1,5 +1,7 @@
 -- Run after the migration inside BEGIN/ROLLBACK. Uses only transient fixture
 -- patients/bookings and existing verified identities; creates no Auth users.
+BEGIN;
+
 DO $$
 DECLARE practice uuid; doctor_key uuid; doctor_auth uuid; doctor_identity uuid; patient_auth uuid; patient_identity uuid;
   patient_key uuid; original uuid; replacement uuid; next_replacement uuid; occupied uuid; key uuid; slot jsonb; next_slot jsonb;
@@ -116,3 +118,4 @@ BEGIN
    OR has_table_privilege('authenticated','clinzo.appointment_recovery_request','SELECT') THEN RAISE EXCEPTION 'Recovery grants exposed'; END IF;
 END $$;
 SELECT true AS appointment_recovery_workflow_passed;
+ROLLBACK;

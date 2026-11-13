@@ -1,5 +1,7 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
+import { reportError } from "@startup/data-access";
 import type { NewAppointmentDialogProps } from "../types/newAppointmentDialog";
 import type { Practice, Slot } from "../types/newAppointmentDialog";
 import * as React from "react";
@@ -9,10 +11,15 @@ import {
   createPortalWalkInAppointment,
   loadPortalWalkInPractices,
   loadPortalWalkInSlots,
+  finishPortalWalkInBooking,
 } from "../server/actions";
+import { executePortalAppointmentCheckout } from "../server/paymentActions";
+import { payPortalAppointment } from "../services/appointmentCheckout";
+import { useQueryClient } from "@tanstack/react-query";
 
 export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
   const router = useRouter();
+  const client = useQueryClient();
   const [open, setOpen] = React.useState(false);
   const [loading, setLoading] = React.useState(false);
   const [loadingSlots, setLoadingSlots] = React.useState(false);
@@ -32,8 +39,85 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
   const [reason, setReason] = React.useState("");
   const [requestKey, setRequestKey] = React.useState(() => crypto.randomUUID());
   const slotsRequest = React.useRef(0);
+  const [paymentMethod, setPaymentMethod] = React.useState<"gateway" | "cash">(
+    "gateway"
+  );
+  const [termsAccepted, setTermsAccepted] = React.useState(false);
+  const [cashReceived, setCashReceived] = React.useState(false);
+  const [paymentStage, setPaymentStage] = React.useState<string | null>(null);
+  const checkout = React.useRef<{
+    appointmentId: string;
+    patientName: string;
+    policyVersion: string;
+    checkIn: boolean;
+  } | null>(null);
+  React.useEffect(
+    () => () => {
+      checkout.current = null;
+    },
+    []
+  );
+
+  async function refreshPayments() {
+    await client.invalidateQueries({ queryKey: ["appointment-billing"] });
+    await client.invalidateQueries({ queryKey: ["portal-transactions"] });
+    router.refresh();
+  }
+
+  function onDialogClosed(isOpen: boolean) {
+    const next = checkout.current;
+    if (isOpen || !next) return;
+    checkout.current = null;
+    startTransition(async () => {
+      try {
+        const billing = await payPortalAppointment({
+          ...next,
+          onStage: setPaymentStage,
+        });
+        if (billing.due_minor !== 0 || billing.captured_minor <= 0)
+          throw new Error(
+            "Payment is still being verified. Check its status before retrying."
+          );
+        const arrival = await finishPortalWalkInBooking(
+          next.appointmentId,
+          next.checkIn
+        );
+        toast.add({
+          title: "Appointment booked",
+          description:
+            next.checkIn && !arrival.checkedIn
+              ? "Payment received. Review the patient's arrival at reception."
+              : "Payment received and appointment confirmed.",
+          type: "success",
+        });
+        onCreated?.(next.appointmentId);
+        router.push("/appointments");
+      } catch (error) {
+        setPaymentStage("Checking payment status…");
+        await executePortalAppointmentCheckout({
+          action: "reconcile",
+          appointmentId: next.appointmentId,
+        }).catch((reconcileError) =>
+          reportError(reconcileError, { source: "payment-reconcile" })
+        );
+        toast.add({
+          title: "Check booking payment",
+          description: userErrorMessage(
+            error,
+            "The appointment is awaiting verified payment. You can resume payment from this reservation."
+          ),
+          type: "warning",
+        });
+        router.push(`/transactions?appointment=${next.appointmentId}`);
+      } finally {
+        setPaymentStage(null);
+        await refreshPayments();
+      }
+    });
+  }
 
   async function showDialog() {
+    if (paymentStage) return;
     setOpen(true);
     setLoading(true);
     try {
@@ -55,6 +139,8 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
     setWindowId("");
     setSlots([]);
     setClinicDay(null);
+    setTermsAccepted(false);
+    setCashReceived(false);
     const request = ++slotsRequest.current;
     if (!id) {
       setLoadingSlots(false);
@@ -88,7 +174,10 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
       !clinicDay ||
       clinicDay.walkin_remaining < 1 ||
       !practiceId ||
-      patientName.trim().length < 2
+      patientName.trim().length < 2 ||
+      (Number(slot.feeMinor) > 0 && !termsAccepted) ||
+      !clinicDay.payment ||
+      (Number(slot.feeMinor) > 0 && paymentMethod === "cash" && !cashReceived)
     )
       return;
     const today = new Intl.DateTimeFormat("en-CA", {
@@ -111,6 +200,10 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
           patientPhone: patientPhone.trim(),
           reason: reason.trim(),
           idempotencyKey: requestKey,
+          paymentMethod,
+          termsAccepted,
+          policyVersion: clinicDay.payment.policy_version,
+          cashReceived,
         });
         if (result.error) {
           toast.add({
@@ -121,13 +214,30 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
           await choosePractice(practiceId, clinicDay.local_day);
           return;
         }
-        toast.add({
-          title: "Appointment created",
-          description: checkInNow
-            ? "Patient registered and checked in to the queue."
-            : "Check the patient in when they arrive.",
-          type: "success",
-        });
+        if (!result.appointmentId)
+          throw new Error("The booking service returned no reservation.");
+        if (result.requiresPayment) {
+          checkout.current = {
+            appointmentId: result.appointmentId,
+            patientName: patientName.trim(),
+            policyVersion: clinicDay.payment.policy_version,
+            checkIn: checkInNow,
+          };
+          setPaymentStage("Opening secure payment…");
+        } else {
+          if (result.status !== "confirmed")
+            throw new Error(
+              "The appointment has not been confirmed. Refresh its payment status."
+            );
+          toast.add({
+            title: "Appointment booked",
+            description:
+              paymentMethod === "cash"
+                ? "Cash received and appointment confirmed."
+                : "Appointment confirmed.",
+            type: "success",
+          });
+        }
         setOpen(false);
         setPatientName("");
         setPatientAge("");
@@ -139,9 +249,14 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
         setWindowId("");
         setSlots([]);
         setClinicDay(null);
+        setTermsAccepted(false);
+        setCashReceived(false);
         setRequestKey(crypto.randomUUID());
-        onCreated();
-        router.refresh();
+        if (!result.requiresPayment) {
+          onCreated?.(result.appointmentId);
+          router.push("/appointments");
+          await refreshPayments();
+        }
       } catch {
         toast.add({
           title: "Could not create appointment",
@@ -179,5 +294,13 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
     showDialog,
     choosePractice,
     submit,
+    paymentMethod,
+    setPaymentMethod,
+    termsAccepted,
+    setTermsAccepted,
+    cashReceived,
+    setCashReceived,
+    paymentStage,
+    onDialogClosed,
   };
 }

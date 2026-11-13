@@ -28,6 +28,14 @@ export const preparedAppointmentBookingSchema = z.object({
   reservation_expires_at: z.string().nullable(),
 });
 
+export const portalWalkInPaymentPolicySchema = z.object({
+  enabled: z.boolean(),
+  mode: z.enum(["test", "live"]),
+  policy_version: z.string(),
+  policy_text: z.string(),
+  can_collect: z.boolean(),
+});
+
 export const appointmentBillingSchema = z.object({
   enabled: z.boolean(),
   mode: z.enum(["test", "live"]),
@@ -123,6 +131,55 @@ export const appointmentCheckoutSchema = z.object({
 });
 
 export type AppointmentBilling = z.infer<typeof appointmentBillingSchema>;
+
+export const portalAppointmentPaymentSummarySchema = z.object({
+  appointment_id: uuidSchema,
+  enabled: z.boolean(),
+  mode: z.enum(["test", "live"]),
+  amount_minor: money,
+  captured_minor: money,
+  due_minor: money,
+});
+
+export const portalTransactionCursorSchema = z.object({
+  created_at: z.string().datetime({ offset: true }),
+  id: uuidSchema,
+});
+
+export const portalTransactionsSchema = z.object({
+  items: z.array(
+    z.object({
+      id: uuidSchema,
+      appointment_id: uuidSchema,
+      appointment_reference: z.string(),
+      patient_name: z.string(),
+      doctor_name: z.string(),
+      facility_name: z.string(),
+      created_at: z.string(),
+      method: z.enum(["gateway", "cash"]),
+      status: z.enum([
+        "creating",
+        "created",
+        "authorized",
+        "captured",
+        "failed",
+        "uncertain",
+      ]),
+      amount_minor: money,
+      refunded_minor: money,
+      mode: z.enum(["test", "live"]),
+      order_id: z.string().nullable(),
+      payment_id: z.string().nullable(),
+    })
+  ),
+  next_cursor: portalTransactionCursorSchema.nullable(),
+});
+
+export type PortalTransactions = z.infer<typeof portalTransactionsSchema>;
+
+export type PortalTransactionCursor = z.infer<
+  typeof portalTransactionCursorSchema
+>;
 
 export function appointmentPaymentLabel(
   attempt: AppointmentBilling["attempts"][number]

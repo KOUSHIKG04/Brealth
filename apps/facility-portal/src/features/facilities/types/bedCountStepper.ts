@@ -3,5 +3,5 @@ export type BedCountStepperProps = {
   value: number;
   max: number;
   disabled: boolean;
-  onCommit: (value: number) => void;
+  onCommit: (value: number) => void | Promise<void>;
 };

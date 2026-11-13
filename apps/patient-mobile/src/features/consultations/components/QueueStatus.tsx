@@ -98,6 +98,32 @@ export function QueueStatus({ appointment }: QueueStatusProps) {
                   : "Your place updates as the clinic queue moves."}
           </Text>
         </View>
+        {appointment.clinic_queue ? (
+          <View style={styles.queueDetails}>
+            <Text variant="inherit" style={styles.notifyBannerText}>
+              Booked time:{" "}
+              {new Date(appointment.starts_at).toLocaleTimeString("en-IN", {
+                timeZone: appointment.timezone,
+                hour: "numeric",
+                minute: "2-digit",
+              })}
+              {" · "}Serving token:{" "}
+              {appointment.clinic_queue.currently_serving ?? "—"}
+            </Text>
+            <Text variant="inherit" style={styles.notifyBannerText}>
+              {appointment.clinic_queue.late_review_required
+                ? "You arrived after the grace period. Reception will help you find the next available opening."
+                : appointment.clinic_queue.estimated_start &&
+                    appointment.clinic_queue.estimated_end
+                  ? `Estimated consultation: ${new Date(appointment.clinic_queue.estimated_start).toLocaleTimeString("en-IN", { timeZone: appointment.timezone, hour: "numeric", minute: "2-digit" })}–${new Date(appointment.clinic_queue.estimated_end).toLocaleTimeString("en-IN", { timeZone: appointment.timezone, hour: "numeric", minute: "2-digit" })}`
+                  : "Reception can help with your current waiting status."}
+            </Text>
+            <Text variant="inherit" style={styles.notifyBannerText}>
+              Your token stays the same. Calling order and estimates may change
+              as patients arrive and consultations finish.
+            </Text>
+          </View>
+        ) : null}
       </Card>
 
       <View style={styles.seatsImageContainer}>
@@ -113,6 +139,7 @@ export function QueueStatus({ appointment }: QueueStatusProps) {
 }
 
 const styles = StyleSheet.create({
+  queueDetails: { width: "100%", gap: 8 },
   flatCard: {
     boxShadow: "none",
     elevation: 0,

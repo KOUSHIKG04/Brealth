@@ -50,7 +50,41 @@ export function FacilityLocationMap({
           at the facility entrance.
         </p>
       </div>
-      <div className="flex gap-2">
+      <FacilityMapSearch search={search} setSearch={setSearch} setSearchResults={setSearchResults} searchAddress={searchAddress} searching={searching} searchResults={searchResults} chooseSearchResult={chooseSearchResult} loading={loading} mapError={mapError} disabled={disabled} />      <div className="bg-muted relative h-72 overflow-hidden rounded-lg border sm:h-80">
+        <div
+          ref={containerRef}
+          className="h-full w-full"
+          aria-label="Map for selecting the facility location"
+        />
+        {!loading && !mapError && (
+          <MapPin
+            className="text-primary pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full drop-shadow-md"
+            size={38}
+            fill="white"
+            aria-hidden="true"
+          />
+        )}
+        {(loading || mapError) && (
+          <div className="bg-muted text-muted-foreground absolute inset-0 flex items-center justify-center p-6 text-center text-sm">
+            {loading ? "Loading map…" : mapError}
+          </div>
+        )}
+      </div>
+      <FacilityMapPinActions useCurrentLocation={useCurrentLocation} confirmPin={confirmPin} disabled={disabled} loading={loading} mapError={mapError} locating={locating} confirming={confirming} draft={draft} selected={selected} />      {locationError && (
+        <p role="alert" className="text-destructive text-sm">
+          {locationError}
+        </p>
+      )}
+    </section>
+  );
+}
+
+
+type MapState = ReturnType<typeof useFacilityLocationMap>;
+
+
+function FacilityMapSearch({ search, setSearch, setSearchResults, searchAddress, searching, searchResults, chooseSearchResult, loading, mapError, disabled }: Pick<MapState, "search" | "setSearch" | "setSearchResults" | "searchAddress" | "searching" | "searchResults" | "chooseSearchResult" | "loading" | "mapError"> & {disabled: boolean}) {
+ return (<><div className="flex gap-2">
         <Input
           aria-label="Search for a facility address"
           placeholder="Search area or street address"
@@ -87,9 +121,9 @@ export function FacilityLocationMap({
           className="divide-y rounded-lg border"
           aria-label="Address search results"
         >
-          {searchResults.map((place, index) => (
+          {searchResults.map((place) => (
             <button
-              key={`${place.latitude}-${place.longitude}-${index}`}
+              key={JSON.stringify([place.latitude, place.longitude, place.address])}
               type="button"
               className="hover:bg-muted focus-visible:bg-muted block w-full px-3 py-3 text-left text-sm focus-visible:outline-none"
               onClick={() => chooseSearchResult(place)}
@@ -100,27 +134,12 @@ export function FacilityLocationMap({
           <p className="text-muted-foreground px-3 py-2 text-xs">Google Maps</p>
         </div>
       )}
-      <div className="bg-muted relative h-72 overflow-hidden rounded-lg border sm:h-80">
-        <div
-          ref={containerRef}
-          className="h-full w-full"
-          aria-label="Map for selecting the facility location"
-        />
-        {!loading && !mapError && (
-          <MapPin
-            className="text-primary pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-full drop-shadow-md"
-            size={38}
-            fill="white"
-            aria-hidden="true"
-          />
-        )}
-        {(loading || mapError) && (
-          <div className="bg-muted text-muted-foreground absolute inset-0 flex items-center justify-center p-6 text-center text-sm">
-            {loading ? "Loading map…" : mapError}
-          </div>
-        )}
-      </div>
-      <div className="flex flex-wrap gap-2">
+</>);
+}
+
+
+function FacilityMapPinActions({ useCurrentLocation, confirmPin, disabled, loading, mapError, locating, confirming, draft, selected }: Pick<MapState, "useCurrentLocation" | "confirmPin" | "loading" | "mapError" | "locating" | "confirming" | "draft"> & Pick<FacilityLocationMapProps, "selected"> & {disabled: boolean}) {
+ return (<><div className="flex flex-wrap gap-2">
         <Button
           type="button"
           variant="outline"
@@ -155,11 +174,5 @@ export function FacilityLocationMap({
             : " · Confirm the pin to use it"}
         </p>
       )}
-      {locationError && (
-        <p role="alert" className="text-destructive text-sm">
-          {locationError}
-        </p>
-      )}
-    </section>
-  );
+</>);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
 import type { InitialBedCountsFormProps } from "../types/initialBedCountsForm";
 import { useTransition } from "react";
 import { toast } from "@startup/web-ui/components/ui/toast";
@@ -35,10 +36,10 @@ export function useInitialBedCounts({
         }
         toast.add({
           title: "Could not save bed counts",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Check your connection and try again.",
+          description: userErrorMessage(
+            error,
+            "Check your connection and try again."
+          ),
           type: "error",
         });
       }

@@ -20,6 +20,7 @@ export function DoctorTable({
 }: DoctorTableProps) {
   return (
     <DataTable
+      enableColumnResizing
       columns={doctorColumns}
       data={data}
       isLoading={isLoading}

@@ -1,5 +1,5 @@
 import type { NumberSettingProps } from "../types/number-setting";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { Input } from "@startup/mobile-ui";
 import { Minus, Plus } from "lucide-react-native";
@@ -16,14 +16,14 @@ export function NumberSetting({
   stepper = false,
   disabled = false,
 }: NumberSettingProps) {
-  const [text, setText] = useState(String(value));
-  useEffect(() => setText(String(value)), [value]);
+  const [draft, setText] = useState<string | null>(null);
+  const text = draft ?? String(value);
   const parsed = /^\d+$/.test(text) ? Number(text) : NaN;
   const current =
     Number.isInteger(parsed) && parsed >= min && parsed <= max ? parsed : value;
   const commit = (next: number) => {
     const bounded = Math.max(min, Math.min(max, next));
-    setText(String(bounded));
+    setText(null);
     onChange(bounded);
   };
   return (
@@ -127,7 +127,7 @@ export function NumberSetting({
               if (next !== "") onChange(Number(next));
             }
           }}
-          onBlur={() => setText(String(value))}
+          onBlur={() => setText(null)}
           selectTextOnFocus
           keyboardType="number-pad"
         />

@@ -1,3 +1,4 @@
+import { reportError } from "@startup/data-access";
 import { Platform, NativeModules, TurboModuleRegistry } from "react-native";
 import { colors } from "@startup/design-tokens";
 import { appointmentCheckoutSchema } from "@startup/contracts";
@@ -47,7 +48,10 @@ export async function payForAppointment(
     const refreshed = await processAppointmentPayment(client, {
       action: "reconcile",
       appointmentId: input.appointmentId,
-    }).catch(() => null);
+    }).catch((reconcileError) => {
+      reportError(reconcileError, { source: "payment-reconcile" });
+      return null;
+    });
     if (
       !checkoutReturned &&
       input.reservation &&

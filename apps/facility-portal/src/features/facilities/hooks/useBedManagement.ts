@@ -1,5 +1,6 @@
 "use client";
 
+import { userErrorMessage } from "@startup/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "@startup/web-ui/components/ui/toast";
@@ -112,10 +113,10 @@ export function useBedManagement(inventory: BedInventoryProjection[]) {
       if (mounted.current)
         toast.add({
           title: "Could not update beds",
-          description:
-            error instanceof Error
-              ? error.message
-              : "Check your connection and try again.",
+          description: userErrorMessage(
+            error,
+            "Check your connection and try again."
+          ),
           type: "error",
         });
     } finally {

@@ -48,3 +48,22 @@ export const appointmentStatuses = [
   "No_show",
   "In_consultation",
 ];
+
+export const appointmentTableHeaders = [
+  ["token", "Reserved token", 104, 80],
+  ["patientId", "Patient ID", 144, 128],
+  ["patient", "Patient name", 184, 120],
+  ["doctor", "Doctor / Department", 184, 120],
+  ["time", "Time", 116, 100],
+  ["mode", "Mode", 128, 112],
+  ["source", "Source / Queue", 144, 100],
+  ["status", "Status", 160, 120],
+  ["actions", "Actions", 168, 120],
+] as const;
+
+export const appointmentPeriodLabels = {
+  All: "All dates",
+  Today: "Today",
+  Tomorrow: "Tomorrow",
+  "This Week": "Next 7 days",
+} as const;
