@@ -24,7 +24,6 @@ dist/
 .expo/
 .vercel/
 .impeccable/
-.claude/
 
 # Test output (test source files remain visible to Git)
 coverage/
