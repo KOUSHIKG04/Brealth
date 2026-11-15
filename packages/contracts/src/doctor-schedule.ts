@@ -396,6 +396,22 @@ export function scheduleSettingNames(keys: readonly ScheduleSettingKey[]) {
   return [...new Set(keys.map((key) => scheduleSettingLabels[key] ?? key))];
 }
 
+/**
+ * The first readable problem with complete schedule settings, or undefined
+ * when they are valid. Editors check this before sending so a rule enforced
+ * only by the shared schema is shown instead of a generic failure.
+ */
+export function scheduleSettingsProblem(settings: unknown): string | undefined {
+  const result = doctorScheduleSettingsSchema.safeParse(settings);
+  if (result.success) return undefined;
+  const issue = result.error.issues[0];
+  if (issue?.code === "custom") return issue.message;
+  const key = issue?.path[0];
+  return typeof key === "string" && key in scheduleSettingLabels
+    ? `Check the ${scheduleSettingNames([key as ScheduleSettingKey])[0]}.`
+    : "Check your schedule settings.";
+}
+
 function normalizedSetting(value: unknown): string {
   if (Array.isArray(value)) {
     // Day and block order carries no meaning; [3, 1] equals [1, 3].

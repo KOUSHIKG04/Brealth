@@ -27,6 +27,7 @@ import {
   scheduleErrorMessage,
   userErrorMessage,
   scheduleSettingNames,
+  scheduleSettingsProblem,
   type ClinicPractice,
   type DoctorScheduleSettings,
   type DoctorSchedulePreferences,
@@ -238,6 +239,8 @@ export function useScheduleEditor({
     ),
   });
   const approvalRequired = approval.data === true;
+  // Until this is known, publishing could bypass a facility that approves changes.
+  const approvalChecking = approval.isLoading;
   const changeRequests = useQuery({
     queryKey: ["schedule-change-requests", selectedPracticeId],
     queryFn: () => listMyScheduleChangeRequests(supabase!, selectedPracticeId!),
@@ -384,7 +387,9 @@ export function useScheduleEditor({
       effectiveFrom?: string;
     } = {}
   ) {
-    const problem = scheduleError(draft, mode);
+    // Local checks first, then the shared rules the backend applies.
+    const problem =
+      scheduleError(draft, mode) ?? scheduleSettingsProblem(scheduleSettings());
     if (problem) {
       showToast({ title: "Schedule error", message: problem, type: "error" });
       return;
@@ -524,6 +529,9 @@ export function useScheduleEditor({
       });
     } catch (cause) {
       setConflict(null);
+      // The facility now approves changes: refresh so the editor submits a request.
+      if (scheduleErrorCode(cause) === "PT403")
+        void queryClient.invalidateQueries({ queryKey: ["schedule-approval"] });
       showToast({
         title: "Could not publish schedule",
         message: scheduleErrorMessage(cause, "Try again."),
@@ -593,6 +601,7 @@ export function useScheduleEditor({
     save,
     conflict,
     approvalRequired,
+    approvalChecking,
     scheduleRequest,
     withdrawRequest,
     busyBlocks: busyBlocks.data ?? [],

@@ -45,6 +45,7 @@ const userFacingCodes = new Set([
   "22023", // invalid parameter value: validation messages
   "23514", // booking/state guards
   "42501", // access checks
+  "PT403", // facility approval required instead of a direct change
   "PT409", // changed elsewhere (optimistic version)
   "PT410", // newly conflicting schedule
 ]);

@@ -67,6 +67,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     save,
     conflict,
     approvalRequired,
+    approvalChecking,
     scheduleRequest,
     withdrawRequest,
     busyBlocks,
@@ -416,6 +417,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         leftIcon={<Calendar size={17} color="white" />}
         disabled={
           busy ||
+          approvalChecking ||
           practices.isFetching ||
           saved.isFetching ||
           saved.isError ||

@@ -7,6 +7,7 @@ import {
   scheduleChangePreviewSchema,
   scheduleErrorMessage,
   scheduleSettingNames,
+  scheduleSettingsProblem,
   type DoctorSchedulePreferences,
   type DoctorScheduleSettings,
   type ScheduleBusyBlock,
@@ -218,11 +219,38 @@ test("batching hints suggest online blocks of at least an hour", () => {
   ).toEqual([]);
 });
 
+test("settings problems name the rule instead of failing generically", () => {
+  expect(scheduleSettingsProblem(base)).toBeUndefined();
+  expect(
+    scheduleSettingsProblem({
+      ...base,
+      onlineTimeBlocks: [{ start: "13:00", end: "13:10" }],
+    })
+  ).toBe("Each time block must fit at least one appointment.");
+  expect(scheduleSettingsProblem({ ...base, clinicWalkinDailyLimit: 5 })).toBe(
+    "App and walk-in quotas must fit within total clinic capacity."
+  );
+  expect(scheduleSettingsProblem({ ...base, onlineSlotMinutes: 2 })).toBe(
+    "Check the online consultation duration."
+  );
+});
+
 test("schedule errors map to safe, specific copy", () => {
   expect(scheduleErrorMessage({ code: "PT409" }, "x")).toContain(
     "Your edits are kept"
   );
   expect(scheduleErrorMessage({ code: "PT410" }, "x")).toContain("overlaps");
+  expect(
+    scheduleErrorMessage(
+      Object.assign(
+        new Error(
+          "This facility approves schedule changes. Submit a request for approval instead."
+        ),
+        { code: "PT403" }
+      ),
+      "x"
+    )
+  ).toContain("Submit a request for approval");
   expect(
     scheduleErrorMessage(
       Object.assign(new Error("Set a consultation fee first"), {
