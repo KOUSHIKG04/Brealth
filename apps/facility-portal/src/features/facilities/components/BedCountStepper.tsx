@@ -66,7 +66,7 @@ export function BedCountStepper({
           }
           if (event.key === "Escape") setDraft(null);
         }}
-        className="focus-visible:ring-primary w-14 appearance-none bg-transparent py-1 text-center text-[13px] font-semibold text-[#0f172a] outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:opacity-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        className="focus-visible:ring-primary w-14 appearance-none bg-transparent py-1 text-center text-sm font-semibold text-[#0f172a] outline-none focus-visible:ring-2 focus-visible:ring-inset disabled:opacity-60 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
       />
       <button
         type="button"

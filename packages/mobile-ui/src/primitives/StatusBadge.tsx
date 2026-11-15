@@ -22,7 +22,11 @@ export function StatusBadge({
       style={[styles.badge, { backgroundColor }, style]}
     >
       <View style={[styles.dot, { backgroundColor: dotColor }, dotStyle]} />
-      <Text variant="label" numberOfLines={1} style={[styles.text, textStyle]}>
+      <Text
+        variant="labelSmall"
+        numberOfLines={1}
+        style={[styles.text, textStyle]}
+      >
         {status}
       </Text>
     </View>

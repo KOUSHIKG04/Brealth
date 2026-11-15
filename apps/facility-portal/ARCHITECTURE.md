@@ -1,5 +1,38 @@
 # Facility portal architecture
 
+## Team, roles and invitations
+
+`features/team` owns the Team page (`/team`) and the invitation landing page
+(`/invite/[token]`, in the auth group). Owners and administrators invite by
+link (shown once, bound to the invited email, 7 days), switch members between
+facility admin and receptionist, set a receptionist's doctors and deactivate
+members. `server/auth/facilityAccess.ts` adds `getFacilityRoles` and
+`requirePortalArea`; the admin layout passes the role's areas
+(`portalAreaMinimumRank` in contracts) to the sidebar, and admin-only pages
+redirect receptionists to Appointments. Login and sign-up keep a validated
+`?next=/invite/...` return path. The database enforces every permission.
+Local change; browser verification pending.
+
+## Doctor schedule requests
+
+`features/doctors/components/ScheduleChangeRequests` lists doctors' pending
+schedule, time-off and policy requests on Doctor Schedules (compact count on
+the dashboard), with current versus requested values. Approving a schedule
+request previews it first; conflicts or affected bookings reuse
+`ScheduleConflictDialog`. Declining requires a reason. Server Actions in
+`server/scheduleActions.ts` return `{ ok, code, error }`; the database checks
+the owner/administrator role. Local change; browser verification pending.
+
+## Appointment dates and queue numbers
+
+Queue numbers restart per doctor session and clinic day. "Tomorrow", "Next 7
+days" and "All dates" group rows under clinic-date headers (the shared
+`DataTable` `groupBy` option) and show the date in the Time column; "Today" is
+unchanged. The token column shows `#n` from `appointmentQueueNumber` (issued
+ticket, else the hybrid queue's reserved number). Date filters, sorting and
+groups all use the appointment's clinic timezone (`localDateKey`). Local change;
+browser verification pending.
+
 ## Reception payments and transactions
 
 `/transactions` composes `features/transactions` with the public appointment payment

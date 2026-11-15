@@ -45,7 +45,7 @@ export function EditProfileScreen() {
           <Skeleton theme="doctor" height={120} radius={12} />
         ) : null}
         {profile.error ? (
-          <Label style={ui.error}>
+          <Label variant="label" style={ui.error}>
             {userErrorMessage(profile.error, "Could not load your profile.")}
           </Label>
         ) : null}

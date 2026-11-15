@@ -39,7 +39,7 @@ export default function DoctorManagementScreen({
       {/* TopBar */}
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-foreground text-2xl font-bold tracking-tight">
+          <h1 className="text-foreground text-2xl font-semibold tracking-tight">
             Doctor Management
           </h1>
         </div>

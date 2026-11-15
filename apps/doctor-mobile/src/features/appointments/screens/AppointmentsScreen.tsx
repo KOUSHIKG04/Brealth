@@ -43,7 +43,9 @@ export function AppointmentsScreen() {
       onRefresh={() => appointments.refetch({ throwOnError: true })}
     >
       <View style={styles.monthRow}>
-        <Heading style={styles.dateHeading}>Select date</Heading>
+        <Heading variant="sectionHeading" style={styles.dateHeading}>
+          Select date
+        </Heading>
         <Dropdown
           theme="doctor"
           leftIcon={<Calendar size={18} color={palette.primary} />}
@@ -102,7 +104,7 @@ export function AppointmentsScreen() {
       ) : null}
       {appointments.isError ? (
         <Panel>
-          <Label style={ui.error}>
+          <Label variant="label" style={ui.error}>
             Could not load appointments. Pull down to retry.
           </Label>
         </Panel>

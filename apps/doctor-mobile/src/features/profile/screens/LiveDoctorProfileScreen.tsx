@@ -1,10 +1,16 @@
 import { useLiveDoctorProfile } from "../hooks/useLiveDoctorProfile";
 
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { formatDisplayDate } from "@startup/contracts";
 
-import { Button, Input, SafeAreaView, Skeleton } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  Button,
+  Input,
+  SafeAreaView,
+  Skeleton,
+} from "@startup/mobile-ui";
 
 import { signOutWithPushCleanup } from "../../notifications/services/deviceNotifications";
 
@@ -24,22 +30,26 @@ export function LiveDoctorProfileScreen() {
   return (
     <SafeAreaView style={styles.screen}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.title}>Doctor profile</Text>
+        <Text variant="screenTitle" style={styles.title}>
+          Doctor profile
+        </Text>
         {profile.isLoading ? (
           <Skeleton theme="doctor" height={120} radius={12} />
         ) : null}
         {profile.data ? (
           <>
-            <Text>Status: {profile.data.credential_status}</Text>
-            <Text>
+            <Text variant="bodySmall">
+              Status: {profile.data.credential_status}
+            </Text>
+            <Text variant="bodySmall">
               Registration: {profile.data.registration_authority} ·{" "}
               {profile.data.registration_number}
             </Text>
-            <Text>
+            <Text variant="bodySmall">
               Practicing since{" "}
               {formatDisplayDate(profile.data.practice_started_on)}
             </Text>
-            <Text>
+            <Text variant="bodySmall">
               Specialties:{" "}
               {profile.data.specialties.map((item) => item.name).join(", ") ||
                 "Awaiting verified specialty assignment"}
@@ -81,23 +91,25 @@ export function LiveDoctorProfileScreen() {
               </>
             ) : (
               <>
-                <Text>
+                <Text variant="bodySmall">
                   {profile.data.bio ||
                     "Add a bio to introduce yourself to patients."}
                 </Text>
-                <Text>
+                <Text variant="bodySmall">
                   Languages: {profile.data.languages.join(", ") || "Not added"}
                 </Text>
                 <Button label="Edit profile" onPress={() => setEditing(true)} />
               </>
             )}
-            <Text style={styles.subtitle}>Associated facilities</Text>
+            <Text variant="sectionHeading" style={styles.subtitle}>
+              Associated facilities
+            </Text>
             {profile.data.facilities.map((facility) => (
               <View key={facility.practice_id} style={styles.card}>
-                <Text>
+                <Text variant="bodySmall">
                   {facility.facility_name} · {facility.facility_kind}
                 </Text>
-                <Text>{facility.address}</Text>
+                <Text variant="bodySmall">{facility.address}</Text>
               </View>
             ))}
           </>

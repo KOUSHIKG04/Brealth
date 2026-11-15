@@ -41,7 +41,7 @@ export function ClockDurationPicker({
   const step = max > 60 ? 10 : 5;
   return (
     <div className="min-w-0 flex-1 space-y-2">
-      <label className="block text-sm font-medium">{label}</label>
+      <span className="block text-sm font-medium">{label}</span>
       <button
         type="button"
         disabled={disabled}

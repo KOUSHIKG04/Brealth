@@ -29,13 +29,9 @@ export function NumberSetting({
   return (
     <View style={{ gap: 6 }}>
       <View style={ui.between}>
-        <Label
-          style={{ fontSize: 13, lineHeight: 20, includeFontPadding: false }}
-        >
-          {title}
-        </Label>
+        <Label style={{ includeFontPadding: false }}>{title}</Label>
         {!stepper ? (
-          <Label muted style={{ fontSize: 12 }}>
+          <Label variant="caption" muted>
             {min}–{max} {suffix}
           </Label>
         ) : null}

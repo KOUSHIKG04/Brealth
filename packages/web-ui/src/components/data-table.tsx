@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import type { DisplayTableRow } from "../types/dataTable";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useDataTable } from "../hooks/use-data-table";
@@ -52,6 +52,7 @@ export function DataTable<TData, TValue>({
   manualSorting = false,
   onRowClick,
   hidePagination = false,
+  groupBy,
 }: DataTableProps<TData, TValue>) {
   const table = useDataTable({
     columns,
@@ -283,46 +284,63 @@ export function DataTable<TData, TValue>({
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  role={onRowClick ? "button" : undefined}
-                  onClick={() => onRowClick?.(row.original)}
-                  onKeyDown={
-                    onRowClick
-                      ? (e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onRowClick(row.original);
-                          }
-                        }
-                      : undefined
-                  }
-                  className={cn(
-                    "border-border hover:bg-muted/70 transition-colors",
-                    onRowClick &&
-                      "focus-visible:ring-primary focus-visible:ring-primary focus-visible:ring-offset-background cursor-pointer focus-visible:ring-1 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
+              table.getRowModel().rows.map((row, index, rows) => {
+                const group = groupBy?.(row.original);
+                const previous =
+                  index > 0 ? groupBy?.(rows[index - 1].original) : undefined;
+                const startsGroup = group && group.key !== previous?.key;
+                return (
+                  <Fragment key={row.id}>
+                    {startsGroup ? (
+                      <TableRow className="bg-muted/60 hover:bg-muted/60">
+                        <TableCell
+                          colSpan={columns.length}
+                          className="text-foreground px-4 py-2 text-xs font-semibold"
+                        >
+                          {group.label}
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                    <TableRow
+                      data-state={row.getIsSelected() && "selected"}
+                      tabIndex={onRowClick ? 0 : undefined}
+                      role={onRowClick ? "button" : undefined}
+                      onClick={() => onRowClick?.(row.original)}
+                      onKeyDown={
+                        onRowClick
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onRowClick(row.original);
+                              }
+                            }
+                          : undefined
+                      }
                       className={cn(
-                        "text-foreground px-4 py-3 align-middle",
-                        enableColumnResizing && "overflow-hidden",
-                        cellClassName
+                        "border-border hover:bg-muted/70 transition-colors",
+                        onRowClick &&
+                          "focus-visible:ring-primary focus-visible:ring-primary focus-visible:ring-offset-background cursor-pointer focus-visible:ring-1 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
                       )}
                     >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            "text-foreground px-4 py-3 align-middle",
+                            enableColumnResizing && "overflow-hidden",
+                            cellClassName
+                          )}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </Fragment>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell

@@ -73,7 +73,7 @@ export function DemoOnlineConsultation() {
       </View>
       <View style={styles.self}>
         <User size={26} color="white" />
-        <Label style={{ color: "white", fontSize: 11 }}>
+        <Label variant="caption" style={{ color: "white" }}>
           {front ? "You" : "Back camera"}
           {muted ? " Ã‚Â· Muted" : ""}
         </Label>

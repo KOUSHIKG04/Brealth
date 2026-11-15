@@ -12,6 +12,7 @@ const load = (file, mocks = {}, globals = {}) =>
     { mocks, globals }
   );
 
+// The shared loader supplies the real contracts date and queue-number helpers.
 test("queue ordering uses numeric tokens, missing tokens last, and separates clinic dates", () => {
   const { compareAppointmentQueue } = load(
     "appointments/utils/appointmentOrder.ts"
@@ -32,6 +33,35 @@ test("queue ordering uses numeric tokens, missing tokens last, and separates cli
   assert.deepEqual(
     rows.sort(compareAppointmentQueue).map((row) => row.id),
     ["two", "ten", "request", "tomorrow"]
+  );
+});
+
+test("reserved hybrid-queue numbers order future bookings within their own clinic date", () => {
+  const { compareAppointmentQueue, appointmentDayOffset } = load(
+    "appointments/utils/appointmentOrder.ts"
+  );
+  const item = (id, planned, starts_at) => ({
+    id,
+    ticket_number: null,
+    clinic_queue: { planned_number: planned },
+    starts_at,
+    timezone: "Asia/Kolkata",
+    doctor_name: "Doctor",
+  });
+  const rows = [
+    item("16th-2", 2, "2026-11-16T05:00:00Z"),
+    item("15th-1", 1, "2026-11-15T05:00:00Z"),
+    item("16th-1", 1, "2026-11-16T04:00:00Z"),
+  ];
+  assert.deepEqual(
+    rows.sort(compareAppointmentQueue).map((row) => row.id),
+    ["15th-1", "16th-1", "16th-2"]
+  );
+  // 23:30 UTC on the 15th is already the 16th in the clinic's timezone.
+  const late = item("late", 3, "2026-11-15T23:30:00Z");
+  assert.equal(
+    appointmentDayOffset(late, Date.parse("2026-11-15T06:00:00Z")),
+    1
   );
 });
 

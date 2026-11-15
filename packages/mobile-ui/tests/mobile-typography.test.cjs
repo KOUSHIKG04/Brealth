@@ -27,6 +27,10 @@ const tokens = compile(
   path.join(__dirname, "../../design-tokens/src/typography.ts")
 );
 
+const textConstants = compile(
+  path.join(__dirname, "../src/utils/appTextConstants.ts")
+);
+
 function text(readable) {
   return compile(path.join(__dirname, "../src/primitives/AppText.tsx"), {
     "react/jsx-runtime": { jsx: (type, props) => ({ type, props }) },
@@ -35,6 +39,7 @@ function text(readable) {
     "../theme/MobileTypographyProvider": {
       useReadableTypography: () => readable,
     },
+    "../utils/appTextConstants": textConstants,
   });
 }
 
@@ -48,8 +53,9 @@ test("readable roles override local font sizes without removing interaction or c
     children: "Doctor",
   });
   const style = Object.assign({}, ...node.props.style.filter(Boolean));
-  assert.equal(style.fontSize, 20);
-  assert.equal(style.lineHeight, 28);
+  assert.equal(style.fontSize, 16);
+  assert.equal(style.lineHeight, 22);
+  assert.equal(node.props.maxFontSizeMultiplier, 1.6);
   assert.equal(style.color, "#123456");
   assert.equal(node.props.onPress, onPress);
 });
@@ -64,6 +70,32 @@ test("without opt-in Doctor and Driver retain their legacy text styles exactly",
     )
   );
   assert.deepEqual(style, original);
+  assert.equal(
+    AppText({ variant: "body", maxFontSizeMultiplier: 3 }).props
+      .maxFontSizeMultiplier,
+    3
+  );
+});
+
+test("headings step down and body roles may double with the OS text size", () => {
+  const roles = tokens.mobileTypography;
+  const sizes = [
+    "pageHeadline",
+    "screenTitle",
+    "sectionHeading",
+    "cardHeading",
+  ].map((role) => roles[role].fontSize);
+  assert.deepEqual(
+    sizes,
+    [...sizes].sort((a, b) => b - a)
+  );
+  assert.equal(new Set(sizes).size, sizes.length);
+  assert.equal(roles.body.fontSize, 16);
+  assert.equal(roles.bodySmall.fontSize, 14);
+  assert.equal(textConstants.appTextMaxFontScale.body, 2);
+  for (const role of Object.keys(roles)) {
+    assert.ok(textConstants.appTextMaxFontScale[role] >= 1.4, role);
+  }
 });
 
 test("nested brand text can inherit while readable inputs preserve native refs and values", () => {

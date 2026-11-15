@@ -1,7 +1,7 @@
 import { styles } from "./OnboardingShell.styles";
 import type { OnboardingButtonProps } from "../types/onboarding-button";
-import { Text } from "react-native";
-import { Button } from "@startup/mobile-ui";
+
+import { AppText as Text, Button } from "@startup/mobile-ui";
 
 export function OnboardingButton({
   label,
@@ -24,6 +24,7 @@ export function OnboardingButton({
       ]}
       rightIcon={
         <Text
+          variant="cardHeading"
           style={[
             styles.buttonText,
             variant === "outline" && styles.outlineText,

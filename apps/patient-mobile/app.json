@@ -35,6 +35,7 @@
       "expo-localization",
       "@livekit/react-native-expo-plugin",
       "@config-plugins/react-native-webrtc",
+      "expo-sharing",
       [
         "expo-location",
         {

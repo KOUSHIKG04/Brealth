@@ -31,6 +31,7 @@ import { AppointmentRecoveryPolicy } from "../components/AppointmentRecoveryPoli
 import { ScheduleConflictDialog } from "../components/ScheduleConflictDialog";
 import { ScheduleAdjustmentNotices } from "../components/ScheduleAdjustmentNotices";
 import { ScheduleBusyBlocks } from "../components/ScheduleBusyBlocks";
+import { ScheduleRequestNotice } from "../components/ScheduleRequestNotice";
 
 export function ScheduleScreen({ mode }: ScheduleScreenProps) {
   const {
@@ -65,8 +66,12 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     update,
     save,
     conflict,
+    approvalRequired,
+    scheduleRequest,
+    withdrawRequest,
     busyBlocks,
     busyOverlaps,
+    batchingHints,
     remoteChanged,
     dismissConflict,
     confirmConflict,
@@ -88,7 +93,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       ) : null}
       {practices.data && practices.data.length > 1 ? (
         <ScheduleSection title="Your clinic">
-          <Label muted style={{ fontSize: 12 }}>
+          <Label variant="caption" muted>
             Select your clinic or hospital.
           </Label>
           <View style={ui.wrap}>
@@ -120,6 +125,14 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         </View>
       ) : null}
       <ScheduleAdjustmentNotices onSelectPractice={setPracticeId} />
+      {approvalRequired && selectedPractice ? (
+        <ScheduleRequestNotice
+          request={scheduleRequest}
+          facilityName={selectedPractice.facility_name}
+          busy={busy}
+          onWithdraw={(requestId) => void withdrawRequest(requestId)}
+        />
+      ) : null}
       <ScheduleConflictDialog
         preview={conflict}
         busy={busy}
@@ -166,8 +179,13 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         />
       ) : null}
       <ScheduleBusyBlocks blocks={busyBlocks} overlaps={busyOverlaps} />
+      {batchingHints.map((hint) => (
+        <Label variant="caption" key={hint} muted>
+          Tip: {hint}
+        </Label>
+      ))}
       <ScheduleSection title="Appointment slots">
-        <Label muted style={{ fontSize: 12 }}>
+        <Label variant="caption" muted>
           {mode === "home"
             ? "Set your visit duration."
             : "Duration sets appointment times. The daily limit caps bookings."}
@@ -270,12 +288,12 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         ) : null}
         {mode !== "home" ? (
           <>
-            <Label muted style={{ fontSize: 12 }}>
+            <Label variant="caption" muted>
               Changing the daily limit does not change appointment times.
             </Label>
             {!saved.data?.published_modes?.includes(mode) ? (
               <>
-                <Label muted style={{ fontSize: 12 }}>
+                <Label variant="caption" muted>
                   Preview a duration based on your hours and daily limit.
                 </Label>
                 <Button
@@ -300,7 +318,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
             trackColor={{ false: "#D1D5DB", true: palette.primary }}
           />
         </View>
-        <Label muted style={{ fontSize: 12 }}>
+        <Label variant="caption" muted>
           Set your daily auto-booking limit.
         </Label>
         {draft.autoAccept && (
@@ -336,7 +354,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
               trackColor={{ false: "#D1D5DB", true: palette.primary }}
             />
           </View>
-          <Label muted style={{ fontSize: 12 }}>
+          <Label variant="caption" muted>
             Set your home-visit travel radius.
           </Label>
           {draft.homeVisits ? (
@@ -369,7 +387,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       ) : null}
       {selectedPractice?.verified ? (
         <ScheduleSection title="Apply changes from">
-          <Label muted style={{ fontSize: 12 }}>
+          <Label variant="caption" muted>
             New appointment times apply from this date. Existing appointments
             and pending requests keep their times. Daily booking limits apply
             when saved.
@@ -389,7 +407,11 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         loading={pendingAction === "save"}
         theme="doctor"
         label={
-          selectedPractice?.verified ? "Publish Schedule" : "Save Schedule"
+          approvalRequired
+            ? "Submit for approval"
+            : selectedPractice?.verified
+              ? "Publish Schedule"
+              : "Save Schedule"
         }
         leftIcon={<Calendar size={17} color="white" />}
         disabled={
@@ -413,7 +435,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         visible={showAutoBookingHelp}
         onClose={() => setShowAutoBookingHelp(false)}
       >
-        <Heading style={{ fontSize: 18 }}>Automatic bookings</Heading>
+        <Heading variant="sectionHeading">Automatic bookings</Heading>
         <Label muted>
           Up to {draft.autoLimit} bookings per day are auto-accepted across
           Clinic, Online and Home visits combined.
@@ -436,7 +458,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         visible={showScheduleHelp}
         onClose={() => setShowScheduleHelp(false)}
       >
-        <Heading style={{ fontSize: 18 }}>Set your schedule</Heading>
+        <Heading variant="sectionHeading">Set your schedule</Heading>
         <Label muted>
           Choose working days, hours and the slot interval. Publishing creates
           the next 30 days automatically. Auto-accept uses one shared daily
@@ -453,7 +475,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         visible={availabilityDuration !== null}
         onClose={() => setAvailabilityDuration(null)}
       >
-        <Heading style={{ fontSize: 18 }}>Automatic availability</Heading>
+        <Heading variant="sectionHeading">Automatic availability</Heading>
         <Label muted>
           When you publish, slots are created every {availabilityDuration}{" "}
           minutes on your selected working days. Unavailable time and existing
@@ -469,7 +491,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         visible={suggestedDuration !== null}
         onClose={() => setSuggestedDuration(null)}
       >
-        <Heading style={{ fontSize: 18 }}>
+        <Heading variant="sectionHeading">
           Suggested consultation duration
         </Heading>
         <Label>{suggestedDuration} minutes per consultation</Label>

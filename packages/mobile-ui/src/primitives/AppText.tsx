@@ -3,20 +3,28 @@ import type { Ref as ReactRef } from "react";
 import { mobileTypography } from "@startup/design-tokens";
 import { useReadableTypography } from "../theme/MobileTypographyProvider";
 import type { AppTextProps } from "../types/appText";
+import {
+  appTextInputMaxFontScale,
+  appTextMaxFontScale,
+} from "../utils/appTextConstants";
 
 export type { AppTextProps } from "../types/appText";
 
-export function AppText({ variant = "body", style, ...props }: AppTextProps) {
+export function AppText({
+  variant = "body",
+  style,
+  maxFontSizeMultiplier,
+  ...props
+}: AppTextProps) {
   const readable = useReadableTypography();
+  const role = readable && variant !== "inherit" ? variant : undefined;
   return (
     <Text
       {...props}
-      style={[
-        style,
-        readable && variant !== "inherit"
-          ? mobileTypography[variant]
-          : undefined,
-      ]}
+      maxFontSizeMultiplier={
+        maxFontSizeMultiplier ?? (role ? appTextMaxFontScale[role] : undefined)
+      }
+      style={[style, role ? mobileTypography[role] : undefined]}
     />
   );
 }
@@ -25,6 +33,7 @@ export function AppText({ variant = "body", style, ...props }: AppTextProps) {
 export function AppTextInput({
   ref,
   style,
+  maxFontSizeMultiplier,
   ...props
 }: TextInputProps & { ref?: ReactRef<TextInput> }) {
   const readable = useReadableTypography();
@@ -32,6 +41,10 @@ export function AppTextInput({
     <TextInput
       {...props}
       ref={ref}
+      maxFontSizeMultiplier={
+        maxFontSizeMultiplier ??
+        (readable ? appTextInputMaxFontScale : undefined)
+      }
       style={[style, readable ? mobileTypography.body : undefined]}
     />
   );

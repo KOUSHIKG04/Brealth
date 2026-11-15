@@ -74,7 +74,7 @@ export function IconLabel({
           </View>
 
           <Text
-            variant="label"
+            variant="labelSmall"
             numberOfLines={labelNumberOfLines}
             style={[
               styles.label,

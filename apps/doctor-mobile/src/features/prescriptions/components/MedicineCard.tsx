@@ -22,7 +22,7 @@ export function MedicineCard({
   return (
     <Panel style={{ gap: 14 }}>
       <View style={[ui.between, { flexWrap: "wrap" }]}>
-        <Heading style={{ color: palette.text, fontSize: 14 }}>
+        <Heading variant="label" style={{ color: palette.text }}>
           {medicine.name}
         </Heading>
         <View style={{ ...ui.row, gap: 4 }}>
@@ -56,7 +56,7 @@ export function MedicineCard({
       >
         {medicineCardItems2.map((meal, index) => (
           <View key={meal} style={{ flex: 1, gap: 10, alignItems: "center" }}>
-            <Label muted style={{ fontSize: 12 }}>
+            <Label variant="caption" muted>
               {meal}
             </Label>
             <Button
@@ -77,7 +77,10 @@ export function MedicineCard({
           </View>
         ))}
       </View>
-      <Label style={{ color: palette.dark, fontSize: 12, textAlign: "center" }}>
+      <Label
+        variant="caption"
+        style={{ color: palette.dark, textAlign: "center" }}
+      >
         {medicine.meals.join(" – ")} tablets ·{" "}
         {medicine.meals.filter(Boolean).length} times daily · {medicine.days}{" "}
         days

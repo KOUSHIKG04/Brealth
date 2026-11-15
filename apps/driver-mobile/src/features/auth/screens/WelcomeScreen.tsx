@@ -1,6 +1,6 @@
 import type { WelcomeScreenProps } from "../types/welcome-screen";
-import { Image, ScrollView, Text, View } from "react-native";
-import { SafeAreaView, Button } from "@startup/mobile-ui";
+import { Image, ScrollView, View } from "react-native";
+import { AppText as Text, SafeAreaView, Button } from "@startup/mobile-ui";
 import { StatusBar } from "expo-status-bar";
 import { ArrowRight, Check, Shield } from "lucide-react-native";
 import { s } from "../components/Registration.styles";
@@ -20,8 +20,10 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
             resizeMode="cover"
           />
           <View style={s.heroShade} />
-          <Text style={s.heroTitle}>Drive to{"\n"}save lives.</Text>
-          <Text style={s.heroSubtitle}>
+          <Text variant="pageHeadline" style={s.heroTitle}>
+            Drive to{"\n"}save lives.
+          </Text>
+          <Text variant="bodySmall" style={s.heroSubtitle}>
             Trusted emergency response{"\n"}network.
           </Text>
         </View>
@@ -30,7 +32,9 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
             <View style={s.checkCircle}>
               <Shield size={20} color="white" />
             </View>
-            <Text style={s.title}>Why partner with us</Text>
+            <Text variant="sectionHeading" style={s.title}>
+              Why partner with us
+            </Text>
           </View>
           {registrationBenefits.map(({ icon: Icon, title, body }) => (
             <View key={title} style={s.benefit}>
@@ -38,8 +42,12 @@ export function WelcomeScreen({ onNext }: WelcomeScreenProps) {
                 <Check size={18} color="white" />
               </View>
               <View style={s.flex}>
-                <Text style={s.rowTitle}>{title}</Text>
-                <Text style={s.muted}>{body}</Text>
+                <Text variant="label" style={s.rowTitle}>
+                  {title}
+                </Text>
+                <Text variant="caption" style={s.muted}>
+                  {body}
+                </Text>
               </View>
               <View style={s.iconCircle}>
                 <Icon size={19} color={teal} />

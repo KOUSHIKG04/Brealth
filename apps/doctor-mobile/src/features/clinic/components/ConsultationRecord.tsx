@@ -81,11 +81,8 @@ export function ConsultationRecord({
             <Heading>Prescription</Heading>
             {record.medicines?.length ? (
               recordMedicineRows(record.medicines).map(({ medicine, key }) => (
-                <View
-                  style={{ gap: 8, marginTop: 12 }}
-                  key={key}
-                >
-                  <Heading style={{ fontSize: 16 }}>
+                <View style={{ gap: 8, marginTop: 12 }} key={key}>
+                  <Heading>
                     {medicine.medicine_name} · {medicine.strength}
                   </Heading>
                   <Label>

@@ -9,7 +9,8 @@ const vm = require("node:vm");
 const ts = require("typescript");
 
 function mount() {
-  const invalidated = [];
+  const invalidated = [],
+    reports = [];
   let listener;
   let cleanup;
   let disconnects = 0;
@@ -19,7 +20,9 @@ function mount() {
       useEffect: (fn) => {
         cleanup = fn();
       },
+      useState: (initial) => [initial, () => {}],
     },
+    "react/jsx-runtime": { jsx: (type, props) => ({ type, props }) },
     "react-native": {
       AppState: {
         currentState: "active",
@@ -27,6 +30,7 @@ function mount() {
       },
     },
     "@tanstack/react-query": {
+      onlineManager: { isOnline: () => true },
       useQueryClient: () => ({
         invalidateQueries: ({ queryKey }) => {
           invalidated.push(queryKey[0]);
@@ -35,12 +39,13 @@ function mount() {
       }),
     },
     "@startup/data-access": {
+      reportError: (error, context) => reports.push(context),
       subscribeAppChanges: (_client, _scope, handlers) => {
         listener = handlers;
         return () => disconnects++;
       },
     },
-    "@startup/mobile-ui": { useToast: () => ({ showToast() {} }) },
+    "@startup/mobile-ui": { OfflineBanner: "OfflineBanner" },
     "./supabase": { supabase: {}, mobileSession: { refresh: async () => {} } },
   };
   vm.runInNewContext(
@@ -50,17 +55,21 @@ function mount() {
         "utf8"
       ),
       {
+        fileName: "LiveUpdatesBridge.tsx",
         compilerOptions: {
           module: ts.ModuleKind.CommonJS,
           target: ts.ScriptTarget.ES2022,
+          jsx: ts.JsxEmit.ReactJSX,
         },
       }
     ).outputText,
     { exports, require: (name) => mocks[name], queueMicrotask }
   );
-  exports.LiveUpdatesBridge({ identityId: "doctor" });
+  const rendered = exports.LiveUpdatesBridge({ identityId: "doctor" });
   return {
     invalidated,
+    reports,
+    rendered,
     listener,
     cleanup: () => cleanup(),
     get disconnects() {
@@ -90,5 +99,19 @@ test("appointment changes refresh the Doctor replacement slots without resetting
   assert.ok(app.invalidated.includes("doctor-reschedule-options"));
   assert.ok(app.invalidated.includes("doctor-clinic-appointments"));
   assert.equal(app.invalidated.includes("my-doctor-schedule"), false);
+  app.cleanup();
+});
+
+test("brief realtime drops are silent; a sustained outage reports once without a toast", () => {
+  const app = mount();
+  assert.equal(app.rendered.type, "OfflineBanner");
+  assert.equal(app.rendered.props.visible, false);
+  app.listener.onStatus("reconnecting", "identity-events:doctor");
+  app.listener.onStatus("live", "identity-events:doctor");
+  assert.equal(app.reports.length, 0);
+  app.listener.onStatus("down", "identity-events:doctor");
+  app.listener.onError();
+  assert.equal(app.reports.length, 1);
+  assert.equal(app.reports[0].source, "realtime");
   app.cleanup();
 });

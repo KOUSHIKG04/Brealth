@@ -74,6 +74,7 @@ export function ClinicalNotesScreen() {
               />
               {completeMessage ? (
                 <Label
+                  variant="label"
                   style={
                     completeMessage.startsWith("Could") ? ui.error : ui.success
                   }
@@ -99,6 +100,7 @@ export function ClinicalNotesScreen() {
         )}
         {completeMessage ? (
           <Label
+            variant="label"
             style={completeMessage.startsWith("Could") ? ui.error : ui.success}
           >
             {completeMessage}
@@ -131,7 +133,7 @@ export function ClinicalNotesScreen() {
 
   return (
     <DoctorScreen title={patient.name}>
-      <Heading style={{ fontSize: 13 }}>Recorded Vitals</Heading>
+      <Heading variant="label">Recorded Vitals</Heading>
       <View style={ui.row}>
         {[
           [patient.bp, "BP (mmHg)"],
@@ -150,14 +152,12 @@ export function ClinicalNotesScreen() {
             }}
           >
             <Heading
-              style={{
-                fontSize: 20,
-                color: index === 1 ? palette.text : palette.accent,
-              }}
+              variant="sectionHeading"
+              style={{ color: index === 1 ? palette.text : palette.accent }}
             >
               {value}
             </Heading>
-            <Label muted style={{ fontSize: 11 }}>
+            <Label variant="caption" muted>
               {label}
             </Label>
           </View>

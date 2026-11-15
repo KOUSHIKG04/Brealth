@@ -100,7 +100,7 @@ export function PrescriptionScreen() {
             update(appointment.id, patient.id, { followUp })
           }
         />
-        <Label muted style={{ fontSize: 12 }}>
+        <Label variant="caption" muted>
           Clinic visit · Date format: DD-MM-YYYY
         </Label>
       </Panel>

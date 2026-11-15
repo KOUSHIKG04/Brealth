@@ -12,21 +12,31 @@ import {
 } from "@startup/contracts";
 import { AppText, Button } from "@startup/mobile-ui";
 import { AppointmentRecovery } from "./AppointmentRecovery";
+import { bookAgainRoute } from "../utils/bookAgain";
 
+/**
+ * Recovery status and actions. On a list card ("card"), optional actions live
+ * in the card's ⋮ menu; only a doctor's rescheduling request stays visible,
+ * because the patient must act on it. Details show every action.
+ */
 export function AppointmentRecoveryActions({
   item,
   now = Date.now(),
   buttonStyle,
   labelStyle,
+  placement = "details",
 }: {
   item: ClinicAppointment;
   now?: number;
   buttonStyle?: StyleProp<ViewStyle>;
   labelStyle?: StyleProp<TextStyle>;
+  placement?: "card" | "details";
 }) {
   const [intent, setIntent] = useState<"reschedule" | "review" | null>(null);
   const view = appointmentRecoveryView(item, now);
   const request = item.recovery?.request;
+  const doctorRequested = Boolean(item.recovery?.schedule_change?.pending);
+  const onCard = placement === "card";
   return (
     <View style={{ gap: 12 }}>
       {view.message ? (
@@ -39,12 +49,12 @@ export function AppointmentRecoveryActions({
           {request.decision_note ? ` · ${request.decision_note}` : ""}
         </AppText>
       ) : null}
-      {view.canReschedule ? (
+      {view.canReschedule && (!onCard || doctorRequested) ? (
         <Button
           theme="patient"
           variant="outline"
           label={
-            item.recovery?.schedule_change?.pending
+            doctorRequested
               ? "Choose another time"
               : view.requiresApproval
                 ? "Request reschedule"
@@ -55,7 +65,7 @@ export function AppointmentRecoveryActions({
           onPress={() => setIntent("reschedule")}
         />
       ) : null}
-      {view.canReview ? (
+      {view.canReview && !onCard ? (
         <Button
           theme="patient"
           variant="outline"
@@ -65,31 +75,13 @@ export function AppointmentRecoveryActions({
           onPress={() => setIntent("review")}
         />
       ) : null}
-      {view.bookAgain ? (
+      {view.bookAgain && !onCard ? (
         <Button
           theme="patient"
           label="Book again"
           style={buttonStyle}
           labelStyle={labelStyle}
-          onPress={() =>
-            router.push(
-              item.practice_id
-                ? ({
-                    pathname: "/doctor-profile",
-                    params: {
-                      practiceId: item.practice_id,
-                      serviceId: item.practice_service_id ?? "",
-                      consultationType:
-                        item.visit_mode === "online"
-                          ? "Online"
-                          : item.visit_mode === "home"
-                            ? "Home Visit"
-                            : "Clinic Visit",
-                    },
-                  } as Href)
-                : ("/find-doctor" as Href)
-            )
-          }
+          onPress={() => router.push(bookAgainRoute(item))}
         />
       ) : null}
       {item.recovery?.rescheduled_to_id ? (

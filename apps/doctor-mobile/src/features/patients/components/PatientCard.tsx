@@ -1,5 +1,8 @@
 import type { PatientCardProps } from "../types/patient-card";
-import { appointmentRecoveryView } from "@startup/contracts";
+import {
+  appointmentQueueNumber,
+  appointmentRecoveryView,
+} from "@startup/contracts";
 import { Pressable, StyleSheet, View } from "react-native";
 import { ChevronRight, User } from "lucide-react-native";
 import { Button } from "@startup/mobile-ui";
@@ -32,6 +35,16 @@ export function PatientCard({
     hour: "numeric",
     minute: "2-digit",
   });
+  // Issued ticket or reserved hybrid-queue number; ahead count only while waiting.
+  const queueNumber = appointmentQueueNumber(appointment);
+  const queueLabel =
+    appointment.visit_mode !== "clinic"
+      ? ""
+      : ` • Queue ${queueNumber ? `#${queueNumber}` : "not assigned"}${
+          appointment.queue_state === "waiting"
+            ? ` (${appointment.ahead_count} ahead)`
+            : ""
+        }`;
   return (
     <View style={styles.card}>
       <Pressable
@@ -50,15 +63,19 @@ export function PatientCard({
         </View>
         <View style={ui.flex}>
           <Heading style={styles.white}>{appointment.patient_name}</Heading>
-          <Label style={styles.secondary}>
+          <Label variant="caption" style={styles.secondary}>
             {home
-              ? `${appointment.patient_gender ?? "Gender unavailable"}, ${appointment.patient_age_years ?? "age unavailable"}${appointment.visit_mode === "clinic" ? ` • Queue No: ${appointment.ticket_number ? `#${appointment.ticket_number}` : "pending"}` : ""}`
+              ? `${appointment.patient_gender ?? "Gender unavailable"}, ${appointment.patient_age_years ?? "age unavailable"}${queueLabel}`
               : `${appointment.patient_gender ?? "Gender unavailable"}, Age - ${appointment.patient_age_years ?? "unavailable"}`}
           </Label>
-          {!home ? <Label style={styles.time}>{time}</Label> : null}
+          {!home ? (
+            <Label variant="labelSmall" style={styles.time}>
+              {time}
+            </Label>
+          ) : null}
         </View>
         <View style={styles.badge}>
-          <Label style={styles.badgeText}>
+          <Label variant="labelSmall" style={styles.badgeText}>
             {home
               ? expiredRequest
                 ? "REQUEST EXPIRED"
@@ -84,10 +101,13 @@ export function PatientCard({
       {home ? (
         <>
           <View style={ui.between}>
-            <Label style={styles.secondary}>
-              Type: <Label style={styles.time}>{consultationLabel}</Label>
+            <Label variant="caption" style={styles.secondary}>
+              Type:{" "}
+              <Label variant="labelSmall" style={styles.time}>
+                {consultationLabel}
+              </Label>
             </Label>
-            <Label style={styles.time}>
+            <Label variant="labelSmall" style={styles.time}>
               {new Date(appointment.starts_at).toLocaleDateString("en-IN", {
                 day: "numeric",
                 month: "short",
@@ -125,25 +145,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  white: { color: palette.white, fontSize: 16 },
-  secondary: { color: "#D4F0EC", fontSize: 12, lineHeight: 18 },
-  time: {
-    color: palette.white,
-    fontSize: 12,
-    fontFamily: fontFamilies.semibold,
-  },
+  white: { color: palette.white },
+  secondary: { color: "#D4F0EC" },
+  time: { color: palette.white },
   badge: {
     backgroundColor: "#DEF5F2",
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 10,
   },
-  badgeText: {
-    color: palette.dark,
-    fontSize: 10,
-    lineHeight: 14,
-    fontFamily: fontFamilies.bold,
-  },
+  badgeText: { color: palette.dark },
   arrow: {
     width: 32,
     height: 32,

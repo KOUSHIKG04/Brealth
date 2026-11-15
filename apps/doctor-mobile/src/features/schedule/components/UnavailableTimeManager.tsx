@@ -7,7 +7,10 @@ import { View } from "react-native";
 import { fontFamilies } from "@startup/design-tokens";
 import { Chip, FadedScrollView, Loader } from "@startup/mobile-ui";
 
-import { type ClinicUnavailability } from "@startup/contracts";
+import {
+  formatDisplayDateTime,
+  type ClinicUnavailability,
+} from "@startup/contracts";
 
 import {
   Choice,
@@ -42,12 +45,15 @@ export function UnavailableTimeManager() {
     busy,
     add,
     remove,
+    approvalRequired,
+    timeOffRequests,
+    facilityName,
   } = useUnavailableTimeManager();
   return (
     <>
       {availablePractices && availablePractices.length > 1 ? (
         <Panel>
-          <Heading style={{ fontSize: 13 }}>Your clinic</Heading>
+          <Heading variant="label">Your clinic</Heading>
           <View style={ui.wrap}>
             {availablePractices.map((p) => (
               <Choice
@@ -61,15 +67,7 @@ export function UnavailableTimeManager() {
         </Panel>
       ) : null}
       <Panel>
-        <Heading
-          style={{
-            fontSize: 15,
-            fontFamily: fontFamilies.regular,
-            fontWeight: "400",
-          }}
-        >
-          Unavailable time / Leave
-        </Heading>
+        <Heading variant="bodySmall">Unavailable time / Leave</Heading>
         <FadedScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -89,6 +87,24 @@ export function UnavailableTimeManager() {
           ))}
         </FadedScrollView>
         <Label muted>This block applies to {scopeLabel.toLowerCase()}.</Label>
+        {approvalRequired ? (
+          <View accessibilityLiveRegion="polite" style={{ gap: 4 }}>
+            <Label variant="caption" muted>
+              {facilityName} approves time off here. Adding or removing time off
+              sends a request; your slots change once it is approved.
+            </Label>
+            {timeOffRequests.map((request) => (
+              <Label key={request.id}>
+                {request.kind === "time_off_add"
+                  ? "Time off waiting for approval"
+                  : "Removal waiting for approval"}
+                {typeof request.payload.starts_at === "string"
+                  ? ` · ${formatDisplayDateTime(request.payload.starts_at, zone)}`
+                  : ""}
+              </Label>
+            ))}
+          </View>
+        ) : null}
         {practices.isLoading || unavailable.isLoading ? (
           <Loader theme="doctor" />
         ) : null}

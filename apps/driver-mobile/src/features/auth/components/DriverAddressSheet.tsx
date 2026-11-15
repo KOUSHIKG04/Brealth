@@ -2,7 +2,7 @@ import { useDriverAddressSheet } from "../hooks/useDriverAddressSheet";
 import type { AddressSheetProps } from "../types/address-sheet";
 import { Button } from "@startup/mobile-ui";
 import { ModalSurface } from "@startup/mobile-ui";
-import { Input } from "@startup/mobile-ui";
+import { AppText as Text, Input } from "@startup/mobile-ui";
 
 import { router, type Href } from "expo-router";
 
@@ -13,7 +13,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 
@@ -110,7 +109,9 @@ function AddressSheetDraft({
 
             {/* Header */}
             <View style={styles.header}>
-              <Text style={styles.title}>Add Address</Text>
+              <Text variant="sectionHeading" style={styles.title}>
+                Add Address
+              </Text>
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Close address sheet"
@@ -194,7 +195,9 @@ function AddressSheetDraft({
                 onPress={handleConfirm}
                 style={styles.confirmButton}
               >
-                <Text style={styles.confirmButtonText}>Confirm Address</Text>
+                <Text variant="cardHeading" style={styles.confirmButtonText}>
+                  Confirm Address
+                </Text>
               </Pressable>
             </ScrollView>
           </View>
@@ -241,11 +244,7 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 16,
   },
-  title: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 18,
-    color: colors.textPrimary,
-  },
+  title: { color: colors.textPrimary },
   closeButton: {
     width: 32,
     height: 32,
@@ -318,11 +317,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 4,
   },
-  confirmButtonText: {
-    color: colors.white,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 15,
-  },
+  confirmButtonText: { color: colors.white },
   error: {
     color: colors.danger,
     fontFamily: fontFamilies.regular,
@@ -330,7 +325,6 @@ const styles = StyleSheet.create({
   },
 });
 
-
 export function AddressSheet(props: AddressSheetProps) {
- return <AddressSheetDraft key={JSON.stringify(props.value)} {...props} />;
+  return <AddressSheetDraft key={JSON.stringify(props.value)} {...props} />;
 }

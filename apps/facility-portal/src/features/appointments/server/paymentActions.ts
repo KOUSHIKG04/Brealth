@@ -21,38 +21,30 @@ import { requireApprovedFacility } from "@/server/auth/facilityAccess";
 import { createClient } from "@/lib/supabase/server";
 
 const financialAction = z.discriminatedUnion("action", [
-  z
-    .object({
-      action: z.literal("cash"),
-      appointmentId: uuidSchema,
-      expectedDue: z.number().int().min(100).safe(),
-      note: z.string().trim().min(2).max(1000),
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal("decision"),
-      appointmentId: uuidSchema,
-      refundId: uuidSchema,
-      expectedVersion: z.number().int().positive().safe(),
-      approve: z.boolean(),
-      note: z.string().trim().min(2).max(1000),
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal("cash_refund"),
-      appointmentId: uuidSchema,
-      refundId: uuidSchema,
-      note: z.string().trim().min(2).max(1000),
-    })
-    .strict(),
-  z
-    .object({
-      action: z.enum(["reconcile", "process_refunds"]),
-      appointmentId: uuidSchema,
-    })
-    .strict(),
+  z.strictObject({
+    action: z.literal("cash"),
+    appointmentId: uuidSchema,
+    expectedDue: z.number().int().min(100),
+    note: z.string().trim().min(2).max(1000),
+  }),
+  z.strictObject({
+    action: z.literal("decision"),
+    appointmentId: uuidSchema,
+    refundId: uuidSchema,
+    expectedVersion: z.number().int().positive(),
+    approve: z.boolean(),
+    note: z.string().trim().min(2).max(1000),
+  }),
+  z.strictObject({
+    action: z.literal("cash_refund"),
+    appointmentId: uuidSchema,
+    refundId: uuidSchema,
+    note: z.string().trim().min(2).max(1000),
+  }),
+  z.strictObject({
+    action: z.enum(["reconcile", "process_refunds"]),
+    appointmentId: uuidSchema,
+  }),
 ]);
 
 export async function executePortalAppointmentCheckout(input: unknown) {

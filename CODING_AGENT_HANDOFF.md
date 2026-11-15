@@ -52,6 +52,79 @@ The error-handling work (13 November 2026) runs fully without these steps; see t
 3. **Device and browser checks.** On a phone with the current dev build, turn on airplane mode: the offline banner should appear, actions should pause, and they should resume when you reconnect. Force a render error to see the recovery screen. On the web apps, check `error.tsx`, `global-error.tsx` and the reference code. Typechecks and unit tests do not cover these.
 4. **Schedule update migration (not applied).** Apply `supabase/migrations/20261113103000_schedule_update_smoothness.sql` to the confirmed test project (`pnpm db:check`, then `pnpm db:migrate`). Then run `supabase/tests/smoke/schedule-update-smoothness.cli-smoke.sql` in its SQL editor; it rolls back. Until it is applied, the apps fall back to the previous publish path and show no busy-time hints.
 
+## Next to implement and verify (as of 14 November 2026)
+
+The owner asked that tests and checks run only with their approval. The work below is written but **not yet typechecked, tested or formatted**.
+
+**Unverified local changes**
+
+- Doctor dashboard follows queue operations: `features/home/utils/dayBoard.ts`, Today/Waiting/With you, serving order, reserved queue numbers.
+- Facility Portal multi-day appointment views are grouped by clinic date, using the shared `DataTable` `groupBy` prop and `#n` tokens via `appointmentQueueNumber`.
+- Patient booking cards: optional actions moved into the ⋮ menu; a doctor's rescheduling request stays on the card.
+- Live calls in Doctor and Patient switch cameras with LiveKit `restartTrack`, and only the front camera is mirrored.
+- Prescription Share and Download produce real PDFs. This adds `expo-print`, `expo-sharing` and the `expo-sharing` config plugin to patient-mobile (`features/prescriptions/services/prescriptionPdf.ts`).
+- Ending a video call ends it for both people through a LiveKit `consultation-control` data message. A silent departure shows "Reconnecting…" or "left the call" in the call header and on the video, and becomes "connection lost" after 60 seconds (`utils/callControl.ts` in both apps).
+- `ConsultationCall` gained a `notice` prop and no longer shows the garbled "Connectingâ€¦" and "Type a messageâ€¦" text.
+
+**Run with approval**
+
+1. `pnpm typecheck`, or per workspace: doctor-mobile, patient-mobile, facility-portal, web-ui, mobile-ui and data-access.
+2. Tests for contracts, data-access, mobile-ui, web-ui, doctor-mobile, patient-mobile and facility-portal. Existing failures at the start of this work: patient map-picker (17), Doctor `RecoveryIntent` structure (1), Driver map-picker (2), the `design-tokens` background token, and the web-ui `chart.tsx`/`cmdk` typecheck errors.
+3. Prettier and `pnpm spacing:check` on the changed files; `DataTable` needs re-indenting. Then Facility Portal `check-architecture` and lint.
+
+**Builds and device checks**
+
+- Make a **new Patient EAS dev build**: `expo-print` and `expo-sharing` are native modules. The current build cannot share or save PDFs.
+- On real phones, check:
+  - camera switching (front/back, no mirrored back camera);
+  - ending a call from either side;
+  - the reconnect notice and the 60-second loss;
+  - PDF share (WhatsApp/email receive a `.pdf`) and save (Android folder picker, iOS "Save to Files");
+  - the Doctor dashboard counts against the reception queue;
+  - Facility Portal date groups in "All dates".
+
+**Facility approval (Phase A): written, not applied or verified**
+
+- Rule: a doctor's own clinic (owner or administrator member) publishes directly. Hospitals and clinics run by others approve the doctor's schedule, time-off and recovery-policy changes. Facility owners, organization admins and facility admins approve.
+- Migrations `20261114095000_schedule_approval_rules.sql`, `20261114096000_schedule_preview_approval_guard.sql` and `20261114100000_schedule_change_requests.sql` (`20261113103000` is already applied on test and is not edited). Apply them in order.
+- Doctor app: Submit for approval, `ScheduleRequestNotice`, time-off and policy requests. Facility Portal: `ScheduleChangeRequests` on Doctor Schedules and the dashboard. `send-notification`: `schedule.request_*` push copy (needs a redeploy).
+- Single-doctor clinics no longer appear in the doctor join list.
+- Rollback smoke suites, written but not yet run: `supabase/tests/smoke/schedule-change-requests.cli-smoke.sql` and `supabase/tests/smoke/facility-team-roles.cli-smoke.sql`.
+
+**Roles and Team (Phase B): written, not applied or verified**
+
+- Migration `20261114120000_facility_team_roles.sql`: invitation links, role ranks, receptionist doctor scopes, "my roles", member updates. Receptionists can collect cash for their doctors; a refund guard keeps refund decisions with owners, admins and the doctor.
+- Facility Portal: `/team` and `/invite/[token]` (`features/team`), a role-aware sidebar, `requirePortalArea` on admin-only pages, and a `?next=` return path on login and sign-up.
+- Known limits:
+  - the doctor picker lists every doctor on the user's roster, and the database rejects doctors from another facility;
+  - Walk-in "can collect" now allows every practice manager, receptionists included (`get_portal_walk_in_payment_policy` in the same migration); payout visibility keeps the admin-only `can_manage_appointment_practice_money`;
+  - invitations by email are a follow-up.
+- Smoke suite `supabase/tests/smoke/facility-team-roles.cli-smoke.sql` covers invite, accept, rank checks, scopes and desk collection. It was written without a database run.
+
+**Online and clinic scheduling (decided 14 November 2026)**
+
+The decision was made after reviewing Epic templates, HHS and AAFP hybrid-care guidance, Zocdoc and Indian platforms, and published studies. The studies found mixed-modality days add about 6% EHR work (JAMA Netw Open 2024) and in-person lateness drives waiting.
+
+- **Separate blocks stay the default.** Online and clinic hours never overlap, at the same practice or across practices. This is current behaviour: preview conflicts plus `doctor_sessions_do_not_overlap`.
+- **Batching hint (done locally).** `scheduleBatchingHints` in contracts powers a "Tip" in the Doctor and portal schedule editors. It shows for online hours placed between two clinic blocks on a day, and for online blocks under 60 minutes. It is advisory only. No device or browser check yet.
+- **Next: optional either-mode blocks within one practice.** Not started; needs a migration.
+  - One set of windows where each booking chooses online or clinic. A booked window is gone for both modes, matching Epic "unblocked" time.
+  - It needs a per-block mode setting on the rule, a session that can serve both modes, `visit_mode` taken from the booking rather than the session, and both slot lists reading the same windows.
+  - No cross-service claim table is needed.
+  - Walk-ins keep using the queue.
+  - Overlap across practices stays blocked.
+
+**Follow-up features**
+
+1. **Server-generated prescription PDF.** An Edge Function builds the document from the authoritative signed record into a private Storage bucket and returns a signed URL. It should be shared by Patient, Doctor and Facility Portal. Needs a migration (bucket and policies) and a function deploy.
+2. **Patient identity on the prescription.** The clinical record projection has no patient name or age, and the account holder may differ from the patient (family bookings). Add them to the authorized record projection, then to the PDF.
+3. **Server-enforced call end.** Delete the LiveKit room server-side and store a call-ended marker so no new join tokens are issued after a deliberate end. Today the patient may rejoin while the visit is open (intended for now).
+4. **Schedule publisher consolidation.** Recreate the text-patched schedule RPCs in one readable migration, using `pg_get_functiondef` output from the test project.
+5. **Repository hygiene.**
+   - Fix `.gitignore`: root `scripts/` (which hides `declaration-spacing.mjs`) and `plans/` are ignored, and the rule isn't anchored to the root.
+   - Move the duplicated location route files (`select-location.tsx`, `address-details.tsx`) into shared or feature owners.
+   - Clear the existing test and typecheck failures listed above.
+
 ## Suggested next work
 
 1. Inventory the dirty tree with the user; classify changes into intended features, generated/temporary artifacts, and unrelated work. Do not discard anything without establishing ownership.

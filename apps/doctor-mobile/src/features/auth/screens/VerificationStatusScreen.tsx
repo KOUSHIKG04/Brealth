@@ -1,12 +1,12 @@
 import { useVerificationStatus } from "../hooks/useVerificationStatus";
 import { documentControlHeight, labels } from "../utils/verificationConstants";
 
-import { Animated, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Animated, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { FileCheck2, RefreshCw } from "lucide-react-native";
 
-import { Button, Loader } from "@startup/mobile-ui";
+import { AppText as Text, Button, Loader } from "@startup/mobile-ui";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { DoctorHeader } from "../../../components/DoctorScreen";
 import { palette } from "../../../components/theme";
@@ -49,11 +49,17 @@ export default function VerificationStatusScreen() {
                 size={56}
                 color={rejected || blocked ? "#A23C2D" : palette.primary}
               />
-              <Text style={styles.status}>{status}</Text>
-              <Text style={styles.summaryText}>{summary}</Text>
+              <Text variant="sectionHeading" style={styles.status}>
+                {status}
+              </Text>
+              <Text variant="bodySmall" style={styles.summaryText}>
+                {summary}
+              </Text>
             </View>
             {!unavailable ? (
-              <Text style={styles.sectionTitle}>Submitted documents</Text>
+              <Text variant="bodyEmphasis" style={styles.sectionTitle}>
+                Submitted documents
+              </Text>
             ) : null}
             {!unavailable
               ? documentNames.map(({ kind, title }) => {
@@ -64,7 +70,12 @@ export default function VerificationStatusScreen() {
                     <View key={kind} style={styles.document}>
                       <View style={styles.documentHeading}>
                         <FileCheck2 size={20} color={palette.primary} />
-                        <Text style={styles.documentTitle}>{title}</Text>
+                        <Text
+                          variant="bodyEmphasis"
+                          style={styles.documentTitle}
+                        >
+                          {title}
+                        </Text>
                         <View
                           accessible
                           accessibilityLabel={`${title}: ${document ? (labels[document.status] ?? "Pending review") : "Not submitted"}`}
@@ -80,10 +91,10 @@ export default function VerificationStatusScreen() {
                       </View>
                       {needsReplacement ? (
                         <View style={styles.reason}>
-                          <Text style={styles.reasonTitle}>
+                          <Text variant="label" style={styles.reasonTitle}>
                             Reviewer’s reason
                           </Text>
-                          <Text style={styles.reasonText}>
+                          <Text variant="bodySmall" style={styles.reasonText}>
                             {document.rejection_reason ||
                               "No reason was provided. Contact Clinzo support for clarification."}
                           </Text>
@@ -123,7 +134,9 @@ export default function VerificationStatusScreen() {
                   ].map((item) => (
                     <View key={item.label} style={styles.legendItem}>
                       <View style={[styles.statusDot, item.style]} />
-                      <Text style={styles.legendText}>{item.label}</Text>
+                      <Text variant="bodySmall" style={styles.legendText}>
+                        {item.label}
+                      </Text>
                     </View>
                   ))}
                 </View>
@@ -153,7 +166,9 @@ export default function VerificationStatusScreen() {
                 >
                   <RefreshCw size={19} color={palette.primary} />
                 </Animated.View>
-                <Text style={styles.refreshText}>Refresh</Text>
+                <Text variant="label" style={styles.refreshText}>
+                  Refresh
+                </Text>
               </Button>
             </View>
             {submitted === false && !blocked ? (
@@ -187,13 +202,7 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   content: { padding: 24, gap: 16 },
   summary: { alignItems: "center", paddingVertical: 24, gap: 14 },
-  status: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 19,
-    lineHeight: 25,
-    color: palette.header,
-    textAlign: "center",
-  },
+  status: { color: palette.header, textAlign: "center" },
   refreshButton: {
     height: 44,
     minHeight: 44,
@@ -205,33 +214,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 6,
   },
-  refreshText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    color: palette.primary,
-  },
-  summaryText: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textPrimary,
-    textAlign: "center",
-  },
-  sectionTitle: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 16,
-    color: colors.textPrimary,
-    marginTop: 8,
-    textAlign: "left",
-  },
+  refreshText: { color: palette.primary },
+  summaryText: { color: colors.textPrimary, textAlign: "center" },
+  sectionTitle: { color: colors.textPrimary, marginTop: 8, textAlign: "left" },
   legendRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   legend: { flex: 1, flexDirection: "row", flexWrap: "wrap", gap: 12 },
   legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
-  legendText: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-    color: palette.text,
-  },
+  legendText: { color: palette.text },
   document: {
     minHeight: documentControlHeight,
     backgroundColor: colors.white,
@@ -253,27 +242,12 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
   },
   documentHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
-  documentTitle: {
-    flex: 1,
-    fontFamily: fontFamilies.medium,
-    fontSize: 16,
-    lineHeight: 22,
-    color: colors.textPrimary,
-  },
+  documentTitle: { flex: 1, color: colors.textPrimary },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   pendingDot: { backgroundColor: "#F59E0B" },
   rejectedDot: { backgroundColor: colors.danger },
   approvedDot: { backgroundColor: colors.success },
   reason: { gap: 6 },
-  reasonTitle: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    color: "#A23C2D",
-  },
-  reasonText: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    color: colors.textPrimary,
-  },
+  reasonTitle: { color: "#A23C2D" },
+  reasonText: { color: colors.textPrimary },
 });

@@ -138,12 +138,18 @@ export function ConsultationCall(props: ConsultationCallProps) {
           <Text variant="body" numberOfLines={1} style={styles.name}>
             {name}
           </Text>
-          <Text variant="body" style={styles.status}>
-            {props.connected
-              ? chat
-                ? "In-call chat"
-                : "Video consultation"
-              : "Connectingâ€¦"}
+          <Text
+            variant="body"
+            style={styles.status}
+            accessibilityLiveRegion="polite"
+          >
+            {props.notice
+              ? props.notice
+              : props.connected
+                ? chat
+                  ? "In-call chat"
+                  : "Video consultation"
+                : "Connecting…"}
           </Text>
         </View>
         {chat ? (
@@ -207,7 +213,7 @@ export function ConsultationCall(props: ConsultationCallProps) {
             <View style={styles.composer}>
               <Input
                 accessibilityLabel="Consultation message"
-                placeholder="Type a messageâ€¦"
+                placeholder={"Type a message…"}
                 value={draft}
                 onChangeText={setDraft}
                 multiline
@@ -247,7 +253,16 @@ export function ConsultationCall(props: ConsultationCallProps) {
             </View>
           </View>
         ) : (
-          <View style={StyleSheet.absoluteFill}>{props.remoteVideo}</View>
+          <View style={StyleSheet.absoluteFill}>
+            {props.remoteVideo}
+            {props.notice ? (
+              <View pointerEvents="none" style={styles.noticePill}>
+                <Text variant="body" style={styles.noticeText}>
+                  {props.notice}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         )}
         <FloatingVideo
           width={chat ? 132 : 104}
@@ -381,6 +396,22 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   stage: { flex: 1, overflow: "hidden" },
+  noticePill: {
+    position: "absolute",
+    alignSelf: "center",
+    top: "45%",
+    maxWidth: "80%",
+    borderRadius: 999,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  noticeText: {
+    color: colors.white,
+    fontFamily: fontFamilies.medium,
+    fontSize: 13,
+    textAlign: "center",
+  },
   thread: { flex: 1, backgroundColor: colors.white },
   messages: { flexGrow: 1, padding: 16, paddingTop: 190, gap: 12 },
   bubble: { maxWidth: "84%", borderRadius: 14, padding: 12, gap: 5 },

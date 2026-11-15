@@ -104,6 +104,89 @@ type CompatibilityFunctions = {
     };
     Returns: Json;
   };
+  list_my_facility_roles: {
+    Args: Record<string, never>;
+    Returns: Json;
+  };
+  list_facility_team: {
+    Args: { p_facility_id: string };
+    Returns: Json;
+  };
+  create_member_invitation: {
+    Args: {
+      p_facility_id: string;
+      p_role: string;
+      p_email: string;
+      p_doctor_practice_ids: string[];
+    };
+    Returns: Json;
+  };
+  revoke_member_invitation: {
+    Args: { p_invitation_id: string };
+    Returns: undefined;
+  };
+  get_member_invitation: {
+    Args: { p_token: string };
+    Returns: Json;
+  };
+  accept_member_invitation: {
+    Args: { p_token: string };
+    Returns: Json;
+  };
+  update_facility_member: {
+    Args: {
+      p_member_id: string;
+      p_role: string | null;
+      p_active: boolean | null;
+      p_doctor_practice_ids: string[] | null;
+    };
+    Returns: undefined;
+  };
+  schedule_change_requires_approval: {
+    Args: { p_practice_id: string };
+    Returns: boolean;
+  };
+  submit_schedule_change_request: {
+    Args: {
+      p_practice_id: string;
+      p_kind: string;
+      p_payload: Json;
+      p_service_mode: string | null;
+      p_effective_from: string | null;
+      p_expected_version: number | null;
+      p_note: string | null;
+    };
+    Returns: Json;
+  };
+  withdraw_schedule_change_request: {
+    Args: { p_request_id: string };
+    Returns: Json;
+  };
+  list_my_schedule_change_requests: {
+    Args: { p_practice_id: string | null };
+    Returns: Json;
+  };
+  list_facility_schedule_change_requests: {
+    Args: { p_status: string | null };
+    Returns: Json;
+  };
+  preview_schedule_change_request: {
+    Args: { p_request_id: string };
+    Returns: Json;
+  };
+  approve_schedule_change_request: {
+    Args: {
+      p_request_id: string;
+      p_preview_token: string | null;
+      p_strategy: string | null;
+      p_patient_reason: string | null;
+    };
+    Returns: Json;
+  };
+  reject_schedule_change_request: {
+    Args: { p_request_id: string; p_reason: string };
+    Returns: Json;
+  };
   publish_previewed_doctor_schedule: {
     Args: {
       p_practice_id: string;

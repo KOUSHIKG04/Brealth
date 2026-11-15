@@ -1,9 +1,9 @@
 import { loginScreenItems } from "../utils/loginConstants";
 import { useLogin } from "../hooks/useLogin";
 import { doctor } from "../utils/loginConstants";
-import { Input } from "@startup/mobile-ui";
+import { AppText as Text, Input } from "@startup/mobile-ui";
 
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { colors, fontFamilies } from "@startup/design-tokens";
 
@@ -61,6 +61,7 @@ export default function LoginScreen() {
                 ]}
               >
                 <Text
+                  variant="label"
                   style={[
                     styles.modeText,
                     mode === loginMode && styles.modeTextActive,
@@ -72,16 +73,21 @@ export default function LoginScreen() {
             ))}
           </View>
         ) : null}
-        <Text style={styles.heading}>
+        <Text variant="screenTitle" style={styles.heading}>
           Welcome to{" "}
-          <Text style={styles.brand}>
-            Clinzo<Text style={styles.plus}>+</Text>
+          <Text variant="inherit" style={styles.brand}>
+            Clinzo
+            <Text variant="body" style={styles.plus}>
+              +
+            </Text>
           </Text>
         </Text>
-        <Text style={styles.tagline}>Right Care. Right Time.</Text>
+        <Text variant="bodySmall" style={styles.tagline}>
+          Right Care. Right Time.
+        </Text>
         {emailOpen ? (
           <View style={styles.form}>
-            <Text style={styles.formHeading}>
+            <Text variant="screenTitle" style={styles.formHeading}>
               {confirmationPending
                 ? "Check your email"
                 : emailMode === "signup"
@@ -90,7 +96,7 @@ export default function LoginScreen() {
             </Text>
             {confirmationPending ? (
               <>
-                <Text style={styles.info}>
+                <Text variant="bodySmall" style={styles.info}>
                   Open the confirmation link sent to {email.trim()}, then return
                   and sign in to complete your doctor profile.
                 </Text>
@@ -173,7 +179,7 @@ export default function LoginScreen() {
                     onPress={switchEmailMode}
                     disabled={busy}
                   >
-                    <Text style={styles.switchText}>
+                    <Text variant="label" style={styles.switchText}>
                       {emailMode === "signup"
                         ? "Already have an account? Sign in"
                         : "New here? Create an account"}
@@ -193,10 +199,15 @@ export default function LoginScreen() {
                 onPress={() => router.push("/phone")}
               />
             </View>
-            <Text style={styles.terms}>
+            <Text variant="bodySmall" style={styles.terms}>
               By continuing, you agree to our{"\n"}
-              <Text style={styles.link}>Terms of Services</Text> and{" "}
-              <Text style={styles.link}>Privacy Policy</Text>
+              <Text variant="inherit" style={styles.link}>
+                Terms of Services
+              </Text>{" "}
+              and{" "}
+              <Text variant="inherit" style={styles.link}>
+                Privacy Policy
+              </Text>
             </Text>
           </>
         )}
@@ -218,32 +229,15 @@ const styles = StyleSheet.create({
   },
   modeButton: { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 18 },
   modeButtonActive: { backgroundColor: colors.patient.primaryDark },
-  modeText: { fontFamily: fontFamilies.medium, fontSize: 13, color: "#64748B" },
-  modeTextActive: { color: colors.white, fontFamily: fontFamilies.bold },
-  heading: {
-    color: colors.black,
-    fontFamily: fontFamilies.medium,
-    fontSize: 24,
-  },
+  modeText: { color: "#64748B" },
+  modeTextActive: { color: colors.white },
+  heading: { color: colors.black },
   brand: { color: colors.patient.primaryDark },
   plus: { fontSize: 16 },
-  tagline: {
-    marginTop: 4,
-    fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    fontStyle: "italic",
-    color: colors.black,
-  },
+  tagline: { marginTop: 4, fontStyle: "italic", color: colors.black },
   doctor: { width: 268, height: 194, marginTop: 28 },
   choices: { width: "100%", maxWidth: 296, marginTop: 36, gap: 14 },
-  terms: {
-    marginTop: 44,
-    textAlign: "center",
-    fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: colors.black,
-  },
+  terms: { marginTop: 44, textAlign: "center", color: colors.black },
   link: { color: colors.patient.primaryDark },
   form: {
     width: "100%",
@@ -252,12 +246,7 @@ const styles = StyleSheet.create({
     marginTop: 32,
     paddingBottom: 24,
   },
-  formHeading: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 22,
-    textAlign: "center",
-    marginBottom: 8,
-  },
+  formHeading: { textAlign: "center", marginBottom: 8 },
   input: {
     height: 54,
     borderWidth: 1,
@@ -272,17 +261,9 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.regular,
     fontSize: 13,
   },
-  info: {
-    color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 15,
-    lineHeight: 22,
-    textAlign: "center",
-  },
+  info: { color: colors.patient.textSecondary, textAlign: "center" },
   switchText: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.medium,
-    fontSize: 15,
     textAlign: "center",
     padding: 8,
   },

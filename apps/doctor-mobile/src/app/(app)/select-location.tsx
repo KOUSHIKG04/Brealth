@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { router } from "expo-router";
@@ -25,7 +24,12 @@ import {
 } from "@startup/data-access";
 import type { MapPlace, SavedDoctorLocation } from "@startup/contracts";
 import { colors, fontFamilies } from "@startup/design-tokens";
-import { Header, useToast, useToastFeedback } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  Header,
+  useToast,
+  useToastFeedback,
+} from "@startup/mobile-ui";
 import {
   LocateFixed,
   House,
@@ -341,7 +345,9 @@ export default function SelectLocationScreen() {
 
           {matches.length ? (
             <View style={styles.section}>
-              <Text style={styles.sectionTitle}>SEARCH RESULTS</Text>
+              <Text variant="label" style={styles.sectionTitle}>
+                SEARCH RESULTS
+              </Text>
               <View style={styles.card}>
                 {matches.map((place) => (
                   <Pressable
@@ -370,6 +376,7 @@ export default function SelectLocationScreen() {
                   >
                     <MapPin size={20} color={colors.doctor.primary} />
                     <Text
+                      variant="label"
                       style={styles.placeText}
                       numberOfLines={2}
                       ellipsizeMode="tail"
@@ -380,12 +387,15 @@ export default function SelectLocationScreen() {
                 ))}
               </View>
               {matches.some((place) => place.mapPlace) ? (
-                <Text style={styles.helper}>Google Maps</Text>
+                <Text variant="bodySmall" style={styles.helper}>
+                  Google Maps
+                </Text>
               ) : null}
               {uniqueMapAttributions(
                 matches.flatMap((place) => place.mapPlace?.attributions ?? [])
               ).map((attribution) => (
                 <Text
+                  variant="bodySmall"
                   key={mapAttributionKey(attribution)}
                   style={styles.helper}
                 >
@@ -395,12 +405,14 @@ export default function SelectLocationScreen() {
             </View>
           ) : null}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Saved Addresses</Text>
+            <Text variant="label" style={styles.sectionTitle}>
+              Saved Addresses
+            </Text>
             {locations.isLoading ? (
               <ActivityIndicator color={colors.doctor.primary} />
             ) : null}
             {locations.data?.length === 0 ? (
-              <Text style={styles.helper}>
+              <Text variant="bodySmall" style={styles.helper}>
                 No saved addresses yet. Add one or use your current location.
               </Text>
             ) : null}
@@ -433,7 +445,7 @@ export default function SelectLocationScreen() {
                           <MapPin size={24} color={colors.doctor.text} />
                         )}
                         {distanceToSavedLocation(devicePosition, location) ? (
-                          <Text style={styles.distance}>
+                          <Text variant="caption" style={styles.distance}>
                             {distanceToSavedLocation(devicePosition, location)}
                           </Text>
                         ) : null}
@@ -441,6 +453,7 @@ export default function SelectLocationScreen() {
                       <View style={styles.savedText}>
                         <View style={styles.labelRow}>
                           <Text
+                            variant="cardHeading"
                             style={styles.name}
                             numberOfLines={1}
                             ellipsizeMode="tail"
@@ -448,10 +461,13 @@ export default function SelectLocationScreen() {
                             {location.label}
                           </Text>
                           {location.selected ? (
-                            <Text style={styles.selected}>Selected</Text>
+                            <Text variant="labelSmall" style={styles.selected}>
+                              Selected
+                            </Text>
                           ) : null}
                         </View>
                         <Text
+                          variant="bodySmall"
                           style={styles.address}
                           numberOfLines={1}
                           ellipsizeMode="tail"
@@ -555,12 +571,7 @@ const styles = StyleSheet.create({
   },
   progress: { paddingVertical: 8 },
   section: { gap: 12, marginTop: 8 },
-  sectionTitle: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.bold,
-    fontSize: 14,
-    letterSpacing: 0.4,
-  },
+  sectionTitle: { color: colors.textSecondary, letterSpacing: 0.4 },
   card: {
     backgroundColor: colors.white,
     borderRadius: 18,
@@ -574,12 +585,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#EEF0F2",
   },
-  placeText: {
-    flex: 1,
-    color: colors.doctor.text,
-    fontFamily: fontFamilies.medium,
-    fontSize: 15,
-  },
+  placeText: { flex: 1, color: colors.doctor.text },
   savedRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -634,12 +640,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     gap: 3,
   },
-  distance: {
-    color: colors.doctor.text,
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    lineHeight: 16,
-  },
+  distance: { color: colors.doctor.text },
   savedText: { flex: 1, minWidth: 0, gap: 5 },
   addressMeta: {
     flexDirection: "row",
@@ -654,13 +655,7 @@ const styles = StyleSheet.create({
     gap: 8,
     minHeight: 24,
   },
-  name: {
-    flexShrink: 1,
-    color: colors.doctor.text,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 16,
-    lineHeight: 22,
-  },
+  name: { flexShrink: 1, color: colors.doctor.text },
   selected: {
     flexShrink: 0,
     color: colors.doctor.dark,
@@ -669,16 +664,8 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 11,
-    lineHeight: 16,
   },
-  address: {
-    color: "#626870",
-    fontFamily: fontFamilies.regular,
-    fontSize: 13.5,
-    lineHeight: 20,
-  },
+  address: { color: "#626870" },
   menu: {
     position: "absolute",
     right: 12,
@@ -698,5 +685,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
-  helper: { color: "#626870", fontFamily: fontFamilies.regular, fontSize: 14 },
+  helper: { color: "#626870" },
 });

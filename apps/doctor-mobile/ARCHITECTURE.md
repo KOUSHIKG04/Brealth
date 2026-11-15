@@ -52,6 +52,31 @@ separate from focused component checks.
 Schedule regression checks share `tests/schedule-duration.test.cjs`, covering
 duration/date handling, service-specific publishing and fees with one loader.
 
+## Facility approval of schedule changes
+
+At hospitals and at clinics the doctor does not run,
+`schedule_change_requires_approval` is true: the schedule editor's Publish
+becomes **Submit for approval**, time off add/remove and the recovery policy
+send requests, and `ScheduleRequestNotice` shows the pending request (with
+withdraw) or the latest decision. The doctor's own clinic still publishes
+directly. Decisions arrive as push notifications that open `/schedule`; the
+backend rejects direct changes regardless of the app. Local changes only.
+
+## Dashboard queue view
+
+`features/home/utils/dayBoard.ts` derives the dashboard from queue states rather
+than raw statuses. "Today" is the clinic's calendar day in each appointment's
+timezone. **Today** counts confirmed, in-consultation and completed visits
+(payment holds, pending requests, cancellations and no-shows excluded),
+**Waiting** counts checked-in `waiting` patients, and **With you** counts
+`called` plus in-service visits. Late arrivals on hold appear as a review note.
+Cards follow serving order (with you, called, waiting by queue position, held,
+upcoming, finished) and show `appointmentQueueNumber` (issued ticket, else the
+reserved number) with patients ahead while waiting. The dashboard refetches
+every 30 seconds while focused, alongside live updates. Live calls switch
+cameras with LiveKit `restartTrack` and mirror only the front camera. Local
+changes; device verification pending.
+
 ## Hybrid clinic queue
 
 Appointment review consumes the shared `clinic_queue` projection for ready-patient

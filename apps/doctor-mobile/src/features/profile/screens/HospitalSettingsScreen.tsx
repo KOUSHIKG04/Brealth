@@ -1,9 +1,15 @@
 import { useHospitalSettings } from "../hooks/useHospitalSettings";
 
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 
-import { Button, Dropdown, Input, Skeleton } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  Button,
+  Dropdown,
+  Input,
+  Skeleton,
+} from "@startup/mobile-ui";
 
 import { DoctorScreen, Label, Panel } from "../../../components/DoctorScreen";
 import { palette, ui } from "../../../components/theme";
@@ -137,7 +143,10 @@ export function HospitalSettingsScreen() {
         </Panel>
       )}
       <Panel>
-        <Text style={[ui.heading, { color: palette.text }]}>
+        <Text
+          variant="cardHeading"
+          style={[ui.heading, { color: palette.text }]}
+        >
           Associate with another hospital or clinic
         </Text>
         {/* <Text style={styles.label}>Hospital/Clinic Name</Text> */}

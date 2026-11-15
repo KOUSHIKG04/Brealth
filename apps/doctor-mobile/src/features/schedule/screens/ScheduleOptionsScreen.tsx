@@ -51,10 +51,8 @@ export function ScheduleOptionsScreen() {
         >
           <Icon size={24} color={palette.primary} />
           <View style={{ flex: 1, gap: 4 }}>
-            <Heading style={{ fontSize: 16 }}>{title}</Heading>
-            <Label muted style={{ fontSize: 13 }}>
-              {description}
-            </Label>
+            <Heading>{title}</Heading>
+            <Label muted>{description}</Label>
           </View>
           <ChevronRight size={20} color={palette.muted} />
         </Pressable>

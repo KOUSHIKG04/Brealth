@@ -71,6 +71,7 @@ export function FacilityDoctorScheduleEditor({
     conflict,
     busyBlocks,
     busyOverlaps,
+    batchingHints,
     remoteChanged,
     dismissConflict,
     confirmConflict,
@@ -187,6 +188,11 @@ export function FacilityDoctorScheduleEditor({
               onChange={changeBlocks}
             />
             <ScheduleBusyBlocks blocks={busyBlocks} overlaps={busyOverlaps} />
+            {batchingHints.map((hint) => (
+              <p key={hint} className="text-muted-foreground text-sm">
+                Tip: {hint}
+              </p>
+            ))}
             {mode === "home" ? (
               <NumberSetting
                 title="Travel buffer before and after each block"

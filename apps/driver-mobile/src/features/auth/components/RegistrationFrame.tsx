@@ -1,13 +1,7 @@
 import type { FrameProps } from "../types/frame";
 
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  Text,
-  View,
-} from "react-native";
-import { SafeAreaView } from "@startup/mobile-ui";
+import { KeyboardAvoidingView, Platform, Pressable, View } from "react-native";
+import { AppText as Text, SafeAreaView } from "@startup/mobile-ui";
 import { StatusBar } from "expo-status-bar";
 import { ArrowLeft } from "lucide-react-native";
 import { s } from "./Registration.styles";
@@ -26,7 +20,9 @@ function Header({ title, onBack }: { title: string; onBack?: () => void }) {
           <ArrowLeft size={23} color="white" />
         </Pressable>
       )}
-      <Text style={s.headerTitle}>{title}</Text>
+      <Text variant="sectionHeading" style={s.headerTitle}>
+        {title}
+      </Text>
     </View>
   );
 }

@@ -8,7 +8,11 @@ import {
   listMyDoctorFacilityRequests,
   listMyPractices,
   listMyScheduleBusyBlocks,
+  listMyScheduleChangeRequests,
   publishMyDoctorSchedule,
+  scheduleChangeRequiresApproval,
+  submitScheduleChangeRequest,
+  withdrawScheduleChangeRequest,
   publishPreviewedDoctorSchedule,
   previewMyDoctorSchedule,
   saveMySchedulePreferences,
@@ -16,10 +20,12 @@ import {
 import {
   preferencesToScheduleSettings,
   rebaseScheduleSettings,
+  scheduleBatchingHints,
   scheduleBusyOverlaps,
   scheduleErrorCode,
   scheduleErrorCodes,
   scheduleErrorMessage,
+  userErrorMessage,
   scheduleSettingNames,
   type ClinicPractice,
   type DoctorScheduleSettings,
@@ -213,6 +219,59 @@ export function useScheduleEditor({
     draft.timeBlocks ?? [{ start: draft.start, end: draft.end }],
     mode === "home" ? (draft.homeTravelBuffer ?? 0) : 0
   );
+  // Advisory only: online hours are kept on time best when batched before
+  // or after clinic hours, in blocks of at least an hour.
+  const batchingHints = scheduleBatchingHints(
+    mode,
+    draft.days.map((day) => day + 1),
+    draft.timeBlocks ?? [{ start: draft.start, end: draft.end }],
+    busyBlocks.data ?? []
+  );
+  // Hospitals and clinics the doctor does not run approve schedule changes;
+  // the doctor's own clinic publishes directly. The backend enforces this.
+  const approval = useQuery({
+    queryKey: ["schedule-approval", selectedPracticeId],
+    queryFn: () =>
+      scheduleChangeRequiresApproval(supabase!, selectedPracticeId!),
+    enabled: Boolean(
+      supabase && selectedPracticeId && selectedPractice?.verified
+    ),
+  });
+  const approvalRequired = approval.data === true;
+  const changeRequests = useQuery({
+    queryKey: ["schedule-change-requests", selectedPracticeId],
+    queryFn: () => listMyScheduleChangeRequests(supabase!, selectedPracticeId!),
+    enabled: Boolean(supabase && selectedPracticeId && approvalRequired),
+  });
+  // Newest request for this service: pending, or the latest decision.
+  const scheduleRequest = changeRequests.data?.find(
+    (request) => request.kind === "schedule" && request.service_mode === mode
+  );
+  async function withdrawRequest(requestId: string) {
+    if (!supabase || inFlight.current) return;
+    inFlight.current = true;
+    setBusy(true);
+    try {
+      await withdrawScheduleChangeRequest(supabase, requestId);
+      await queryClient.invalidateQueries({
+        queryKey: ["schedule-change-requests"],
+      });
+      showToast({
+        title: "Request withdrawn",
+        message: "Your current schedule stays as it is.",
+        type: "success",
+      });
+    } catch (cause) {
+      showToast({
+        title: "Could not withdraw request",
+        message: userErrorMessage(cause, "Try again."),
+        type: "error",
+      });
+    } finally {
+      inFlight.current = false;
+      setBusy(false);
+    }
+  }
   // Saved elsewhere while this draft has unsaved edits; merged on publish.
   const remoteChanged =
     dirty.current &&
@@ -352,9 +411,21 @@ export function useScheduleEditor({
         decision = undefined;
       }
       let publication = null;
+      let submitted = false;
       for (let attempt = 0; ; attempt++) {
         try {
-          if (selectedPractice?.verified && !previewToken) {
+          if (approvalRequired) {
+            // The facility reviews conflicts and bookings when it decides.
+            await submitScheduleChangeRequest(supabase, {
+              practiceId: selectedPracticeId,
+              kind: "schedule",
+              settings,
+              serviceMode: mode,
+              effectiveFrom: from,
+              expectedVersion: version,
+            });
+            submitted = true;
+          } else if (selectedPractice?.verified && !previewToken) {
             const preview = await previewMyDoctorSchedule(
               supabase,
               selectedPracticeId,
@@ -402,6 +473,17 @@ export function useScheduleEditor({
           previewToken = undefined;
           decision = undefined;
         }
+      }
+      if (submitted) {
+        await queryClient.invalidateQueries({
+          queryKey: ["schedule-change-requests"],
+        });
+        showToast({
+          title: "Sent for approval",
+          message: `${selectedPractice?.facility_name ?? "The facility"} will review this change. Your current schedule stays live until it is approved.`,
+          type: "success",
+        });
+        return;
       }
       const result =
         publication?.settings ??
@@ -510,8 +592,12 @@ export function useScheduleEditor({
     update,
     save,
     conflict,
+    approvalRequired,
+    scheduleRequest,
+    withdrawRequest,
     busyBlocks: busyBlocks.data ?? [],
     busyOverlaps,
+    batchingHints,
     remoteChanged,
     dismissConflict: () => setConflict(null),
     confirmConflict: (decision?: ScheduleConflictDecision) =>

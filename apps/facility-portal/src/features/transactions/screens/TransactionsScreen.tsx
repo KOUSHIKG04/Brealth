@@ -10,6 +10,7 @@ import type { TransactionsScreenProps } from "../types/transactions";
 import { useTransactions } from "../hooks/useTransactions";
 import {
   transactionColumns,
+  transactionDateFormatter,
   transactionStatusLabels,
 } from "../utils/transactionsConstants";
 
@@ -34,13 +35,7 @@ export default function TransactionsScreen({
     id: item.id,
     cells: [
       <div key="date" className="space-y-1 px-3 py-4 text-sm">
-        <p>
-          {new Intl.DateTimeFormat("en-IN", {
-            timeZone: "Asia/Kolkata",
-            dateStyle: "medium",
-            timeStyle: "short",
-          }).format(new Date(item.created_at))}
-        </p>
+        <p>{transactionDateFormatter.format(new Date(item.created_at))}</p>
         <p className="text-muted-foreground text-xs">
           {item.mode === "test" ? "Test payment" : "Live payment"}
         </p>

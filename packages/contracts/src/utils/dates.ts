@@ -66,6 +66,16 @@ export function formatDisplayDateTime(
   return `${formatDisplayDate(date, timeZone)} ${new Intl.DateTimeFormat("en-IN", { hour: "2-digit", minute: "2-digit", timeZone }).format(date)}`;
 }
 
+/** Calendar date (YYYY-MM-DD) of an instant in a timezone, not the device's. */
+export function localDateKey(value: Date | string, timeZone?: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(value instanceof Date ? value : new Date(value));
+}
+
 /** Tomorrow's calendar date in the practice timezone, independent of device time. */
 export function nextLocalDate(timeZone?: string, now = new Date()): string {
   const today = parseDisplayDate(formatDisplayDate(now, timeZone))!;

@@ -14,18 +14,25 @@ import { loginContent } from "../utils/loginConstants";
 
 export function LoginForm({
   className,
+  next,
   ...props
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<"div"> & {
+  /** Validated return path, e.g. an invitation link. */
+  next?: string;
+}) {
   const { action } = useLogin();
   return (
     <div className={cn("w-full", className)} {...props}>
       <Card>
         <CardContent className="p-6 sm:p-8">
           <div className="mb-7 space-y-1 text-center">
-            <h1 className="text-2xl font-semibold">{loginContent.heading}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              {loginContent.heading}
+            </h1>
           </div>
 
           <form action={action} className="space-y-5">
+            {next ? <input type="hidden" name="next" value={next} /> : null}
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -53,7 +60,11 @@ export function LoginForm({
           <p className="text-muted-foreground mt-6 text-center text-sm">
             New hospital or clinic?{" "}
             <Link
-              href="/register"
+              href={
+                next
+                  ? `/register?next=${encodeURIComponent(next)}`
+                  : "/register"
+              }
               className="text-foreground font-medium underline underline-offset-4"
             >
               Sign up

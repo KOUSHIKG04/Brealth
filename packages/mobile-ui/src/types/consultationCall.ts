@@ -21,6 +21,8 @@ export type ConsultationCallProps = {
   messages?: CallMessage[];
   identityId?: string;
   initialChat?: boolean;
+  /** Quiet connection notice, e.g. "Reconnecting…"; never blocks the call. */
+  notice?: string;
   onSend: (body: string) => Promise<void>;
   onCamera: () => void;
   onMicrophone: () => void;

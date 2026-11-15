@@ -1,5 +1,6 @@
 import {
   DashboardDoctorRequests,
+  ScheduleChangeRequests,
   AddDoctorAction,
   facilitySchedule,
   type PracticeSession,
@@ -78,17 +79,20 @@ export default async function HomePage() {
         <NewAppointmentDialog triggerLabel="Add appointment" />
       }
       doctorRequests={
-        <DashboardDoctorRequests
-          key={access.facilities
-            .map((facility) => facility.facilityId)
-            .sort()
-            .join(":")}
-          scope={access.facilities
-            .map((facility) => facility.facilityId)
-            .sort()
-            .join(":")}
-          initialRequests={associationRequests}
-        />
+        <>
+          <DashboardDoctorRequests
+            key={access.facilities
+              .map((facility) => facility.facilityId)
+              .sort()
+              .join(":")}
+            scope={access.facilities
+              .map((facility) => facility.facilityId)
+              .sort()
+              .join(":")}
+            initialRequests={associationRequests}
+          />
+          <ScheduleChangeRequests compact />
+        </>
       }
       inventory={inventory}
       appointments={appointments}

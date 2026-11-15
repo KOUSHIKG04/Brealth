@@ -1,8 +1,13 @@
 import { useRegistrationDetails } from "../hooks/useRegistrationDetails";
 import type { DetailsScreenProps } from "../types/details-screen";
 
-import { Keyboard, Pressable, ScrollView, Text, View } from "react-native";
-import { Button, Input, ProfilePhotoButton } from "@startup/mobile-ui";
+import { Keyboard, Pressable, ScrollView, View } from "react-native";
+import {
+  AppText as Text,
+  Button,
+  Input,
+  ProfilePhotoButton,
+} from "@startup/mobile-ui";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { Check, MapPin } from "lucide-react-native";
 
@@ -53,10 +58,12 @@ export function DetailsScreen({
             source={form.photo ? { uri: form.photo } : undefined}
             onPress={() => void pickPhoto()}
           />
-          <Text style={s.photoTitle}>
+          <Text variant="cardHeading" style={s.photoTitle}>
             {picking ? "Opening photos…" : "Add profile photo"}
           </Text>
-          <Text style={s.caption}>JPG, PNG up to 5 MB</Text>
+          <Text variant="caption" style={s.caption}>
+            JPG, PNG up to 5 MB
+          </Text>
         </View>
         <View style={s.fields}>
           <Input
@@ -96,13 +103,7 @@ export function DetailsScreen({
             style={s.input}
           />
           <View style={{ gap: 8 }}>
-            <Text
-              style={{
-                fontFamily: fontFamilies.medium,
-                fontSize: 14,
-                color: colors.driver.text,
-              }}
-            >
+            <Text variant="label" style={{ color: colors.driver.text }}>
               Address
             </Text>
             <Button
@@ -144,7 +145,7 @@ export function DetailsScreen({
             <View style={[s.checkbox, consent && s.checked]}>
               {consent && <Check size={16} color="white" />}
             </View>
-            <Text style={s.consentText}>
+            <Text variant="caption" style={s.consentText}>
               I agree to verification and safety checks
             </Text>
           </Pressable>

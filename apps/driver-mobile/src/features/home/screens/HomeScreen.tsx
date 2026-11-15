@@ -2,10 +2,10 @@ import { StatusBar } from "expo-status-bar";
 import { NotificationDrawer } from "../../notifications/components/NotificationDrawer";
 import { locationHeadline } from "../../locations/utils/savedLocationDisplay";
 import { colors } from "@startup/design-tokens";
-import { Image, Pressable, Switch, Text, View } from "react-native";
+import { Image, Pressable, Switch, View } from "react-native";
 import { router } from "expo-router";
 import { Ambulance, Bell, ChevronDown, MapPin } from "lucide-react-native";
-import { Button } from "@startup/mobile-ui";
+import { AppText as Text, Button } from "@startup/mobile-ui";
 import {
   Body,
   Card,
@@ -45,7 +45,7 @@ export function HomeScreen() {
         style={[styles.header, { minHeight: Math.max(165, insets.top + 88) }]}
       >
         <View style={[styles.headerRow, { marginTop: insets.top + 18 }]}>
-          <Text style={styles.greeting} numberOfLines={1}>
+          <Text variant="screenTitle" style={styles.greeting} numberOfLines={1}>
             {greeting}! {driverProfile.data?.full_name ?? "Driver"}
           </Text>
           <Pressable
@@ -56,6 +56,7 @@ export function HomeScreen() {
           >
             <MapPin size={15} strokeWidth={2} color={colors.white} />
             <Text
+              variant="label"
               style={styles.locationText}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -113,7 +114,7 @@ export function HomeScreen() {
               source={require("../../../../assets/figma/online-map.png")}
               style={styles.map}
             />
-            <Copy style={ui.caption}>
+            <Copy variant="caption" style={ui.caption}>
               Reference map Â· live navigation is not connected
             </Copy>
           </>
@@ -124,12 +125,20 @@ export function HomeScreen() {
           </Copy>
           <View style={ui.between}>
             <View>
-              <Copy style={styles.total}>â€”</Copy>
-              <Copy style={ui.caption}>Total Earnings</Copy>
+              <Copy variant="pageHeadline" style={styles.total}>
+                â€”
+              </Copy>
+              <Copy variant="caption" style={ui.caption}>
+                Total Earnings
+              </Copy>
             </View>
             <View style={{ alignItems: "flex-end" }}>
-              <Copy style={styles.total}>{completedToday}</Copy>
-              <Copy style={ui.caption}>Completed Trips</Copy>
+              <Copy variant="pageHeadline" style={styles.total}>
+                {completedToday}
+              </Copy>
+              <Copy variant="caption" style={ui.caption}>
+                Completed Trips
+              </Copy>
             </View>
           </View>
         </Card>
@@ -145,7 +154,10 @@ export function HomeScreen() {
             <View style={[ui.center, { paddingVertical: 10 }]}>
               <Ambulance size={42} color={palette.border} />
               <Heading>No trips yet today</Heading>
-              <Copy style={[ui.caption, { textAlign: "center" }]}>
+              <Copy
+                variant="caption"
+                style={[ui.caption, { textAlign: "center" }]}
+              >
                 Your completed ambulance trips for today will appear here.
               </Copy>
             </View>

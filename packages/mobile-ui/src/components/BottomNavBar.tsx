@@ -205,7 +205,7 @@ function TabButton({ item, isActive, onPress }: TabButtonProps) {
               },
             ]}
           >
-            <Text variant="caption" style={styles.badgeText}>
+            <Text variant="labelSmall" style={styles.badgeText}>
               {item.badge}
             </Text>
           </View>
@@ -213,7 +213,7 @@ function TabButton({ item, isActive, onPress }: TabButtonProps) {
       </View>
 
       <Text
-        variant="label"
+        variant="labelSmall"
         numberOfLines={1}
         ellipsizeMode="tail"
         style={[

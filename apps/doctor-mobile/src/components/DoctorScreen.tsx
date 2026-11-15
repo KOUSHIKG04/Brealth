@@ -6,7 +6,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type TextStyle,
@@ -15,21 +14,33 @@ import {
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
+  AppText as Text,
   FadedScrollView,
   Button,
   Header,
   useKeyboardAwareScroll,
+  type AppTextProps,
   type PullToRefreshProps,
 } from "@startup/mobile-ui";
 import { palette, ui } from "./theme";
+
+type TextRole = AppTextProps["variant"];
 
 export function Label({
   children,
   style,
   muted = false,
-}: PropsWithChildren<{ style?: StyleProp<TextStyle>; muted?: boolean }>) {
+  variant = "bodySmall",
+}: PropsWithChildren<{
+  style?: StyleProp<TextStyle>;
+  muted?: boolean;
+  variant?: TextRole;
+}>) {
   return (
-    <Text style={[ui.text, muted && { color: palette.muted }, style]}>
+    <Text
+      variant={variant}
+      style={[ui.text, muted && { color: palette.muted }, style]}
+    >
       {children}
     </Text>
   );
@@ -38,9 +49,14 @@ export function Label({
 export function Heading({
   children,
   style,
-}: PropsWithChildren<{ style?: StyleProp<TextStyle> }>) {
+  variant = "cardHeading",
+}: PropsWithChildren<{ style?: StyleProp<TextStyle>; variant?: TextRole }>) {
   return (
-    <Text accessibilityRole="header" style={[ui.heading, style]}>
+    <Text
+      variant={variant}
+      accessibilityRole="header"
+      style={[ui.heading, style]}
+    >
       {children}
     </Text>
   );
@@ -203,7 +219,8 @@ export function Choice({
       ]}
     >
       <Label
-        style={{ fontSize: 12, color: selected ? palette.white : palette.dark }}
+        variant="caption"
+        style={{ color: selected ? palette.white : palette.dark }}
       >
         {label}
       </Label>

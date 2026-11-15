@@ -67,18 +67,10 @@ export function HomeVisitScreen() {
       </View>
       <Panel style={{ marginTop: 16, gap: 0 }}>
         <Heading>{patient.name}</Heading>
-        <Label style={{ fontSize: 12, lineHeight: 18 }}>
-          {patient.address}
-        </Label>
+        <Label variant="caption">{patient.address}</Label>
       </Panel>
       <View style={{ gap: 18, alignItems: "center", paddingVertical: 30 }}>
-        <Heading
-          style={{
-            fontSize: 18,
-            fontFamily: fontFamilies.regular,
-            color: palette.text,
-          }}
-        >
+        <Heading variant="sectionHeading" style={{ color: palette.text }}>
           Enter Patient’s PIN to Proceed
         </Heading>
         <View style={ui.row}>
@@ -128,7 +120,7 @@ export function HomeVisitScreen() {
             />
           ))}
         </View>
-        <Label muted style={{ fontSize: 12 }}>
+        <Label variant="caption" muted>
           Demo PIN: {patient.pin}
         </Label>
       </View>

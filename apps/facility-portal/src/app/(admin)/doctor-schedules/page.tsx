@@ -2,7 +2,7 @@ import {
   DoctorSchedulesScreen,
   type PracticeSession,
 } from "@/features/doctors";
-import { requireApprovedFacility } from "@/server/auth/facilityAccess";
+import { requirePortalArea } from "@/server/auth/facilityAccess";
 import { createClient } from "@/lib/supabase/server";
 import {
   listMyFacilityDoctors,
@@ -11,7 +11,7 @@ import {
 import type { FacilityDoctorRosterItem } from "@startup/contracts";
 
 export default async function DoctorSchedulesPage() {
-  await requireApprovedFacility();
+  await requirePortalArea("doctorSchedules");
   const client = await createClient();
   let doctors: FacilityDoctorRosterItem[] = [];
   let sessions: PracticeSession[] = [];

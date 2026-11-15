@@ -1,6 +1,7 @@
 import { useAccountSetup } from "../hooks/useAccountSetup";
 
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { AppText as Text } from "@startup/mobile-ui";
 import { router } from "expo-router";
 import { colors, fontFamilies } from "@startup/design-tokens";
 
@@ -11,10 +12,15 @@ export default function SetupScreen() {
   return (
     <OnboardingShell onBack={() => router.back()}>
       <View style={styles.body}>
-        <Text style={styles.title}>
-          Welcome to <Text style={styles.brand}>Clinzo⁺</Text>
+        <Text variant="pageHeadline" style={styles.title}>
+          Welcome to{" "}
+          <Text variant="inherit" style={styles.brand}>
+            Clinzo⁺
+          </Text>
         </Text>
-        <Text style={styles.caption}>Setting things up for you..</Text>
+        <Text variant="sectionHeading" style={styles.caption}>
+          Setting things up for you..
+        </Text>
         <View style={styles.track}>
           <View style={styles.progress} />
         </View>
@@ -30,19 +36,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingBottom: 46,
   },
-  title: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 32,
-    color: colors.black,
-    textAlign: "center",
-  },
+  title: { color: colors.black, textAlign: "center" },
   brand: { color: colors.patient.primaryDark },
-  caption: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 18,
-    marginTop: 47,
-    textAlign: "center",
-  },
+  caption: { marginTop: 47, textAlign: "center" },
   track: {
     height: 9,
     borderRadius: 10,

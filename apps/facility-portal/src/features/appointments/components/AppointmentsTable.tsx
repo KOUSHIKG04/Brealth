@@ -7,7 +7,11 @@ import {
 import { appointmentTableHeaders } from "../utils/appointmentsConstants";
 import { PatientDetailsDrawer } from "./PatientDetailsDrawer";
 import type { AppointmentsTableProps } from "../types/appointmentsTable";
-import { appointmentRecoveryView } from "@startup/contracts";
+import {
+  appointmentQueueNumber,
+  appointmentRecoveryView,
+  localDateKey,
+} from "@startup/contracts";
 
 import { CalendarDays, Check, X, User, Video } from "lucide-react";
 import {
@@ -37,6 +41,24 @@ export function AppointmentsTable({
   filterPeriod,
   onFilterPeriodChange,
 }: AppointmentsTableProps) {
+  // Queue numbers restart per doctor session and clinic day, so views that
+  // span several days group rows under their clinic date.
+  const multiDay = filterPeriod !== "Today";
+  const dayGroups = new Map(
+    pageRows.map((item) => [
+      item.id,
+      {
+        key: localDateKey(item.starts_at, item.timezone),
+        label: new Intl.DateTimeFormat("en-IN", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          year: "numeric",
+          timeZone: item.timezone,
+        }).format(new Date(item.starts_at)),
+      },
+    ])
+  );
   const tableRows = pageRows.map((item) => {
     const start = new Date(item.starts_at);
     const end = new Date(item.ends_at);
@@ -45,15 +67,10 @@ export function AppointmentsTable({
       minute: "2-digit",
       timeZone: item.timezone,
     });
-    const clinicDayFormatter = new Intl.DateTimeFormat("en-CA", {
-      timeZone: item.timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
     const isClinicDay =
-      clinicDayFormatter.format(start) ===
-      clinicDayFormatter.format(new Date(now));
+      localDateKey(start, item.timezone) ===
+      localDateKey(new Date(now), item.timezone);
+    const queueNumber = appointmentQueueNumber(item);
     const expiredPending =
       !item.confirmation_payment_pending &&
       item.status === "pending" &&
@@ -62,10 +79,9 @@ export function AppointmentsTable({
           new Date(item.request_expires_at).getTime() <= now));
     const row = {
       id: item.id,
+      // Issued ticket, else the number reserved by the hybrid queue.
       queueNo:
-        item.visit_mode === "clinic"
-          ? (item.ticket_number?.toString() ?? "—")
-          : "—",
+        item.visit_mode === "clinic" && queueNumber ? `#${queueNumber}` : "—",
       patientId: item.patient_public_code,
       patientName: item.patient_name,
       patientAvatar: undefined,
@@ -123,6 +139,11 @@ export function AppointmentsTable({
           <span className="text-muted-foreground mt-1 block text-xs">
             to {appointmentTimeFormatter.format(end)}
           </span>
+          {multiDay ? (
+            <span className="text-muted-foreground mt-1 block text-xs">
+              {dayGroups.get(item.id)?.label}
+            </span>
+          ) : null}
         </div>,
         <div key="mode" className="px-3 py-3.5">
           <span className="bg-muted text-foreground inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium whitespace-nowrap">
@@ -361,6 +382,7 @@ export function AppointmentsTable({
           bare
           cellClassName="p-0 align-top"
           getRowId={(row) => row.id}
+          groupBy={multiDay ? (row) => dayGroups.get(row.id) : undefined}
           emptyState={
             <div className="mx-auto max-w-sm space-y-2 py-3">
               <CalendarDays className="text-muted-foreground mx-auto mb-3 size-6" />

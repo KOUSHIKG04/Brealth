@@ -2,12 +2,12 @@ import { uniqueMapAttributions, mapAttributionKey } from "@startup/contracts";
 import { useRegistrationMapPicker } from "../hooks/useRegistrationMapPicker";
 import { StatusBar } from "expo-status-bar";
 
-import { Platform, Pressable, Text, View } from "react-native";
+import { Platform, Pressable, View } from "react-native";
 import { router } from "expo-router";
 
 import { LocateFixed, MapPin } from "lucide-react-native";
 import { colors } from "@startup/design-tokens";
-import { Button, Header, Input } from "@startup/mobile-ui";
+import { AppText as Text, Button, Header, Input } from "@startup/mobile-ui";
 
 import { styles } from "../components/LocationPicker.styles";
 
@@ -80,7 +80,7 @@ export default function DriverLocationScreen() {
             </View>
           ) : (
             <View style={styles.mapState}>
-              <Text style={styles.stateText}>
+              <Text variant="label" style={styles.stateText}>
                 Map selection is unavailable in this build. You can search for a
                 place or use your current location.
               </Text>
@@ -120,24 +120,37 @@ export default function DriverLocationScreen() {
                 >
                   <MapPin size={18} color={colors.driver.primary} />
                   <View style={styles.resultCopy}>
-                    <Text numberOfLines={1} style={styles.resultName}>
+                    <Text
+                      variant="label"
+                      numberOfLines={1}
+                      style={styles.resultName}
+                    >
                       {result.name}
                     </Text>
-                    <Text numberOfLines={2} style={styles.resultAddress}>
+                    <Text
+                      variant="caption"
+                      numberOfLines={2}
+                      style={styles.resultAddress}
+                    >
                       {result.address}
                     </Text>
                   </View>
                 </Pressable>
               ))}
-              <Text style={styles.googleAttribution}>Google Maps</Text>
-              {uniqueMapAttributions(searchResults.flatMap((p) => p.attributions)).map((a) => (
-                  <Text
-                    key={mapAttributionKey(a)}
-                    style={styles.googleAttribution}
-                  >
-                    {a.provider}
-                  </Text>
-                ))}
+              <Text variant="caption" style={styles.googleAttribution}>
+                Google Maps
+              </Text>
+              {uniqueMapAttributions(
+                searchResults.flatMap((p) => p.attributions)
+              ).map((a) => (
+                <Text
+                  variant="caption"
+                  key={mapAttributionKey(a)}
+                  style={styles.googleAttribution}
+                >
+                  {a.provider}
+                </Text>
+              ))}
             </View>
           ) : null}
         </View>
@@ -159,7 +172,11 @@ export default function DriverLocationScreen() {
           {point ? (
             <View style={styles.place}>
               <MapPin size={20} color={colors.driver.primary} />
-              <Text style={styles.placeTitle} numberOfLines={2}>
+              <Text
+                variant="cardHeading"
+                style={styles.placeTitle}
+                numberOfLines={2}
+              >
                 {placeLabel || "Selected map point"}
               </Text>
             </View>

@@ -572,6 +572,7 @@ for (const mode of ["clinic", "online", "home"]) {
               suggestedTimes: [],
               suggestedDuration: null,
               availabilityDuration: null,
+              batchingHints: [],
               save() {
                 saves++;
               },

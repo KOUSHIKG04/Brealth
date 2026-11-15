@@ -9,7 +9,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -25,7 +24,12 @@ import type {
   SavedDoctorLocationInput,
 } from "@startup/contracts";
 import { colors, fontFamilies } from "@startup/design-tokens";
-import { Header, useToast, useToastFeedback } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  Header,
+  useToast,
+  useToastFeedback,
+} from "@startup/mobile-ui";
 import { MapPin } from "lucide-react-native";
 import { supabase, useMobileSession } from "../../services/supabase";
 import { useLocationDraft } from "../../features/locations/stores/locationDraft";
@@ -58,11 +62,11 @@ export default function AddressDetailsScreen() {
   const [initializedId, setInitializedId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [building, setBuilding] = useState("");
-  const [street, setStreet] = useState(first(params.street) || "");
-  const [locality, setLocality] = useState(first(params.locality) || "");
-  const [city, setCity] = useState(first(params.city) || "");
-  const [state, setState] = useState(first(params.state) || "");
-  const [pincode, setPincode] = useState(first(params.pincode) || "");
+  const [street, setStreet] = useState(() => first(params.street) || "");
+  const [locality, setLocality] = useState(() => first(params.locality) || "");
+  const [city, setCity] = useState(() => first(params.city) || "");
+  const [state, setState] = useState(() => first(params.state) || "");
+  const [pincode, setPincode] = useState(() => first(params.pincode) || "");
   const [instructions, setInstructions] = useState("");
   const [useAccountDetails, setUseAccountDetails] = useState(true);
   const [receiverName, setReceiverName] = useState("");
@@ -83,7 +87,15 @@ export default function AddressDetailsScreen() {
     setUseAccountDetails(existing.use_account_details);
     setReceiverName(existing.receiver_name || "");
     setReceiverPhone(existing.receiver_phone || "");
-  }, [existing, initializedId, chosenForForm?.street, chosenForForm?.locality, chosenForForm?.city, chosenForForm?.state, chosenForForm?.pincode]);
+  }, [
+    existing,
+    initializedId,
+    chosenForForm?.street,
+    chosenForForm?.locality,
+    chosenForForm?.city,
+    chosenForForm?.state,
+    chosenForForm?.pincode,
+  ]);
 
   useEffect(() => {
     if (!chosenForForm) return;
@@ -196,7 +208,7 @@ export default function AddressDetailsScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {!mapPoint ? (
-              <Text style={styles.muted}>
+              <Text variant="bodySmall" style={styles.muted}>
                 Choose and confirm a place on the map before saving this
                 address.
               </Text>
@@ -261,7 +273,9 @@ export default function AddressDetailsScreen() {
                   >
                     <View style={styles.changeContent}>
                       <MapPin size={18} color={colors.doctor.primary} />
-                      <Text style={styles.changeText}>Change</Text>
+                      <Text variant="labelSmall" style={styles.changeText}>
+                        Change
+                      </Text>
                     </View>
                   </ImageBackground>
                 </Pressable>
@@ -333,7 +347,7 @@ export default function AddressDetailsScreen() {
               onPress={() => void save()}
               style={[styles.save, (busy || !mapPoint) && styles.saveDisabled]}
             >
-              <Text style={styles.saveText}>
+              <Text variant="cardHeading" style={styles.saveText}>
                 {busy ? "Saving address…" : "Save Address"}
               </Text>
             </Button>
@@ -381,12 +395,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilies.semibold,
     fontSize: 16,
   },
-  muted: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    marginTop: 3,
-  },
+  muted: { color: colors.textSecondary, marginTop: 3 },
   card: {
     backgroundColor: colors.white,
     borderRadius: 17,
@@ -443,11 +452,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 3,
   },
-  changeText: {
-    color: colors.doctor.primary,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 11,
-  },
+  changeText: { color: colors.doctor.primary },
   split: { flexDirection: "row", gap: 8 },
   half: { flex: 1 },
   instructions: {

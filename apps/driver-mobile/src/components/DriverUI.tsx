@@ -1,25 +1,23 @@
 import type { ReactNode } from "react";
-import {
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-  Pressable,
-  type TextProps,
-} from "react-native";
+import { ScrollView, StyleSheet, View, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ChevronLeft } from "lucide-react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { palette, ui } from "./theme";
-import { PullToRefresh, type PullToRefreshProps } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  PullToRefresh,
+  type AppTextProps,
+  type PullToRefreshProps,
+} from "@startup/mobile-ui";
 
-export function Copy({ style, ...props }: TextProps) {
-  return <Text {...props} style={[ui.copy, style]} />;
+export function Copy({ style, ...props }: AppTextProps) {
+  return <Text variant="bodySmall" {...props} style={[ui.copy, style]} />;
 }
 
 export function Heading({ children }: { children: ReactNode }) {
   return (
-    <Copy accessibilityRole="header" style={ui.heading}>
+    <Copy variant="cardHeading" accessibilityRole="header" style={ui.heading}>
       {children}
     </Copy>
   );
@@ -52,7 +50,9 @@ export function PageHeader({
           </Pressable>
         )}
         <View style={ui.grow}>
-          <Copy style={ui.title}>{title}</Copy>
+          <Copy variant="screenTitle" style={ui.title}>
+            {title}
+          </Copy>
         </View>
         {right}
       </View>
@@ -89,8 +89,12 @@ export function Metrics({ items }: { items: [string, string][] }) {
       <View style={ui.row}>
         {items.map(([value, label], i) => (
           <View key={label} style={[ui.metric, i > 0 && ui.metricBorder]}>
-            <Copy style={ui.metricValue}>{value}</Copy>
-            <Copy style={ui.caption}>{label}</Copy>
+            <Copy variant="sectionHeading" style={ui.metricValue}>
+              {value}
+            </Copy>
+            <Copy variant="caption" style={ui.caption}>
+              {label}
+            </Copy>
           </View>
         ))}
       </View>

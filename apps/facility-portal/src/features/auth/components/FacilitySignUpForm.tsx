@@ -9,13 +9,20 @@ import { Card, CardContent } from "@startup/web-ui/components/ui/card";
 import { Input } from "@startup/web-ui/components/ui/input";
 import { Label } from "@startup/web-ui/components/ui/label";
 
-export function FacilitySignUpForm() {
+export function FacilitySignUpForm({ next }: { next?: string }) {
   const { email, setEmail, password, setPassword, message, busy, submit } =
-    useFacilitySignUp();
+    useFacilitySignUp({ invited: Boolean(next) });
   return (
     <Card className="w-full max-w-md">
       <CardContent className="space-y-5 p-6">
-        <h1 className="text-2xl font-bold">Facility account</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          {next ? "Create your account" : "Facility account"}
+        </h1>
+        {next ? (
+          <p className="text-muted-foreground text-sm">
+            Use the email address your invitation was sent to.
+          </p>
+        ) : null}
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="register-email">Email</Label>
@@ -53,7 +60,10 @@ export function FacilitySignUpForm() {
             {message}
           </p>
         )}
-        <Link href="/login" className="text-sm underline">
+        <Link
+          href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"}
+          className="text-sm underline"
+        >
           Back to sign in
         </Link>
       </CardContent>

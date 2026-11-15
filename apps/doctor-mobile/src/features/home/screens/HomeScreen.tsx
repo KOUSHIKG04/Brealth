@@ -1,11 +1,11 @@
 import { useDoctorHome } from "../hooks/useDoctorHome";
 
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Bell, MapPin, ArrowRight, ChevronDown } from "lucide-react-native";
 import { router } from "expo-router";
 
-import { FadedScrollView, Skeleton } from "@startup/mobile-ui";
+import { AppText as Text, FadedScrollView, Skeleton } from "@startup/mobile-ui";
 import { fontFamilies, shadows } from "@startup/design-tokens";
 import { StatusBar } from "expo-status-bar";
 import { NotificationDrawer } from "../../notifications/components/NotificationDrawer";
@@ -34,7 +34,10 @@ export function HomeScreen() {
     appointments,
     presence,
     todayAppointments,
+    todayCount,
     waiting,
+    withDoctor,
+    needsReview,
     pendingRequests,
     homeAppointments,
     changePresence,
@@ -46,7 +49,7 @@ export function HomeScreen() {
         style={[styles.header, { minHeight: Math.max(165, insets.top + 88) }]}
       >
         <View style={[styles.headerRow, { marginTop: insets.top + 18 }]}>
-          <Text style={styles.greeting} numberOfLines={1}>
+          <Text variant="screenTitle" style={styles.greeting} numberOfLines={1}>
             {greeting}! {doctorProfile.data?.full_name ?? "Doctor"}
           </Text>
           <Pressable
@@ -57,6 +60,7 @@ export function HomeScreen() {
           >
             <MapPin size={15} strokeWidth={2} color={palette.white} />
             <Text
+              variant="label"
               style={styles.locationText}
               numberOfLines={1}
               ellipsizeMode="tail"
@@ -91,25 +95,39 @@ export function HomeScreen() {
       >
         <View style={ui.row}>
           {[
-            [String(todayAppointments.length), "Appointments"],
-            [String(waiting), "In Queue"],
+            [String(todayCount), "Today"],
+            [String(waiting), "Waiting"],
+            [String(withDoctor), "With you"],
           ].map(([value, title], index) => (
-            <View key={title} style={styles.stat}>
+            <View
+              key={title}
+              style={styles.stat}
+              accessible
+              accessibilityLabel={`${value} ${title === "Today" ? "appointments today" : title === "Waiting" ? "patients waiting" : "patients with you"}`}
+            >
               <Heading
-                style={{
-                  fontSize: 24,
-                  lineHeight: 30,
-                  color: index === 1 ? palette.text : palette.accent,
-                }}
+                variant="screenTitle"
+                style={{ color: index === 0 ? palette.accent : palette.text }}
               >
                 {value}
               </Heading>
-              <Label muted style={styles.caption}>
+              <Label variant="labelSmall" muted style={styles.caption}>
                 {title}
               </Label>
             </View>
           ))}
         </View>
+        {needsReview ? (
+          <Label
+            variant="caption"
+            style={{ color: palette.danger, marginTop: 8 }}
+          >
+            {needsReview === 1
+              ? "1 late arrival needs"
+              : `${needsReview} late arrivals need`}{" "}
+            review before they can be called.
+          </Label>
+        ) : null}
         <View style={[ui.between, { marginTop: 12 }]}>
           <Heading>
             {pendingRequests.length
@@ -122,9 +140,7 @@ export function HomeScreen() {
             style={{ width: 80 }}
           >
             <View style={{ ...ui.row, gap: 4 }}>
-              <Label style={{ color: palette.dark, fontSize: 13 }}>
-                See all
-              </Label>
+              <Label style={{ color: palette.dark }}>See all</Label>
               <ArrowRight size={15} color={palette.dark} />
             </View>
           </IconButton>
@@ -134,7 +150,9 @@ export function HomeScreen() {
         ) : null}
         {appointments.isError ? (
           <Panel>
-            <Label style={ui.error}>Could not load appointments.</Label>
+            <Label variant="label" style={ui.error}>
+              Could not load appointments.
+            </Label>
           </Panel>
         ) : null}
         {homeAppointments.length === 0 &&
@@ -200,11 +218,15 @@ export function HomeScreen() {
               onPress={() => void changePresence(true)}
             />
           </View>
-          <Label muted style={{ fontSize: 11 }}>
+          <Label variant="caption" muted>
             Clinic presence
           </Label>
         </View>
-        {presenceError ? <Label style={ui.error}>{presenceError}</Label> : null}
+        {presenceError ? (
+          <Label variant="label" style={ui.error}>
+            {presenceError}
+          </Label>
+        ) : null}
       </FadedScrollView>
       <NotificationDrawer
         visible={showNotifications}
@@ -234,15 +256,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     paddingHorizontal: 24,
   },
-  greeting: {
-    color: palette.white,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 22,
-    fontWeight: "600",
-    lineHeight: 34,
-    paddingRight: 52,
-    maxWidth: "100%",
-  },
+  greeting: { color: palette.white, paddingRight: 52, maxWidth: "100%" },
   notificationButton: {
     position: "absolute",
     right: 20,
@@ -262,12 +276,7 @@ const styles = StyleSheet.create({
     maxWidth: "75%",
     minHeight: 26,
   },
-  locationText: {
-    color: palette.white,
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    flexShrink: 1,
-  },
+  locationText: { color: palette.white, flexShrink: 1 },
   content: { padding: 16, paddingTop: 10, gap: 14, flexGrow: 1 },
   stat: {
     flex: 1,

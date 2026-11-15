@@ -1,9 +1,9 @@
 import { userErrorMessage } from "@startup/contracts";
 import { Button } from "@startup/mobile-ui";
 import { Input } from "@startup/mobile-ui";
-import { useToastFeedback } from "@startup/mobile-ui";
+import { AppText as Text, useToastFeedback } from "@startup/mobile-ui";
 import { useEffect, useRef, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { sendPhoneOtp, verifyPhoneOtp } from "@startup/data-access";
 import { colors, fontFamilies } from "@startup/design-tokens";
@@ -60,11 +60,17 @@ export default function DriverVerifyOtp() {
   return (
     <View style={styles.screen}>
       <Pressable accessibilityRole="button" onPress={() => router.back()}>
-        <Text style={styles.back}>‹ Back</Text>
+        <Text variant="body" style={styles.back}>
+          ‹ Back
+        </Text>
       </Pressable>
       <View style={styles.content}>
-        <Text style={styles.title}>Verify OTP</Text>
-        <Text style={styles.phone}>{phone}</Text>
+        <Text variant="screenTitle" style={styles.title}>
+          Verify OTP
+        </Text>
+        <Text variant="label" style={styles.phone}>
+          {phone}
+        </Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Enter six-digit code"
@@ -73,7 +79,9 @@ export default function DriverVerifyOtp() {
         >
           {Array.from({ length: 6 }, (_, index) => (
             <View key={index} style={styles.digit}>
-              <Text style={styles.digitText}>{code[index] ?? ""}</Text>
+              <Text variant="screenTitle" style={styles.digitText}>
+                {code[index] ?? ""}
+              </Text>
             </View>
           ))}
           <Input
@@ -104,7 +112,7 @@ export default function DriverVerifyOtp() {
           onPress={() => void resend()}
           style={styles.resend}
         >
-          <Text style={styles.resendText}>
+          <Text variant="bodySmall" style={styles.resendText}>
             Resend OTP{" "}
             {seconds > 0 ? `in 00:${String(seconds).padStart(2, "0")}` : "now"}
           </Text>
@@ -116,18 +124,10 @@ export default function DriverVerifyOtp() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "white", padding: 24, paddingTop: 58 },
-  back: { color: colors.driver.primary, fontSize: 17 },
+  back: { color: colors.driver.primary },
   content: { alignItems: "center", paddingTop: 24 },
-  title: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 24,
-    color: colors.driver.text,
-  },
-  phone: {
-    color: colors.driver.primary,
-    fontFamily: fontFamilies.medium,
-    marginTop: 7,
-  },
+  title: { color: colors.driver.text },
+  phone: { color: colors.driver.primary, marginTop: 7 },
   digits: {
     flexDirection: "row",
     width: "100%",

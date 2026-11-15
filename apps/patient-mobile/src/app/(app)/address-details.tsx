@@ -59,11 +59,11 @@ export default function AddressDetailsScreen() {
   const [kind, setKind] = useState<Kind>("house");
   const [label, setLabel] = useState("");
   const [building, setBuilding] = useState("");
-  const [street, setStreet] = useState(first(params.street) || "");
-  const [locality, setLocality] = useState(first(params.locality) || "");
-  const [city, setCity] = useState(first(params.city) || "");
-  const [state, setState] = useState(first(params.state) || "");
-  const [pincode, setPincode] = useState(first(params.pincode) || "");
+  const [street, setStreet] = useState(() => first(params.street) || "");
+  const [locality, setLocality] = useState(() => first(params.locality) || "");
+  const [city, setCity] = useState(() => first(params.city) || "");
+  const [state, setState] = useState(() => first(params.state) || "");
+  const [pincode, setPincode] = useState(() => first(params.pincode) || "");
   const [instructions, setInstructions] = useState("");
   const [useAccountDetails, setUseAccountDetails] = useState(true);
   const [receiverName, setReceiverName] = useState("");
@@ -85,7 +85,15 @@ export default function AddressDetailsScreen() {
     setUseAccountDetails(existing.use_account_details);
     setReceiverName(existing.receiver_name || "");
     setReceiverPhone(existing.receiver_phone || "");
-  }, [existing, initializedId, chosenForForm?.street, chosenForForm?.locality, chosenForForm?.city, chosenForForm?.state, chosenForForm?.pincode]);
+  }, [
+    existing,
+    initializedId,
+    chosenForForm?.street,
+    chosenForForm?.locality,
+    chosenForForm?.city,
+    chosenForForm?.state,
+    chosenForForm?.pincode,
+  ]);
 
   useEffect(() => {
     if (!chosenForForm) return;

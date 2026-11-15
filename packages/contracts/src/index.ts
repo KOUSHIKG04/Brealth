@@ -20,6 +20,8 @@ export * from "./doctor-schedule";
 
 export * from "./errors";
 
+export * from "./facility-team";
+
 export * from "./clinical";
 
 export * from "./ambulance-booking";

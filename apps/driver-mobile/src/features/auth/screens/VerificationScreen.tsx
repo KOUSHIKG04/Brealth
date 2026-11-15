@@ -1,7 +1,7 @@
 import { verificationItems } from "../utils/verificationConstants";
 import type { VerificationScreenProps } from "../types/verification-screen";
-import { Image, ScrollView, Text, View } from "react-native";
-import { Button } from "@startup/mobile-ui";
+import { Image, ScrollView, View } from "react-native";
+import { AppText as Text, Button } from "@startup/mobile-ui";
 import { BadgeCheck, CheckCheck, Clock3 } from "lucide-react-native";
 import { s } from "../components/Registration.styles";
 import { Frame } from "../components/RegistrationFrame";
@@ -22,8 +22,10 @@ export function VerificationScreen({
           style={s.verifiedImage}
           resizeMode="contain"
         />
-        <Text style={s.thankYou}>Thank You!</Text>
-        <Text style={s.verificationSubtitle}>
+        <Text variant="pageHeadline" style={s.thankYou}>
+          Thank You!
+        </Text>
+        <Text variant="bodyEmphasis" style={s.verificationSubtitle}>
           {verified
             ? "You’re ready to respond."
             : rejectionReason
@@ -31,22 +33,34 @@ export function VerificationScreen({
               : "Please Wait Until We Verify Your Profile"}
         </Text>
         {rejectionReason ? (
-          <Text accessibilityRole="alert" style={s.waitBody}>
+          <Text
+            variant="bodySmall"
+            accessibilityRole="alert"
+            style={s.waitBody}
+          >
             {rejectionReason}
           </Text>
         ) : null}
         {verified ? (
           <View style={s.statusCard}>
-            <Text style={s.sectionTitle}>Verification status</Text>
+            <Text variant="cardHeading" style={s.sectionTitle}>
+              Verification status
+            </Text>
             {verificationItems.map((item) => (
               <View key={item.title} style={s.statusRow}>
                 <BadgeCheck color={teal} size={23} />
                 <View style={s.flex}>
-                  <Text style={s.rowTitle}>{item.title}</Text>
-                  <Text style={s.caption}>{item.body}</Text>
+                  <Text variant="label" style={s.rowTitle}>
+                    {item.title}
+                  </Text>
+                  <Text variant="caption" style={s.caption}>
+                    {item.body}
+                  </Text>
                 </View>
                 <View style={s.pill}>
-                  <Text style={s.pillText}>Verified</Text>
+                  <Text variant="labelSmall" style={s.pillText}>
+                    Verified
+                  </Text>
                 </View>
               </View>
             ))}
@@ -54,14 +68,16 @@ export function VerificationScreen({
         ) : (
           <View style={s.waiting}>
             <Clock3 color={teal} size={26} />
-            <Text style={s.waitTitle}>Verification in progress</Text>
-            <Text style={s.waitBody}>
+            <Text variant="cardHeading" style={s.waitTitle}>
+              Verification in progress
+            </Text>
+            <Text variant="bodySmall" style={s.waitBody}>
               Your personal details, vehicle and documents are ready for review.
               Your dashboard will be available after approval.
             </Text>
             <View style={s.received}>
               <CheckCheck size={18} color={teal} />
-              <Text style={s.receivedText}>
+              <Text variant="labelSmall" style={s.receivedText}>
                 All required documents selected
               </Text>
             </View>

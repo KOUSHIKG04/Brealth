@@ -1,8 +1,8 @@
 import { useRegistrationDocuments } from "../hooks/useRegistrationDocuments";
 import type { DocumentsScreenProps } from "../types/documents-screen";
 
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { Button, Input } from "@startup/mobile-ui";
+import { Pressable, ScrollView, View } from "react-native";
+import { AppText as Text, Button, Input } from "@startup/mobile-ui";
 import { Check } from "lucide-react-native";
 
 import { s } from "../components/Registration.styles";
@@ -33,7 +33,9 @@ export function DocumentsScreen({
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={s.documentContent}
       >
-        <Text style={s.sectionTitle}>Ambulance classification</Text>
+        <Text variant="cardHeading" style={s.sectionTitle}>
+          Ambulance classification
+        </Text>
         <View style={s.classifications}>
           {vehicleClassOptions.map(({ id, label, icon: Icon }) => (
             <Pressable
@@ -48,13 +50,16 @@ export function DocumentsScreen({
             >
               <View style={s.classTop}>
                 <Text
+                  variant="label"
                   style={[s.rowTitle, classification === id && s.selectedText]}
                 >
                   {id}
                 </Text>
                 <Icon size={22} color={teal} />
               </View>
-              <Text style={s.caption}>{label}</Text>
+              <Text variant="caption" style={s.caption}>
+                {label}
+              </Text>
             </Pressable>
           ))}
         </View>
@@ -68,7 +73,9 @@ export function DocumentsScreen({
           labelStyle={s.sectionTitle}
           style={s.input}
         />
-        <Text style={s.sectionTitle}>Required documents</Text>
+        <Text variant="cardHeading" style={s.sectionTitle}>
+          Required documents
+        </Text>
         <View style={s.documentGrid}>
           {documentTypes.map((doc) => (
             <Button
@@ -86,8 +93,11 @@ export function DocumentsScreen({
                 <doc.icon size={19} color={teal} />
               </View>
               <View style={s.flex}>
-                <Text style={s.docTitle}>{doc.name}</Text>
+                <Text variant="labelSmall" style={s.docTitle}>
+                  {doc.name}
+                </Text>
                 <Text
+                  variant="caption"
                   numberOfLines={1}
                   style={[s.caption, files[doc.name] && s.teal]}
                 >
@@ -102,7 +112,7 @@ export function DocumentsScreen({
             </Button>
           ))}
         </View>
-        <Text style={s.fileHelp}>
+        <Text variant="caption" style={s.fileHelp}>
           PDF, JPG or PNG up to 10 MB. Photos must be JPG or PNG.
         </Text>
         <View style={s.documentFooter}>

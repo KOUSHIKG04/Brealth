@@ -4,7 +4,7 @@ import { ErrorFallback } from "@startup/mobile-ui";
 import { reportError } from "@startup/data-access";
 import { LiveUpdatesBridge } from "../services/LiveUpdatesBridge";
 import { useEffect, useRef } from "react";
-import { Text, View } from "react-native";
+import { View } from "react-native";
 import { router, Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
@@ -14,11 +14,13 @@ import {
   Loader,
   SafeAreaProvider,
   MobileThemeProvider,
+  MobileTypographyProvider,
+  AppText as Text,
+  Button,
   ToastProvider,
   useToast,
 } from "@startup/mobile-ui";
 import { QueryProvider } from "../providers/QueryProvider";
-import { Button } from "@startup/mobile-ui";
 import { mobileSession, useMobileSession } from "../services/supabase";
 import { DriverLocationReporter } from "../features/tracking/components/DriverLocationReporter";
 import "../features/tracking/services/backgroundLocationTask";
@@ -76,7 +78,9 @@ export default function RootLayout() {
   if (auth.session && auth.error)
     return (
       <View style={{ flex: 1, justifyContent: "center", padding: 24, gap: 16 }}>
-        <Text accessibilityRole="alert">{auth.error}</Text>
+        <Text variant="bodySmall" accessibilityRole="alert">
+          {auth.error}
+        </Text>
         <Button label="Retry" onPress={() => void mobileSession.refresh()} />
         <Button
           label="Sign out"
@@ -87,36 +91,40 @@ export default function RootLayout() {
     );
   return (
     <MobileThemeProvider theme="driver">
-      <SafeAreaProvider>
-        <ToastProvider>
-          <DeviceNotificationsBridge identityId={auth.profile?.identity_id} />
-          <QueryProvider>
-            <LiveUpdatesBridge identityId={auth.profile?.identity_id} />
-            {auth.profile?.driver?.id ? <DriverLocationReporter /> : null}
-            <View style={{ flex: 1, backgroundColor: "#fff" }}>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  contentStyle: { backgroundColor: "#fff" },
-                  animation: "none",
-                }}
-              >
-                <Stack.Protected
-                  guard={Boolean(auth.session && auth.profile?.driver?.id)}
+      <MobileTypographyProvider enabled>
+        <SafeAreaProvider>
+          <ToastProvider>
+            <DeviceNotificationsBridge identityId={auth.profile?.identity_id} />
+            <QueryProvider>
+              <LiveUpdatesBridge identityId={auth.profile?.identity_id} />
+              {auth.profile?.driver?.id ? <DriverLocationReporter /> : null}
+              <View style={{ flex: 1, backgroundColor: "#fff" }}>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    contentStyle: { backgroundColor: "#fff" },
+                    animation: "none",
+                  }}
                 >
-                  <Stack.Screen name="(app)" />
-                </Stack.Protected>
-                <Stack.Protected
-                  guard={!auth.session || !auth.profile?.driver?.id}
-                >
-                  <Stack.Screen name="(auth)" />
-                </Stack.Protected>
-              </Stack>
-              <StatusBar style={auth.profile?.driver?.id ? "light" : "dark"} />
-            </View>
-          </QueryProvider>
-        </ToastProvider>
-      </SafeAreaProvider>
+                  <Stack.Protected
+                    guard={Boolean(auth.session && auth.profile?.driver?.id)}
+                  >
+                    <Stack.Screen name="(app)" />
+                  </Stack.Protected>
+                  <Stack.Protected
+                    guard={!auth.session || !auth.profile?.driver?.id}
+                  >
+                    <Stack.Screen name="(auth)" />
+                  </Stack.Protected>
+                </Stack>
+                <StatusBar
+                  style={auth.profile?.driver?.id ? "light" : "dark"}
+                />
+              </View>
+            </QueryProvider>
+          </ToastProvider>
+        </SafeAreaProvider>
+      </MobileTypographyProvider>
     </MobileThemeProvider>
   );
 }

@@ -4,22 +4,24 @@ import { ErrorFallback } from "@startup/mobile-ui";
 import { reportError } from "@startup/data-access";
 import { LiveUpdatesBridge } from "../services/LiveUpdatesBridge";
 import { useEffect, useRef } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import { router, Stack } from "expo-router";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import {
+  AppText as Text,
+  Button,
   interFonts,
   Loader,
   SafeAreaProvider,
   MobileThemeProvider,
+  MobileTypographyProvider,
   ToastProvider,
   useToast,
   useToastFeedback,
 } from "@startup/mobile-ui";
 import { QueryProvider } from "../providers/QueryProvider";
-import { Button } from "@startup/mobile-ui";
 import { signOutWithPushCleanup } from "../features/notifications/services/deviceNotifications";
 import { useDeviceNotifications } from "../features/notifications/hooks/useDeviceNotifications";
 import { mobileSession, useMobileSession } from "../services/supabase";
@@ -83,7 +85,9 @@ export default function RootLayout() {
           { justifyContent: "center", padding: 24, gap: 16 },
         ]}
       >
-        <Text accessibilityRole="alert">{auth.error}</Text>
+        <Text variant="bodySmall" accessibilityRole="alert">
+          {auth.error}
+        </Text>
         <Button label="Retry" onPress={() => void mobileSession.refresh()} />
         <Button
           label="Sign out"
@@ -94,47 +98,53 @@ export default function RootLayout() {
     );
   return (
     <MobileThemeProvider theme="doctor">
-      <SafeAreaProvider>
-        <ToastProvider>
-          <SessionFeedback error={auth.error} />
-          <DeviceNotificationsBridge identityId={auth.profile?.identity_id} />
-          <QueryProvider>
-            <LiveUpdatesBridge identityId={auth.profile?.identity_id} />
-            <View style={styles.root}>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  animation: "none",
-                  contentStyle: styles.scene,
-                }}
-              >
-                <Stack.Protected
-                  guard={Boolean(
-                    auth.session && auth.profile?.doctor?.status === "verified"
-                  )}
+      <MobileTypographyProvider enabled>
+        <SafeAreaProvider>
+          <ToastProvider>
+            <SessionFeedback error={auth.error} />
+            <DeviceNotificationsBridge identityId={auth.profile?.identity_id} />
+            <QueryProvider>
+              <LiveUpdatesBridge identityId={auth.profile?.identity_id} />
+              <View style={styles.root}>
+                <Stack
+                  screenOptions={{
+                    headerShown: false,
+                    animation: "none",
+                    contentStyle: styles.scene,
+                  }}
                 >
-                  <Stack.Screen name="(app)" />
-                </Stack.Protected>
-                <Stack.Protected
-                  guard={
-                    !auth.session || auth.profile?.doctor?.status !== "verified"
+                  <Stack.Protected
+                    guard={Boolean(
+                      auth.session &&
+                      auth.profile?.doctor?.status === "verified"
+                    )}
+                  >
+                    <Stack.Screen name="(app)" />
+                  </Stack.Protected>
+                  <Stack.Protected
+                    guard={
+                      !auth.session ||
+                      auth.profile?.doctor?.status !== "verified"
+                    }
+                  >
+                    <Stack.Screen
+                      name="(auth)"
+                      options={{ statusBarStyle: "dark" }}
+                    />
+                  </Stack.Protected>
+                </Stack>
+                <StatusBar
+                  style={
+                    auth.profile?.doctor?.status === "verified"
+                      ? "light"
+                      : "dark"
                   }
-                >
-                  <Stack.Screen
-                    name="(auth)"
-                    options={{ statusBarStyle: "dark" }}
-                  />
-                </Stack.Protected>
-              </Stack>
-              <StatusBar
-                style={
-                  auth.profile?.doctor?.status === "verified" ? "light" : "dark"
-                }
-              />
-            </View>
-          </QueryProvider>
-        </ToastProvider>
-      </SafeAreaProvider>
+                />
+              </View>
+            </QueryProvider>
+          </ToastProvider>
+        </SafeAreaProvider>
+      </MobileTypographyProvider>
     </MobileThemeProvider>
   );
 }

@@ -91,7 +91,9 @@ export function UnavailableTimePanel({
           </View>
         ))}
       {isError ? (
-        <Label style={ui.error}>Could not load unavailable time.</Label>
+        <Label variant="label" style={ui.error}>
+          Could not load unavailable time.
+        </Label>
       ) : null}
     </>
   );

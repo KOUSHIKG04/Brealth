@@ -13,7 +13,7 @@ export function LogoutButton() {
         type="submit"
         disabled={pending}
         aria-busy={pending}
-        className="h-auto gap-2.5 rounded-lg px-2.5 py-2 text-[12.5px] font-medium text-[#475569] hover:bg-slate-50 hover:text-[#0f172a]"
+        className="h-auto gap-2.5 rounded-lg px-2.5 py-2 text-xs font-medium text-[#475569] hover:bg-slate-50 hover:text-[#0f172a]"
       >
         {pending ? (
           <LoaderCircle className="size-4 animate-spin" />

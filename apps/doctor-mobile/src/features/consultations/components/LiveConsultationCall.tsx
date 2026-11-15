@@ -1,13 +1,13 @@
 import { useLiveConsultationCall } from "../hooks/useLiveConsultationCall";
 import type { LiveConsultationCallProps } from "../types/live-consultation-call";
 
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 
 import { VideoTrack, isTrackReference } from "@livekit/react-native";
 import { ConnectionState } from "livekit-client";
 import { UserRound } from "lucide-react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
-import { ConsultationCall } from "@startup/mobile-ui";
+import { AppText as Text, ConsultationCall } from "@startup/mobile-ui";
 
 export function LiveConsultationCall({
   appointmentId,
@@ -16,6 +16,7 @@ export function LiveConsultationCall({
   initialChat = false,
   onBack,
   onEnd,
+  onRemoteEnded,
 }: LiveConsultationCallProps) {
   const {
     room,
@@ -27,7 +28,8 @@ export function LiveConsultationCall({
     profile,
     deviceBusy,
     sending,
-    front,
+    frontCamera,
+    notice,
     messages,
     device,
     flip,
@@ -39,11 +41,14 @@ export function LiveConsultationCall({
     initialChat,
     onBack,
     onEnd,
+    onRemoteEnded,
   });
   const fallback = (label: string) => (
     <View style={styles.placeholder}>
       <UserRound size={32} color={colors.doctor.primary} />
-      <Text style={styles.name}>{label}</Text>
+      <Text variant="label" style={styles.name}>
+        {label}
+      </Text>
     </View>
   );
 
@@ -64,7 +69,7 @@ export function LiveConsultationCall({
         local && isTrackReference(local) && isCameraEnabled ? (
           <VideoTrack
             trackRef={local}
-            mirror={front.current}
+            mirror={frontCamera}
             zOrder={1}
             style={StyleSheet.absoluteFill}
           />
@@ -80,6 +85,7 @@ export function LiveConsultationCall({
       sending={sending}
       messages={messages.data}
       identityId={profile?.identity_id}
+      notice={notice}
       onSend={send}
       onCamera={() =>
         void device(
@@ -114,10 +120,5 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: colors.doctor.surface,
   },
-  name: {
-    color: colors.doctor.text,
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    textAlign: "center",
-  },
+  name: { color: colors.doctor.text, textAlign: "center" },
 });

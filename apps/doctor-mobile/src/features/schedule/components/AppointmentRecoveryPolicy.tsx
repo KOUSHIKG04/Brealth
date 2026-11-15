@@ -2,7 +2,9 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   getMySchedulePreferences,
+  scheduleChangeRequiresApproval,
   setAppointmentRecoveryPolicy,
+  submitScheduleChangeRequest,
 } from "@startup/data-access";
 import { Button, ClockDurationPicker, useToast } from "@startup/mobile-ui";
 import { Label } from "../../../components/DoctorScreen";
@@ -38,6 +40,43 @@ export function AppointmentRecoveryPolicy({
     maxSelfReschedules: saved.data?.max_self_reschedules ?? 1,
     expectedVersion: Number(saved.data?.row_version ?? 0),
   };
+  // At hospitals and clinics the doctor does not run, policy changes are approved.
+  const approval = useQuery({
+    queryKey: ["schedule-approval", practiceId],
+    queryFn: () => scheduleChangeRequiresApproval(supabase!, practiceId),
+  });
+  const approvalRequired = approval.data === true;
+  const request = useMutation({
+    mutationFn: () =>
+      submitScheduleChangeRequest(supabase!, {
+        practiceId,
+        kind: "recovery_policy",
+        expectedVersion: draft.expectedVersion,
+        payload: {
+          online_grace_minutes: draft.onlineGraceMinutes,
+          clinic_grace_minutes: draft.clinicGraceMinutes,
+          reschedule_cutoff_minutes: draft.rescheduleCutoffMinutes,
+          max_self_reschedules: draft.maxSelfReschedules,
+        },
+      }),
+    onSuccess: () => {
+      void client.invalidateQueries({
+        queryKey: ["schedule-change-requests", practiceId],
+      });
+      setEdits(null);
+      showToast({
+        title: "Policy sent for approval",
+        message: "The current policy stays in place until it is approved.",
+        type: "success",
+      });
+    },
+    onError: () =>
+      showToast({
+        title: "Could not send the request",
+        message: "Reload the latest settings and try again.",
+        type: "error",
+      }),
+  });
   const mutation = useMutation({
     mutationFn: () =>
       setAppointmentRecoveryPolicy(supabase!, { practiceId, ...draft }),
@@ -133,10 +172,16 @@ export function AppointmentRecoveryPolicy({
       ) : null}
       <Button
         theme="doctor"
-        label="Save recovery policy"
-        disabled={!edits || !saved.data || mutation.isPending}
-        loading={mutation.isPending}
-        onPress={() => mutation.mutate()}
+        label={
+          approvalRequired ? "Submit for approval" : "Save recovery policy"
+        }
+        disabled={
+          !edits || !saved.data || mutation.isPending || request.isPending
+        }
+        loading={mutation.isPending || request.isPending}
+        onPress={() =>
+          approvalRequired ? request.mutate() : mutation.mutate()
+        }
       />
     </ScheduleSection>
   );

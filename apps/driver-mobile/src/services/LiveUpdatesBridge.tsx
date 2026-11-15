@@ -1,8 +1,12 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AppState } from "react-native";
-import { useQueryClient } from "@tanstack/react-query";
-import { subscribeAppChanges, type AppChangeKind } from "@startup/data-access";
-import { useToast } from "@startup/mobile-ui";
+import { onlineManager, useQueryClient } from "@tanstack/react-query";
+import {
+  reportError,
+  subscribeAppChanges,
+  type AppChangeKind,
+} from "@startup/data-access";
+import { OfflineBanner } from "@startup/mobile-ui";
 import { mobileSession, supabase } from "./supabase";
 
 const queryKeys: Partial<Record<AppChangeKind, string[]>> = {
@@ -20,7 +24,8 @@ const queryKeys: Partial<Record<AppChangeKind, string[]>> = {
 
 export function LiveUpdatesBridge({ identityId }: { identityId?: string }) {
   const queryClient = useQueryClient();
-  const { showToast } = useToast();
+  // True only during a sustained outage; brief drops recover silently.
+  const [outage, setOutage] = useState(false);
   useEffect(() => {
     if (!supabase || !identityId) return;
     let active = true;
@@ -28,7 +33,7 @@ export function LiveUpdatesBridge({ identityId }: { identityId?: string }) {
     let catchUp = false;
     let sessionRefreshing = false;
     let sessionAgain = false;
-    let warned = false;
+    const outages = new Set<string>();
     const pending = new Set<AppChangeKind>();
     const refresh = (kind?: AppChangeKind) => {
       if (!active) return;
@@ -81,19 +86,18 @@ export function LiveUpdatesBridge({ identityId }: { identityId?: string }) {
       { identityId, directory: false },
       {
         onChange: (change) => refresh(change.kind),
-        onConnected: () => {
-          warned = false;
-          refresh();
+        onConnected: () => refresh(),
+        onStatus: (status, topic) => {
+          if (status === "down") outages.add(topic);
+          else outages.delete(topic);
+          if (active) setOutage(outages.size > 0);
         },
         onError: () => {
-          if (active && !warned && AppState.currentState === "active") {
-            warned = true;
-            showToast({
-              title: "Live updates disconnected",
-              message: "Updates will catch up when the connection returns.",
-              type: "info",
+          // Only lasting outages while the device is online are worth a report.
+          if (onlineManager.isOnline())
+            reportError(new Error("Live updates unavailable"), {
+              source: "realtime",
             });
-          }
         },
       }
     );
@@ -102,9 +106,17 @@ export function LiveUpdatesBridge({ identityId }: { identityId?: string }) {
     });
     return () => {
       active = false;
+      setOutage(false);
       cleanup();
       appState.remove();
     };
-  }, [identityId, queryClient, showToast]);
-  return null;
+  }, [identityId, queryClient]);
+  // Offline devices already see the offline banner; this covers realtime only.
+  return (
+    <OfflineBanner
+      visible={outage && onlineManager.isOnline()}
+      theme="driver"
+      message="Live updates are paused. Pull down to refresh; they resume automatically."
+    />
+  );
 }

@@ -476,6 +476,60 @@ export function scheduleBusyOverlaps(
   );
 }
 
+/** Shortest online block that research-backed batching guidance suggests. */
+export const onlineBatchMinimumMinutes = 60;
+
+/**
+ * Advisory hints for keeping online consultations on time: online hours
+ * placed between two clinic blocks on the same day, or online blocks shorter
+ * than an hour. Compares the draft for `mode` with the doctor's published
+ * blocks of the other service at any practice. Never blocks publishing.
+ */
+export function scheduleBatchingHints(
+  mode: "clinic" | "online" | "home",
+  days: readonly number[],
+  blocks: readonly DoctorTimeBlock[],
+  busy: readonly ScheduleBusyBlock[]
+): string[] {
+  if (mode === "home") return [];
+  const draft = blocks.map((block) => ({ ...block, days: [...days] }));
+  const others = busy.filter(
+    (item) => item.mode === (mode === "online" ? "clinic" : "online")
+  );
+  const online = mode === "online" ? draft : others;
+  const clinic = mode === "online" ? others : draft;
+  const hints: string[] = [];
+  const between = online.find((block) =>
+    block.days.some((day) => {
+      const sameDay = clinic.filter((item) => item.days.includes(day));
+      return (
+        sameDay.some(
+          (item) => clockMinutes(item.end) <= clockMinutes(block.start)
+        ) &&
+        sameDay.some(
+          (item) => clockMinutes(item.start) >= clockMinutes(block.end)
+        )
+      );
+    })
+  );
+  if (between)
+    hints.push(
+      `Online ${between.start}–${between.end} falls between clinic hours. Online patients are seen on time more often when online hours come before or after clinic.`
+    );
+  if (mode === "online") {
+    const short = draft.find(
+      (block) =>
+        clockMinutes(block.end) - clockMinutes(block.start) <
+        onlineBatchMinimumMinutes
+    );
+    if (short)
+      hints.push(
+        `Online ${short.start}–${short.end} is under an hour. Blocks of at least an hour are easier to keep on time.`
+      );
+  }
+  return hints;
+}
+
 export function scheduleErrorCode(cause: unknown) {
   return typeof cause === "object" && cause !== null && "code" in cause
     ? String((cause as { code: unknown }).code)
@@ -498,4 +552,125 @@ export function scheduleErrorMessage(cause: unknown, fallback: string) {
   if (code === "42501")
     return "You no longer have permission to change this practice's schedule.";
   return userErrorMessage(cause, fallback);
+}
+
+/** What a doctor asks a facility to approve. */
+export const scheduleChangeRequestKindSchema = z.enum([
+  "schedule",
+  "time_off_add",
+  "time_off_remove",
+  "recovery_policy",
+]);
+
+export const scheduleChangeRequestSchema = z.object({
+  id: z.uuid(),
+  practice_id: z.uuid(),
+  facility_id: z.uuid(),
+  facility_name: z.string(),
+  facility_kind: z.enum(["hospital", "clinic"]),
+  doctor_name: z.string(),
+  kind: scheduleChangeRequestKindSchema,
+  service_mode: scheduleServiceSchema.nullable(),
+  payload: z.record(z.string(), z.unknown()),
+  effective_from: z.iso.date().nullable(),
+  base_version: z.string().nullable(),
+  current_version: z.string().nullable(),
+  current_settings: z.record(z.string(), z.unknown()).nullable().optional(),
+  note: z.string().nullable(),
+  status: z.enum([
+    "pending",
+    "approved",
+    "rejected",
+    "withdrawn",
+    "superseded",
+    "stale",
+  ]),
+  decision_reason: z.string().nullable(),
+  created_at: z.string(),
+  decided_at: z.string().nullable(),
+});
+
+export type ScheduleChangeRequest = z.infer<typeof scheduleChangeRequestSchema>;
+
+export type ScheduleChangeRequestKind = z.infer<
+  typeof scheduleChangeRequestKindSchema
+>;
+
+/** Short, readable title for a request in lists and notices. */
+export function scheduleChangeRequestTitle(
+  request: Pick<ScheduleChangeRequest, "kind" | "service_mode">
+) {
+  if (request.kind === "schedule")
+    return `${scheduleServiceLabel(request.service_mode ?? "clinic")} schedule`;
+  if (request.kind === "time_off_add") return "Time off";
+  if (request.kind === "time_off_remove") return "Remove time off";
+  return "Attendance and rescheduling policy";
+}
+
+const dayNames = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+/**
+ * The settings of one service as readable rows (days, hours, duration, limit,
+ * fee), for comparing a request with the current schedule. Accepts the wire
+ * (snake_case) settings used by requests and saved preferences.
+ */
+export function scheduleServiceSummary(
+  settings: Record<string, unknown> | null | undefined,
+  mode: "clinic" | "online" | "home"
+): { label: string; value: string }[] {
+  if (!settings) return [];
+  const read = (key: string) => settings[key];
+  const days = (read(
+    mode === "clinic"
+      ? "working_days"
+      : mode === "online"
+        ? "online_working_days"
+        : "home_working_days"
+  ) ?? read("working_days")) as number[] | undefined;
+  const blocks = read(`${mode}_time_blocks`) as
+    { start: string; end: string }[] | undefined;
+  const duration = read(
+    mode === "clinic" ? "slot_minutes" : `${mode}_slot_minutes`
+  );
+  const limit = read(
+    mode === "online"
+      ? "online_daily_limit"
+      : mode === "home"
+        ? "home_visits"
+        : "walkin_daily_limit"
+  );
+  const fee = read(`${mode}_fee_minor`);
+  return [
+    {
+      label: "Days",
+      value: days?.length
+        ? days.map((day) => dayNames[day - 1] ?? day).join(", ")
+        : "—",
+    },
+    {
+      label: "Hours",
+      value: blocks?.length
+        ? blocks.map((block) => `${block.start}–${block.end}`).join(", ")
+        : "—",
+    },
+    {
+      label: "Duration",
+      value: typeof duration === "number" ? `${duration} min` : "—",
+    },
+    {
+      label: mode === "home" ? "Home visits" : "Daily limit",
+      value:
+        mode === "home"
+          ? limit === true
+            ? "On"
+            : "Off"
+          : typeof limit === "number"
+            ? String(limit)
+            : "—",
+    },
+    {
+      label: "Fee",
+      value: typeof fee === "number" ? `₹${(fee / 100).toFixed(2)}` : "—",
+    },
+  ];
 }

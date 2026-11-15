@@ -20,3 +20,9 @@ export const transactionStatusLabels = {
   failed: "Failed",
   uncertain: "Checking status",
 } as const;
+
+export const transactionDateFormatter = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "Asia/Kolkata",
+  dateStyle: "medium",
+  timeStyle: "short",
+});

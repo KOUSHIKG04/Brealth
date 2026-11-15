@@ -1,5 +1,5 @@
-import { Text, View } from "react-native";
-import { Loader } from "@startup/mobile-ui";
+import { View } from "react-native";
+import { AppText as Text, Loader } from "@startup/mobile-ui";
 import { Redirect } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { getMyDriverProfile, listMyAmbulanceFleet } from "@startup/data-access";
@@ -26,7 +26,7 @@ export default function DriverAppIndex() {
   if (personal.error || fleet.error)
     return (
       <View style={{ padding: 24 }}>
-        <Text accessibilityRole="alert">
+        <Text variant="bodySmall" accessibilityRole="alert">
           Could not load your driver status. Check your connection and reopen
           the app.
         </Text>

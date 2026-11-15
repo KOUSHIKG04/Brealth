@@ -51,7 +51,7 @@ export function useConsultationForm({
   useToastFeedback({ error, success: message });
   const [vitalValues, setVitalValues] = useState<
     Partial<Record<RecordVitalInput["code"], string>>
-  >(
+  >(() =>
     Object.fromEntries(
       initial.vitals.map((vital) => [vital.code, String(vital.value)])
     )

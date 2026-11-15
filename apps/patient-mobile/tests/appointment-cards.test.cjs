@@ -232,7 +232,9 @@ function bookingsView(rows, { cancelPending = false } = {}) {
       timezone: item.timezone ?? "Asia/Kolkata",
     })
   );
-  let menuId = null;
+  // One slot per useState call, in render order (menu, recovery dialog).
+  const states = [];
+  let cursor = 0;
   const cancelled = [],
     routes = [];
   const jsx = (type, props) => ({ type, props });
@@ -243,14 +245,27 @@ function bookingsView(rows, { cancelPending = false } = {}) {
       "../components/AppointmentRecoveryActions": {
         AppointmentRecoveryActions: "RecoveryActions",
       },
+      "../components/AppointmentRecovery": {
+        AppointmentRecovery: "AppointmentRecovery",
+      },
+      "../utils/bookAgain": {
+        bookAgainRoute: (item) => ({
+          pathname: "/doctor-profile",
+          params: { practiceId: item.practice_id ?? "" },
+        }),
+      },
       "react/jsx-runtime": { jsx, jsxs: jsx },
       react: {
-        useState: () => [
-          menuId,
-          (value) => {
-            menuId = value;
-          },
-        ],
+        useState: (initial) => {
+          const index = cursor++;
+          if (!(index in states)) states[index] = initial;
+          return [
+            states[index],
+            (value) => {
+              states[index] = value;
+            },
+          ];
+        },
       },
       "react-native": {
         View: "View",
@@ -306,7 +321,10 @@ function bookingsView(rows, { cancelPending = false } = {}) {
     }
   );
   return {
-    render: () => nodesOf(AppointmentsScreen({})),
+    render: () => {
+      cursor = 0;
+      return nodesOf(AppointmentsScreen({}));
+    },
     cancelled,
     routes,
   };
@@ -376,11 +394,9 @@ test("each booking opens its visit page while cancellation stays in its menu", (
     ["Join consultation"]
   );
   assert.equal(cards[2].props.onMorePress, undefined);
-  assert.ok(
-    nodesOf(cards[3].props.footer).some(
-      (node) => node.type === "RecoveryActions"
-    )
-  );
+  // A pending request's optional actions (reschedule, cancel) sit behind ⋮.
+  assert.equal(cards[3].props.footer, undefined);
+  assert.equal(typeof cards[3].props.onMorePress, "function");
   assert.equal(actions(cards[4])[0].props.label, "Rate doctor");
   const thankYou = nodesOf(cards[4].props.footer).find(
     (node) => node.type === "Text" && node.props.children === "Thank you"
@@ -435,6 +451,68 @@ test("each booking opens its visit page while cancellation stays in its menu", (
   assert.equal(
     view.render().find((node) => node.type === "Modal").props.visible,
     false
+  );
+});
+
+test("reschedule opens from the card menu; a doctor's request stays on the card", () => {
+  const view = bookingsView([
+    bookingRows[0],
+    {
+      id: "doctor-request",
+      visit_mode: "clinic",
+      status: "confirmed",
+      queue_state: "awaiting_arrival",
+      doctor_name: "Booked doctor",
+      public_code: "APPOINTMENT-2026-doctor-request",
+      recovery: {
+        schedule_change: { pending: true, reason: "Doctor unavailable" },
+        reschedule_count: 0,
+        max_self_reschedules: 1,
+      },
+    },
+  ]);
+  let cards = view.render().filter((node) => node.type === "BookingCard");
+  const buttons = (nodes) =>
+    nodes
+      .filter((node) => node.type === "Button")
+      .map((node) => node.props.label);
+  // Nothing optional on the face of an ordinary card.
+  assert.equal(
+    nodesOf(cards[0].props.footer).some(
+      (node) =>
+        node.type === "Button" && /reschedule/i.test(node.props.label ?? "")
+    ),
+    false
+  );
+  cards[0].props.onMorePress();
+  let nodes = view.render();
+  const menuLabels = buttons(
+    nodesOf(nodes.find((node) => node.type === "Modal"))
+  );
+  assert.deepEqual(menuLabels, ["Reschedule", "Cancel booking", "Close"]);
+  nodesOf(nodes.find((node) => node.type === "Modal"))
+    .find((node) => node.props?.label === "Reschedule")
+    .props.onPress();
+  nodes = view.render();
+  assert.equal(
+    nodes.find((node) => node.type === "Modal").props.visible,
+    false
+  );
+  const dialog = nodes.find((node) => node.type === "AppointmentRecovery");
+  assert.equal(dialog.props.item.id, "clinic");
+  assert.equal(dialog.props.intent, "reschedule");
+
+  // A doctor's rescheduling request needs the patient's response, so it stays
+  // visible on the card and is not duplicated in the menu.
+  cards = view.render().filter((node) => node.type === "BookingCard");
+  const recoveryOnCard = nodesOf(cards[1].props.footer).find(
+    (node) => node.type === "RecoveryActions"
+  );
+  assert.equal(recoveryOnCard.props.placement, "card");
+  cards[1].props.onMorePress();
+  assert.deepEqual(
+    buttons(nodesOf(view.render().find((node) => node.type === "Modal"))),
+    ["Cancel booking", "Close"]
   );
 });
 

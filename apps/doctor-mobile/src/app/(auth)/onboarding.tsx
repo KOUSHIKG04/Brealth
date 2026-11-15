@@ -3,6 +3,7 @@ import { Button } from "@startup/mobile-ui";
 import { ModalSurface } from "@startup/mobile-ui";
 import { Input } from "@startup/mobile-ui";
 import {
+  AppText as Text,
   Dropdown,
   Checkbox,
   ProfilePhotoButton,
@@ -18,7 +19,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from "react-native";
@@ -590,7 +590,9 @@ export default function DoctorOnboarding() {
   ) {
     return (
       <View style={styles.field}>
-        <Text style={styles.label}>{label}</Text>
+        <Text variant="label" style={styles.label}>
+          {label}
+        </Text>
         <Dropdown
           accessibilityLabel={`${label}: ${value}`}
           options={options.map((item) => ({ label: item, value: item }))}
@@ -644,8 +646,10 @@ export default function DoctorOnboarding() {
             accessibilityLabel="Choose doctor profile photo"
           />
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Your Profile</Text>
-            <Text style={styles.photoHint}>
+            <Text variant="screenTitle" style={styles.title}>
+              Your Profile
+            </Text>
+            <Text variant="bodySmall" style={styles.photoHint}>
               Tap the plus button on your profile icon to add a photo.
             </Text>
           </View>
@@ -688,13 +692,16 @@ export default function DoctorOnboarding() {
           "e.g. MBBS, MD"
         )}
         <View style={styles.field}>
-          <Text style={styles.label}>Upload Your Degree here</Text>
+          <Text variant="label" style={styles.label}>
+            Upload Your Degree here
+          </Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => void pickDocument("degree")}
             style={styles.select}
           >
             <Text
+              variant="body"
               style={[styles.selectText, !degree && styles.placeholder]}
               numberOfLines={1}
             >
@@ -703,7 +710,9 @@ export default function DoctorOnboarding() {
           </Pressable>
         </View>
         <View style={styles.field}>
-          <Text style={styles.label}>Specializations</Text>
+          <Text variant="label" style={styles.label}>
+            Specializations
+          </Text>
           <Pressable
             ref={specialtyTrigger}
             accessibilityRole="button"
@@ -715,6 +724,7 @@ export default function DoctorOnboarding() {
             style={styles.select}
           >
             <Text
+              variant="body"
               style={[
                 styles.selectText,
                 !selectedSpecialties.length && styles.placeholder,
@@ -746,7 +756,9 @@ export default function DoctorOnboarding() {
           "Registration no."
         )}
         <View style={styles.field}>
-          <Text style={styles.label}>Upload Your License here</Text>
+          <Text variant="label" style={styles.label}>
+            Upload Your License here
+          </Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Upload your license document"
@@ -754,6 +766,7 @@ export default function DoctorOnboarding() {
             style={styles.select}
           >
             <Text
+              variant="body"
               style={[styles.selectText, !license && styles.placeholder]}
               numberOfLines={1}
             >
@@ -778,7 +791,9 @@ export default function DoctorOnboarding() {
           style={[styles.input, styles.aboutInput]}
         />
         <View style={styles.field}>
-          <Text style={styles.label}>Languages</Text>
+          <Text variant="label" style={styles.label}>
+            Languages
+          </Text>
           <Pressable
             ref={languageTrigger}
             accessibilityRole="button"
@@ -790,6 +805,7 @@ export default function DoctorOnboarding() {
             style={styles.select}
           >
             <Text
+              variant="body"
               style={[
                 styles.selectText,
                 !selectedLanguages.length && styles.placeholder,
@@ -817,7 +833,9 @@ export default function DoctorOnboarding() {
           field("Clinic Name", clinic, setClinic, "Your clinic name")
         ) : (
           <View style={styles.field}>
-            <Text style={styles.label}>Hospital/Clinic Name</Text>
+            <Text variant="label" style={styles.label}>
+              Hospital/Clinic Name
+            </Text>
             <Dropdown
               accessibilityLabel="Select registered hospital or clinic"
               placeholder="Select registered hospital or clinic"
@@ -840,16 +858,16 @@ export default function DoctorOnboarding() {
               selectedOptionBackgroundColor="#F3F4F6"
             />
             {!facilities.length ? (
-              <Text style={styles.locationHint}>
+              <Text variant="bodySmall" style={styles.locationHint}>
                 {facilityLoadError ||
                   "No company-verified hospital or clinic is registered yet."}
               </Text>
             ) : null}
             <View style={styles.facilityInfoCard}>
-              <Text style={styles.facilityHintTitle}>
+              <Text variant="label" style={styles.facilityHintTitle}>
                 Hospital or clinic not listed?
               </Text>
-              <Text style={styles.facilityHint}>
+              <Text variant="bodySmall" style={styles.facilityHint}>
                 Ask its administrator to register it first. If you operate an
                 independent clinic, select the option below.
               </Text>
@@ -867,7 +885,9 @@ export default function DoctorOnboarding() {
         />
         {solo ? (
           <View style={styles.field}>
-            <Text style={styles.label}>Clinic operating licence</Text>
+            <Text variant="label" style={styles.label}>
+              Clinic operating licence
+            </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Upload clinic operating licence"
@@ -875,6 +895,7 @@ export default function DoctorOnboarding() {
               style={styles.select}
             >
               <Text
+                variant="body"
                 style={[
                   styles.selectText,
                   !clinicLicense && styles.placeholder,
@@ -888,7 +909,9 @@ export default function DoctorOnboarding() {
         ) : null}
         {solo ? (
           <View style={styles.field}>
-            <Text style={styles.label}>Clinic Address</Text>
+            <Text variant="label" style={styles.label}>
+              Clinic Address
+            </Text>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel="Add or edit clinic address"
@@ -899,6 +922,7 @@ export default function DoctorOnboarding() {
               style={styles.select}
             >
               <Text
+                variant="body"
                 numberOfLines={1}
                 style={[styles.selectText, !address && styles.placeholder]}
               >
@@ -920,7 +944,7 @@ export default function DoctorOnboarding() {
         />
         <View style={styles.privacyRow}>
           <LockKeyhole size={16} color={colors.textSecondary} />
-          <Text style={styles.privacy}>
+          <Text variant="bodySmall" style={styles.privacy}>
             Your Information is secure and private
           </Text>
         </View>
@@ -953,7 +977,9 @@ export default function DoctorOnboarding() {
             <View style={styles.addressSheet}>
               <View style={styles.drawerHandle} />
               <View style={styles.addressHeader}>
-                <Text style={styles.title}>Clinic Address</Text>
+                <Text variant="screenTitle" style={styles.title}>
+                  Clinic Address
+                </Text>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Close clinic address drawer"
@@ -1019,9 +1045,16 @@ export default function DoctorOnboarding() {
                     }}
                   />
                   {locationError ? (
-                    <Text accessibilityRole="alert" style={styles.error}>
+                    <Text
+                      variant="bodySmall"
+                      accessibilityRole="alert"
+                      style={styles.error}
+                    >
                       {locationError}{" "}
-                      <Text onPress={() => void Linking.openSettings()}>
+                      <Text
+                        variant="inherit"
+                        onPress={() => void Linking.openSettings()}
+                      >
                         Open settings
                       </Text>
                     </Text>
@@ -1111,7 +1144,9 @@ export default function DoctorOnboarding() {
                             )
                       }
                     >
-                      <Text style={styles.selectText}>{item}</Text>
+                      <Text variant="body" style={styles.selectText}>
+                        {item}
+                      </Text>
                       {checked ? (
                         <Check size={17} color={colors.patient.primaryDark} />
                       ) : null}
@@ -1125,7 +1160,9 @@ export default function DoctorOnboarding() {
               style={styles.option}
               onPress={() => setLanguageOpen(false)}
             >
-              <Text style={styles.doneText}>Done</Text>
+              <Text variant="label" style={styles.doneText}>
+                Done
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -1148,13 +1185,7 @@ const styles = StyleSheet.create({
     gap: 15,
     marginBottom: 13,
   },
-  photoHint: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textSecondary,
-    marginTop: 6,
-  },
+  photoHint: { color: colors.textSecondary, marginTop: 6 },
   avatar: {
     width: 76,
     height: 76,
@@ -1190,11 +1221,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     marginTop: 6,
   },
-  title: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 22,
-    color: colors.black,
-  },
+  title: { color: colors.black },
   field: { gap: 8 },
   label: {
     marginLeft: 6,
@@ -1301,19 +1328,8 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     gap: 6,
   },
-  facilityHintTitle: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    color: colors.textPrimary,
-    textAlign: "center",
-  },
-  facilityHint: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    color: colors.textSecondary,
-    textAlign: "center",
-  },
+  facilityHintTitle: { color: colors.textPrimary, textAlign: "center" },
+  facilityHint: { color: colors.textSecondary, textAlign: "center" },
   locationIcon: {
     width: 32,
     height: 32,
@@ -1334,39 +1350,20 @@ const styles = StyleSheet.create({
     color: "#71818F",
     lineHeight: 16,
   },
-  doneText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 15,
-    color: colors.patient.primaryDark,
-    textAlign: "right",
-  },
+  doneText: { color: colors.patient.primaryDark, textAlign: "right" },
   menuOverlay: { flex: 1, backgroundColor: "#00000066" },
   languageMenu: { position: "absolute", maxHeight: 320, overflow: "hidden" },
   solo: { flexDirection: "row", alignItems: "center", gap: 9 },
   checkbox: { width: 18, height: 18, backgroundColor: "#D5D7D9" },
   checked: { backgroundColor: colors.patient.primaryDark },
   soloText: { fontFamily: fontFamilies.regular, fontSize: 14 },
-  error: {
-    color: colors.danger,
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-  },
-  privacy: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    color: "#777",
-    textAlign: "center",
-    flexShrink: 1,
-  },
+  error: { color: colors.danger },
+  privacy: { color: "#777", textAlign: "center", flexShrink: 1 },
   privacyRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
   },
-  locationHint: {
-    color: "#777",
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-  },
+  locationHint: { color: "#777" },
 });

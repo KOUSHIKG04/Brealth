@@ -335,6 +335,17 @@ export type ClinicTransitionInput = z.infer<typeof clinicTransitionSchema>;
 
 export type ClinicAppointment = z.infer<typeof clinicAppointmentSchema>;
 
+/**
+ * Queue number shown to staff and patients: the issued ticket, else the
+ * position reserved by the hybrid queue. Numbers are per doctor session and
+ * clinic day, never a facility-wide sequence.
+ */
+export function appointmentQueueNumber(
+  item: Pick<ClinicAppointment, "ticket_number" | "clinic_queue">
+): number | null {
+  return item.ticket_number ?? item.clinic_queue?.planned_number ?? null;
+}
+
 export type ClinicPractice = z.infer<typeof clinicPracticeSchema>;
 
 export type ClinicSession = z.infer<typeof clinicSessionSchema>;

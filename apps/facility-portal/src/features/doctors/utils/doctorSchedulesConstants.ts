@@ -44,3 +44,16 @@ export const assignmentTableHeaders = [
   ["status", "Status"],
   ["contact", "Contact"],
 ] as const;
+
+export const shiftDayLabelFormatter = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "UTC",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+export const shiftWeekdayFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: "UTC",
+  weekday: "short",
+});

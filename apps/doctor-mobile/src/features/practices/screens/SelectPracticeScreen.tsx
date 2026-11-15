@@ -1,11 +1,11 @@
 import { useSelectPractice } from "../hooks/useSelectPractice";
 
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 import { Building2, MapPin, Search } from "lucide-react-native";
 
 import { fontFamilies } from "@startup/design-tokens";
-import { Input, Loader } from "@startup/mobile-ui";
+import { AppText as Text, Input, Loader } from "@startup/mobile-ui";
 import { DoctorScreen } from "../../../components/DoctorScreen";
 import { palette, ui } from "../../../components/theme";
 
@@ -40,10 +40,12 @@ export function SelectPracticeScreen() {
         />
         <Search size={20} color={palette.muted} />
       </View>
-      <Text style={styles.sectionTitle}>APPROVED PRACTICES</Text>
+      <Text variant="label" style={styles.sectionTitle}>
+        APPROVED PRACTICES
+      </Text>
       {loading ? <Loader theme="doctor" /> : null}
       {!loading && filtered.length === 0 ? (
-        <Text style={styles.empty}>
+        <Text variant="bodySmall" style={styles.empty}>
           {approved.length
             ? "No matching practice locations."
             : "No approved practice location is available yet."}
@@ -78,15 +80,22 @@ export function SelectPracticeScreen() {
               </View>
               <View style={ui.flex}>
                 <View style={styles.titleRow}>
-                  <Text style={styles.name} numberOfLines={1}>
+                  <Text
+                    variant="cardHeading"
+                    style={styles.name}
+                    numberOfLines={1}
+                  >
                     {practice.facility_name}
                   </Text>
                   {active ? (
-                    <Text style={styles.selected}>Selected</Text>
+                    <Text variant="labelSmall" style={styles.selected}>
+                      Selected
+                    </Text>
                   ) : null}
                 </View>
                 {practice.address ? (
                   <Text
+                    variant="bodySmall"
                     style={styles.address}
                     numberOfLines={1}
                     ellipsizeMode="tail"
@@ -125,12 +134,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: palette.text,
   },
-  sectionTitle: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    color: palette.muted,
-    marginTop: 4,
-  },
+  sectionTitle: { color: palette.muted, marginTop: 4 },
   cards: { gap: 12 },
   practice: {
     borderWidth: 1,
@@ -157,15 +161,8 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 5,
   },
-  name: {
-    flexShrink: 1,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 16,
-    color: palette.text,
-  },
+  name: { flexShrink: 1, color: palette.text },
   selected: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 11,
     color: palette.dark,
     backgroundColor: palette.surface,
     borderRadius: 9,
@@ -173,15 +170,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
   },
-  address: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13.5,
-    color: palette.muted,
-  },
-  empty: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    color: palette.muted,
-  },
+  address: { color: palette.muted },
+  empty: { color: palette.muted },
   pressed: { opacity: 0.76 },
 });

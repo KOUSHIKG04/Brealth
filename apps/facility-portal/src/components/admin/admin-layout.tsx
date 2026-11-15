@@ -25,11 +25,15 @@ export function AdminLayout({
   facilityName,
   userName,
   logoutAction,
+  allowedAreas,
+  roleLabel,
 }: {
   children: React.ReactNode;
   facilityName: string;
   userName: string;
   logoutAction: React.ReactNode;
+  allowedAreas?: readonly string[];
+  roleLabel?: string;
 }) {
   const [sidebarWidth, setSidebarWidth] = React.useState(
     sidebarWidthLimits.initial
@@ -58,6 +62,8 @@ export function AdminLayout({
         logoutAction={logoutAction}
         sidebarWidth={sidebarWidth}
         onSidebarWidthChange={setSidebarWidth}
+        allowedAreas={allowedAreas}
+        roleLabel={roleLabel}
       />
       <SidebarInset className="bg-background min-w-0">
         <header className="flex h-16 shrink-0 items-center gap-2 transition-[height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12 motion-reduce:transition-none">

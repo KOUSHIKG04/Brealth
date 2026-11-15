@@ -9,13 +9,17 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 
 import { router } from "expo-router";
 import { SquareCheck, MapPin, Square, X } from "lucide-react-native";
-import { Button, Input, ModalSurface } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  Button,
+  Input,
+  ModalSurface,
+} from "@startup/mobile-ui";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { doctorPersonalAddressInputSchema } from "@startup/contracts";
 
@@ -41,7 +45,9 @@ export function PersonalAddressField({
   } = usePersonalAddressField({ value, onChange, clinicAddress });
   return (
     <View style={styles.field}>
-      <Text style={styles.label}>Personal Address</Text>
+      <Text variant="label" style={styles.label}>
+        Personal Address
+      </Text>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Edit personal address"
@@ -51,6 +57,7 @@ export function PersonalAddressField({
         style={styles.trigger}
       >
         <Text
+          variant="body"
           numberOfLines={1}
           style={[styles.value, !summary && styles.placeholder]}
         >
@@ -95,12 +102,12 @@ export function PersonalAddressField({
           ) : (
             <Square size={22} color={colors.textSecondary} />
           )}
-          <Text style={[styles.hint, { flex: 1 }]}>
+          <Text variant="caption" style={[styles.hint, { flex: 1 }]}>
             Personal address is the same as clinic address
           </Text>
         </Pressable>
       ) : (
-        <Text style={styles.hint}>
+        <Text variant="caption" style={styles.hint}>
           Your contact address is separate from your consultation location.
         </Text>
       )}
@@ -134,7 +141,9 @@ export function PersonalAddressField({
               ]}
             >
               <View style={styles.header}>
-                <Text style={styles.title}>Personal Address</Text>
+                <Text variant="sectionHeading" style={styles.title}>
+                  Personal Address
+                </Text>
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Close personal address"
@@ -259,11 +268,7 @@ export function PersonalAddressField({
 
 const styles = StyleSheet.create({
   field: { gap: 7 },
-  label: {
-    color: colors.textPrimary,
-    fontSize: 14,
-    fontFamily: fontFamilies.medium,
-  },
+  label: { color: colors.textPrimary },
   trigger: {
     height: 54,
     borderWidth: 1,
@@ -274,18 +279,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
   },
-  value: {
-    flex: 1,
-    color: colors.textPrimary,
-    fontSize: 16,
-    fontFamily: fontFamilies.regular,
-  },
+  value: { flex: 1, color: colors.textPrimary },
   placeholder: { color: "#9CA3AF" },
-  hint: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 12,
-  },
+  hint: { color: colors.textSecondary },
   overlay: {
     flex: 1,
     justifyContent: "flex-end",
@@ -304,11 +300,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 18,
   },
-  title: {
-    fontSize: 20,
-    fontFamily: fontFamilies.semibold,
-    color: colors.textPrimary,
-  },
+  title: { color: colors.textPrimary },
   fields: { gap: 16 },
   input: { height: 54 },
 });

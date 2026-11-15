@@ -33,7 +33,9 @@ export function FacilityDoctorScheduleScreen({
   return (
     <div className="w-full max-w-full min-w-0 space-y-6">
       {!onSelectMode ? (
-        <h1 className="text-2xl font-bold">Manage Schedule</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Manage Schedule
+        </h1>
       ) : null}
       <ScheduleAdjustmentNotices
         practiceId={practiceId}

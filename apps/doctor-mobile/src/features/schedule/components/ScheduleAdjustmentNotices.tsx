@@ -34,7 +34,7 @@ export function ScheduleAdjustmentNotices({
           style={{ gap: 8 }}
           accessibilityLiveRegion="polite"
         >
-          <Heading style={{ fontSize: 15 }}>
+          <Heading>
             {scheduleServiceLabel(notice.mode)} schedule needs review
           </Heading>
           <Label muted>

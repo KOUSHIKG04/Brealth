@@ -79,7 +79,7 @@ export function ChatScreen() {
                   onPress={() => submit(text)}
                   style={styles.chip}
                 >
-                  <Copy style={{ color: palette.primary, fontSize: 12 }}>
+                  <Copy variant="caption" style={{ color: palette.primary }}>
                     {text}
                   </Copy>
                 </Pressable>

@@ -106,8 +106,10 @@ export async function loadPortalWalkInSlots(
   const practices = await listMyPractices(client);
   if (!practices.some((p) => p.practice_id === parsed.data && p.verified))
     throw new Error("Practice access required.");
-  const day = await getPortalClinicDay(client, parsed.data, localDay);
-  const payment = await getPortalWalkInPaymentPolicy(client, parsed.data);
+  const [day, payment] = await Promise.all([
+    getPortalClinicDay(client, parsed.data, localDay),
+    getPortalWalkInPaymentPolicy(client, parsed.data),
+  ]);
   return {
     ...day,
     payment,

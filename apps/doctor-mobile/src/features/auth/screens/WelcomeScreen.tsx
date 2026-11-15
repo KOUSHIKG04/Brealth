@@ -1,4 +1,5 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
+import { AppText as Text } from "@startup/mobile-ui";
 import { router } from "expo-router";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { OnboardingShell } from "../components/OnboardingShell";
@@ -9,17 +10,24 @@ export default function WelcomeScreen() {
     <OnboardingShell>
       <View style={styles.body}>
         <View style={styles.brand}>
-          <Text style={styles.name}>
-            Clinzo<Text style={styles.plus}>+</Text>
+          <Text variant="inherit" style={styles.name}>
+            Clinzo
+            <Text variant="pageHeadline" style={styles.plus}>
+              +
+            </Text>
           </Text>
-          <Text style={styles.tagline}>Right Care. Right Time.</Text>
+          <Text variant="body" style={styles.tagline}>
+            Right Care. Right Time.
+          </Text>
         </View>
         <View style={styles.action}>
           <OnboardingButton
             label="GET STARTED"
             onPress={() => router.push("/login")}
           />
-          <Text style={styles.trust}>Care for patients with Clinzo</Text>
+          <Text variant="bodySmall" style={styles.trust}>
+            Care for patients with Clinzo
+          </Text>
         </View>
       </View>
     </OnboardingShell>
@@ -35,19 +43,7 @@ const styles = StyleSheet.create({
     fontSize: 48,
   },
   plus: { fontSize: 30 },
-  tagline: {
-    color: colors.black,
-    fontFamily: fontFamilies.regular,
-    fontStyle: "italic",
-    fontSize: 16,
-    marginTop: 3,
-  },
+  tagline: { color: colors.black, fontStyle: "italic", marginTop: 3 },
   action: { width: "100%", maxWidth: 296, marginTop: 108 },
-  trust: {
-    color: "#6B7280",
-    textAlign: "center",
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-    marginTop: 16,
-  },
+  trust: { color: "#6B7280", textAlign: "center", marginTop: 16 },
 });

@@ -15,7 +15,6 @@ import {
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -31,7 +30,13 @@ import type { MapPlace } from "@startup/contracts";
 import { supabase } from "../../services/supabase";
 import { LocateFixed, MapPin } from "lucide-react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
-import { Button, Header, Input, useToast } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  Button,
+  Header,
+  Input,
+  useToast,
+} from "@startup/mobile-ui";
 import { useClinicLocationDraft } from "../../features/locations/stores/clinicLocationDraft";
 import { resolveDoctorAddress } from "../../features/locations/services/resolveAddress";
 import { getDoctorDeviceLocation } from "../../features/locations/services/deviceLocation";
@@ -423,7 +428,7 @@ export default function ClinicLocationScreen() {
             </View>
           ) : (
             <View style={styles.mapState}>
-              <Text style={styles.stateText}>
+              <Text variant="label" style={styles.stateText}>
                 Map selection is unavailable in this build. You can search for a
                 place or use your current location.
               </Text>
@@ -463,20 +468,31 @@ export default function ClinicLocationScreen() {
                 >
                   <MapPin size={18} color={colors.doctor.primary} />
                   <View style={styles.resultCopy}>
-                    <Text numberOfLines={1} style={styles.resultName}>
+                    <Text
+                      variant="label"
+                      numberOfLines={1}
+                      style={styles.resultName}
+                    >
                       {result.name}
                     </Text>
-                    <Text numberOfLines={2} style={styles.resultAddress}>
+                    <Text
+                      variant="caption"
+                      numberOfLines={2}
+                      style={styles.resultAddress}
+                    >
                       {result.address}
                     </Text>
                   </View>
                 </Pressable>
               ))}
-              <Text style={styles.googleAttribution}>Google Maps</Text>
+              <Text variant="caption" style={styles.googleAttribution}>
+                Google Maps
+              </Text>
               {uniqueMapAttributions(
                 searchResults.flatMap((p) => p.attributions)
               ).map((a) => (
                 <Text
+                  variant="caption"
                   key={mapAttributionKey(a)}
                   style={styles.googleAttribution}
                 >
@@ -504,7 +520,11 @@ export default function ClinicLocationScreen() {
           {point ? (
             <View style={styles.place}>
               <MapPin size={20} color={colors.doctor.primary} />
-              <Text style={styles.placeTitle} numberOfLines={2}>
+              <Text
+                variant="cardHeading"
+                style={styles.placeTitle}
+                numberOfLines={2}
+              >
                 {placeLabel || "Selected map point"}
               </Text>
             </View>
@@ -552,22 +572,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   resultCopy: { flex: 1 },
-  resultName: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 14,
-    color: colors.textPrimary,
-  },
-  resultAddress: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 12,
-    lineHeight: 17,
-    color: colors.textSecondary,
-  },
-  googleAttribution: {
-    fontFamily: fontFamilies.regular,
-    color: "#5E5E5E",
-    fontSize: 12,
-  },
+  resultName: { color: colors.textPrimary },
+  resultAddress: { color: colors.textSecondary },
+  googleAttribution: { color: "#5E5E5E" },
   pin: {
     position: "absolute",
     top: "50%",
@@ -593,11 +600,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 28,
   },
-  stateText: {
-    color: colors.textSecondary,
-    fontFamily: fontFamilies.medium,
-    textAlign: "center",
-  },
+  stateText: { color: colors.textSecondary, textAlign: "center" },
   bottom: {
     position: "absolute",
     bottom: 12,
@@ -628,12 +631,7 @@ const styles = StyleSheet.create({
   },
   place: { flexDirection: "row", alignItems: "center", gap: 10 },
   placeText: { flex: 1 },
-  placeTitle: {
-    flex: 1,
-    color: colors.doctor.text,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 15,
-  },
+  placeTitle: { flex: 1, color: colors.doctor.text },
   coordinates: {
     color: colors.textSecondary,
     fontFamily: fontFamilies.regular,

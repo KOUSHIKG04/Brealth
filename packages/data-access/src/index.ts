@@ -61,6 +61,8 @@ export * from "./facilities/doctors";
 
 export * from "./facilities/association";
 
+export * from "./facilities/team";
+
 export type { Database } from "./generated/database.types";
 
 export * from "./verification/operations";

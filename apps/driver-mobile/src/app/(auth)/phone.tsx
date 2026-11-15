@@ -1,9 +1,9 @@
 import { userErrorMessage } from "@startup/contracts";
 import { Button } from "@startup/mobile-ui";
 import { Input } from "@startup/mobile-ui";
-import { useToastFeedback } from "@startup/mobile-ui";
+import { AppText as Text, useToastFeedback } from "@startup/mobile-ui";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { sendPhoneOtp } from "@startup/data-access";
 import { colors, fontFamilies } from "@startup/design-tokens";
@@ -34,12 +34,18 @@ export default function DriverPhone() {
   return (
     <View style={styles.screen}>
       <Pressable accessibilityRole="button" onPress={() => router.back()}>
-        <Text style={styles.back}>‹ Back</Text>
+        <Text variant="body" style={styles.back}>
+          ‹ Back
+        </Text>
       </Pressable>
       <View style={styles.content}>
-        <Text style={styles.title}>Enter your mobile number</Text>
+        <Text variant="screenTitle" style={styles.title}>
+          Enter your mobile number
+        </Text>
         <View style={styles.number}>
-          <Text style={styles.country}>+91</Text>
+          <Text variant="sectionHeading" style={styles.country}>
+            +91
+          </Text>
           <Input
             variant="unstyled"
             accessibilityLabel="Mobile number"
@@ -63,11 +69,13 @@ export default function DriverPhone() {
           onPress={() => void submit()}
           style={styles.button}
         >
-          <Text style={styles.buttonText}>
+          <Text variant="cardHeading" style={styles.buttonText}>
             {busy ? "Sending…" : "Send OTP"}
           </Text>
         </Button>
-        <Text style={styles.safe}>Your number is safe with us.</Text>
+        <Text variant="bodySmall" style={styles.safe}>
+          Your number is safe with us.
+        </Text>
       </View>
     </View>
   );
@@ -75,14 +83,9 @@ export default function DriverPhone() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "white", padding: 24, paddingTop: 58 },
-  back: { color: colors.driver.primary, fontSize: 17 },
+  back: { color: colors.driver.primary },
   content: { alignItems: "center", paddingTop: 24 },
-  title: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 24,
-    color: colors.driver.text,
-    textAlign: "center",
-  },
+  title: { color: colors.driver.text, textAlign: "center" },
   number: {
     flexDirection: "row",
     alignItems: "center",
@@ -96,7 +99,6 @@ const styles = StyleSheet.create({
   },
   country: {
     paddingHorizontal: 16,
-    fontSize: 19,
     borderRightWidth: 1,
     borderRightColor: "#C7D9D9",
   },

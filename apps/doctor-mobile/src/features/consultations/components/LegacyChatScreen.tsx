@@ -120,7 +120,11 @@ export function LegacyChatScreen() {
             />
           ))}
         </ScrollView>
-        {sendError ? <Label style={ui.error}>{sendError}</Label> : null}
+        {sendError ? (
+          <Label variant="label" style={ui.error}>
+            {sendError}
+          </Label>
+        ) : null}
         <View style={ui.row}>
           <Input
             variant="unstyled"

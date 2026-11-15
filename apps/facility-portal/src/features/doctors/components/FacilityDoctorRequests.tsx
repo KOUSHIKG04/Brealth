@@ -19,10 +19,10 @@ export function FacilityDoctorRequests({
       id="doctor-association-requests"
       className="rounded-[16px] border border-[#e2e8f0] bg-white p-6 shadow-xs"
     >
-      <h2 className="text-[18px] font-bold text-[#0f172a]">
+      <h2 className="text-lg font-bold text-[#0f172a]">
         Doctor association requests
       </h2>
-      <p className="mt-1 text-[13px] text-[#475569]">
+      <p className="mt-1 text-sm text-[#475569]">
         Accept a doctor for your hospital or clinic. They can practise here only
         after Clinzo verifies their credentials.
       </p>

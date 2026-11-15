@@ -5,7 +5,7 @@ import {
 import { uuidSchema, type PortalTransactions } from "@startup/contracts";
 import { TransactionsScreen } from "@/features/transactions";
 import { AppointmentPaymentPanel } from "@/features/appointments";
-import { requireApprovedFacility } from "@/server/auth/facilityAccess";
+import { requirePortalArea } from "@/server/auth/facilityAccess";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function TransactionsPage({
@@ -13,7 +13,7 @@ export default async function TransactionsPage({
 }: {
   searchParams: Promise<{ appointment?: string }>;
 }) {
-  await requireApprovedFacility();
+  await requirePortalArea("transactions");
   const client = await createClient();
   const selected = uuidSchema.safeParse((await searchParams).appointment);
   let initialPage: PortalTransactions | undefined;

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { Text, View } from "react-native";
-import { Loader } from "@startup/mobile-ui";
+import { View } from "react-native";
+import { AppText as Text, Loader } from "@startup/mobile-ui";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -41,7 +41,7 @@ export default function DriverVerification() {
   if (application.error)
     return (
       <View style={{ padding: 24 }}>
-        <Text accessibilityRole="alert">
+        <Text variant="bodySmall" accessibilityRole="alert">
           Could not load verification status.
         </Text>
       </View>

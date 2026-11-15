@@ -1,6 +1,7 @@
 import { userErrorMessage } from "@startup/contracts";
 import { useTimeGreeting } from "@startup/mobile-ui";
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
+import { useFocusEffect } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -12,6 +13,7 @@ import {
 } from "@startup/data-access";
 import { useToastFeedback } from "@startup/mobile-ui";
 import { supabase, useMobileSession } from "../../../services/supabase";
+import { doctorDayBoard } from "../utils/dayBoard";
 
 export function useDoctorHome() {
   const greeting = useTimeGreeting();
@@ -48,23 +50,18 @@ export function useDoctorHome() {
     enabled: Boolean(supabase && profile?.doctor?.id),
   });
 
-  const today = new Date().toDateString();
-  const todayAppointments =
-    appointments.data?.filter(
-      (item) =>
-        new Date(item.starts_at).toDateString() === today &&
-        !["cancelled", "rejected"].includes(item.status)
-    ) ?? [];
-  const waiting = todayAppointments.filter(
-    (item) => item.queue_state === "waiting" || item.queue_state === "called"
-  ).length;
-  const pendingRequests = (appointments.data ?? []).filter(
-    (item) =>
-      item.status === "pending" &&
-      !item.confirmation_payment_pending &&
-      Date.parse(item.request_expires_at ?? item.starts_at) > Date.now() &&
-      Date.parse(item.starts_at) > Date.now()
+  // Keep queue counts current while the dashboard is visible, as the
+  // Appointments screen does; live updates still refresh it immediately.
+  const refetchAppointments = appointments.refetch;
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setInterval(() => void refetchAppointments(), 30000);
+      return () => clearInterval(timer);
+    }, [refetchAppointments])
   );
+  const board = doctorDayBoard(appointments.data ?? []);
+  const todayAppointments = board.ordered;
+  const { waiting, withDoctor, needsReview, pendingRequests } = board;
   const homeAppointments = [
     ...pendingRequests,
     ...todayAppointments.filter(
@@ -104,7 +101,10 @@ export function useDoctorHome() {
     appointments,
     presence,
     todayAppointments,
+    todayCount: board.today,
     waiting,
+    withDoctor,
+    needsReview,
     pendingRequests,
     homeAppointments,
     changePresence,

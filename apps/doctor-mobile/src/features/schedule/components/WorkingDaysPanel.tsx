@@ -13,7 +13,7 @@ export function WorkingDaysPanel({
 }: WorkingDaysPanelProps) {
   return (
     <ScheduleSection title="Working Days">
-      <Label muted style={{ fontSize: 12 }}>
+      <Label variant="caption" muted>
         Select your working days.
       </Label>
       <FadedScrollView
@@ -45,7 +45,6 @@ export function WorkingDaysPanel({
           >
             <Label
               style={{
-                fontSize: 13,
                 color: selectedDays.includes(index)
                   ? palette.white
                   : palette.text,

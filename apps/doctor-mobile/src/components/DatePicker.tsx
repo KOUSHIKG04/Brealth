@@ -28,7 +28,7 @@ export function DatePicker({
   }).format(new Date());
   const firstDay = minDate ?? today;
   const [selectedMonth, setMonth] = useState(
-    value.slice(0, 7) || today.slice(0, 7)
+    () => value.slice(0, 7) || today.slice(0, 7)
   );
   const month =
     selectedMonth < firstDay.slice(0, 7) ? firstDay.slice(0, 7) : selectedMonth;
@@ -56,7 +56,7 @@ export function DatePicker({
   return (
     <View style={{ gap: 12 }}>
       <View style={ui.between}>
-        <Heading style={{ fontSize: 16 }}>{label}</Heading>
+        <Heading>{label}</Heading>
         <Dropdown
           theme="doctor"
           accessibilityLabel={`${label} month`}
@@ -112,18 +112,13 @@ export function DatePicker({
               }}
             >
               <Heading
-                style={{
-                  fontSize: 17,
-                  color: selected ? palette.white : palette.text,
-                }}
+                style={{ color: selected ? palette.white : palette.text }}
               >
                 {i + 1}
               </Heading>
               <Label
-                style={{
-                  fontSize: 11,
-                  color: selected ? palette.white : palette.muted,
-                }}
+                variant="caption"
+                style={{ color: selected ? palette.white : palette.muted }}
               >
                 {new Date(`${day}T12:00:00`).toLocaleDateString("en-US", {
                   weekday: "short",

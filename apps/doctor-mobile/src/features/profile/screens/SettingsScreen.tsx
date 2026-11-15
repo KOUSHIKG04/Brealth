@@ -1,6 +1,6 @@
 import { useDoctorSettings } from "../hooks/useDoctorSettings";
 
-import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { Pressable, StyleSheet, Switch, View } from "react-native";
 import { router } from "expo-router";
 import {
   Bell,
@@ -10,7 +10,12 @@ import {
   Moon,
   ShieldCheck,
 } from "lucide-react-native";
-import { Button, Card, ModalSurface } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  Button,
+  Card,
+  ModalSurface,
+} from "@startup/mobile-ui";
 import { fontFamilies } from "@startup/design-tokens";
 import { DoctorScreen, Heading, Label } from "../../../components/DoctorScreen";
 import { palette, ui } from "../../../components/theme";
@@ -30,8 +35,10 @@ export function SettingsScreen() {
             <Moon size={20} color={palette.muted} />
           </View>
           <View style={styles.copy}>
-            <Text style={styles.title}>Dark Mode</Text>
-            <Text style={styles.subtitle}>
+            <Text variant="label" style={styles.title}>
+              Dark Mode
+            </Text>
+            <Text variant="caption" style={styles.subtitle}>
               System default • Dark mode coming soon
             </Text>
           </View>
@@ -95,6 +102,7 @@ export function SettingsScreen() {
             </View>
             <View style={styles.copy}>
               <Text
+                variant="label"
                 style={[
                   styles.title,
                   title === "Log Out" && { color: palette.danger },
@@ -102,7 +110,9 @@ export function SettingsScreen() {
               >
                 {title}
               </Text>
-              <Text style={styles.subtitle}>{subtitle}</Text>
+              <Text variant="caption" style={styles.subtitle}>
+                {subtitle}
+              </Text>
             </View>
             <ChevronRight size={18} color={palette.muted} />
           </Pressable>
@@ -151,10 +161,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   copy: { flex: 1, gap: 3 },
-  title: { fontFamily: fontFamilies.medium, fontSize: 14, color: palette.text },
-  subtitle: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    color: palette.muted,
-  },
+  title: { color: palette.text },
+  subtitle: { color: palette.muted },
 });

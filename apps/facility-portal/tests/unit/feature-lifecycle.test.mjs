@@ -61,6 +61,7 @@ test("live facility changes stay scoped, coalesce refreshes and unsubscribe", as
         useRouter: () => ({ refresh: () => refreshes++ }),
       },
       "@tanstack/react-query": {
+        onlineManager: { isOnline: () => true },
         useQueryClient: () => ({
           invalidateQueries: async ({ queryKey }) =>
             queries.push(Array.from(queryKey)),
@@ -68,15 +69,13 @@ test("live facility changes stay scoped, coalesce refreshes and unsubscribe", as
       },
       "@/lib/supabase/browser": { createBrowserSupabaseClient: () => "client" },
       "@startup/data-access": {
+        reportError: (error, context) => messages.push({ error, context }),
         subscribeAppChanges(client, input, handlers) {
           assert.equal(client, "client");
           scope = input;
           callbacks = handlers;
           return () => cleanups++;
         },
-      },
-      "@startup/web-ui/components/ui/toast": {
-        toast: { add: (message) => messages.push(message) },
       },
     }
   );
@@ -90,6 +89,7 @@ test("live facility changes stay scoped, coalesce refreshes and unsubscribe", as
   assert.equal(refreshes, 1);
   assert.deepEqual(queries, [
     ["schedule-adjustments"],
+    ["facility-schedule-change-requests"],
     ["facility-practice-schedule"],
     ["facility-recovery-policy"],
     ["appointment-billing"],
@@ -114,9 +114,15 @@ test("live facility changes stay scoped, coalesce refreshes and unsubscribe", as
   callbacks.onChange({ topic: "facility:a", kind: "tracking" });
   await settle();
   assert.equal(queries.length, 0);
-  callbacks.onError();
+  // Brief drops are silent; a sustained outage reports once per outage and
+  // shows the quiet notice until any reconnect clears it.
+  callbacks.onStatus("reconnecting", "facility:a");
+  assert.equal(messages.length, 0);
+  callbacks.onStatus("down", "facility:a");
   callbacks.onError();
   assert.equal(messages.length, 1);
+  assert.equal(messages[0].context.source, "realtime");
+  callbacks.onStatus("live", "facility:a");
   callbacks.onChange({ topic: "facility:a", kind: "beds" });
   cleanup();
   await settle();

@@ -3,8 +3,8 @@ import type { PrescriptionStepProps } from "../types/prescription-step";
 export type { PrescriptionStepProps } from "../types/prescription-step";
 
 import { mealRelations } from "../utils/consultationConstants";
-import { Text, View } from "react-native";
-import { Button, DatePicker, Input } from "@startup/mobile-ui";
+import { View } from "react-native";
+import { AppText as Text, Button, DatePicker, Input } from "@startup/mobile-ui";
 import { meals } from "../utils/consultationConstants";
 
 import { styles } from "./ConsultationForm.styles";
@@ -90,7 +90,7 @@ export function PrescriptionStep({
         disabled={prescription.isPending}
         onChange={setEndsOn}
       />
-      <Text>Daily times</Text>
+      <Text variant="bodySmall">Daily times</Text>
       <View style={styles.wrap}>
         {meals.map((meal) => (
           <Button
@@ -107,7 +107,7 @@ export function PrescriptionStep({
           />
         ))}
       </View>
-      <Text>Relative to meal</Text>
+      <Text variant="bodySmall">Relative to meal</Text>
       <View style={styles.wrap}>
         {mealRelations.map((relation) => (
           <Button
@@ -126,7 +126,7 @@ export function PrescriptionStep({
       />
       {items.map((item, index) => (
         <View key={item.draftId} style={styles.draft}>
-          <Text>
+          <Text variant="bodySmall">
             {index + 1}. {item.medicine_name} {item.strength} ·{" "}
             {item.timings.map((timing) => timing.meal_anchor).join(", ")}
           </Text>

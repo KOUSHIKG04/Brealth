@@ -71,7 +71,7 @@ export function EarningsScreen({ history = false }: EarningsScreenProps) {
         {!history && (
           <>
             <Heading>Provider payments</Heading>
-            <Copy style={ui.caption}>
+            <Copy variant="caption" style={ui.caption}>
               Payments are made to the linked legal recipient, which may be your
               ambulance operator. Amounts below are from the loaded records.
             </Copy>
@@ -166,7 +166,10 @@ export function EarningsScreen({ history = false }: EarningsScreenProps) {
             <View style={[ui.center, { paddingVertical: 24 }]}>
               <Ambulance color={palette.primary} size={36} />
               <Heading>No completed trips yet</Heading>
-              <Copy style={[ui.caption, { textAlign: "center" }]}>
+              <Copy
+                variant="caption"
+                style={[ui.caption, { textAlign: "center" }]}
+              >
                 Completed trips will appear here.
               </Copy>
             </View>
@@ -176,17 +179,19 @@ export function EarningsScreen({ history = false }: EarningsScreenProps) {
             <Card key={t.id}>
               <View style={ui.between}>
                 <Heading>{t.patient_name_snapshot ?? "Patient"}</Heading>
-                <Copy style={ui.metricValue}>—</Copy>
+                <Copy variant="sectionHeading" style={ui.metricValue}>
+                  —
+                </Copy>
               </View>
-              <Copy style={ui.caption}>
+              <Copy variant="caption" style={ui.caption}>
                 {t.pickup_address ?? "Pickup"} →{" "}
                 {t.destination_address ?? "Destination"}
               </Copy>
               <View style={ui.between}>
-                <Copy style={ui.caption}>
+                <Copy variant="caption" style={ui.caption}>
                   {t.public_code} · {t.status.replaceAll("_", " ")}
                 </Copy>
-                <Copy style={ui.caption}>
+                <Copy variant="caption" style={ui.caption}>
                   {new Date(t.completed_at!).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",

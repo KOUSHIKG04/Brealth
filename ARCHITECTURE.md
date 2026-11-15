@@ -37,9 +37,23 @@ its current integration boundaries; the web apps have their own local guidance.
   providers connect NetInfo to React Query's `onlineManager`, pausing queries
   and mutations offline, and show `OfflineBanner`.
 - **Server:** Edge Functions log failures through `supabase/functions/_shared/log.ts`.
+- **Realtime:** `subscribeAppChanges` reports `live`, `reconnecting` or `down` per
+  topic. Drops that recover within 45 s (the last 10 s always measured after any
+  app suspension) are silent and catch up on reconnect. Only a sustained outage
+  while online is reported to monitoring and shows a quiet, self-clearing notice
+  (mobile `OfflineBanner` message, portal status note); no toasts.
 
 Local implementation only: no PostHog project or keys are configured, and
 device, browser and hosted-log behavior is unverified.
+
+## Design tooling
+
+Claude Code design skills (Impeccable, Unslop, Hallmark, Stageshow) are
+installed locally in the gitignored `.claude/skills`; its `README.md` records
+sources, licenses and usage. Each app's
+`PRODUCT.md` records its platform: the mobile apps are `adaptive` and
+`facility-portal` and `company-admin` are `web`. Driver mobile inherits the root
+record. No `DESIGN.md` exists yet; the code is the current visual source of truth.
 
 ## Shared ownership
 

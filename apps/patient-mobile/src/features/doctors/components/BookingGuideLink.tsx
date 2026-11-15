@@ -12,9 +12,17 @@ export function BookingGuideLink({ onPress }: { onPress: () => void }) {
       style={({ pressed }) => [styles.row, pressed && styles.pressed]}
     >
       <View style={styles.helpIcon} accessible={false}>
-        <Text style={styles.questionMark}>?</Text>
+        <Text
+          variant="inherit"
+          maxFontSizeMultiplier={1}
+          style={styles.questionMark}
+        >
+          ?
+        </Text>
       </View>
-      <Text style={styles.label}>Learn how to book an appointment</Text>
+      <Text variant="label" style={styles.label}>
+        Learn how to book an appointment
+      </Text>
       <ChevronRight
         size={24}
         color={colors.patient.textSecondary}
@@ -57,8 +65,5 @@ const styles = StyleSheet.create({
   label: {
     flex: 1,
     color: colors.patient.text,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 14,
-    lineHeight: 19,
   },
 });

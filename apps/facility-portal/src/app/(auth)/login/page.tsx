@@ -1,5 +1,10 @@
-import { LoginScreen } from "@/features/auth";
+import { LoginScreen, safeReturnPath } from "@/features/auth";
 
-export default function LoginPage() {
-  return <LoginScreen />;
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string }>;
+}) {
+  const { next } = await searchParams;
+  return <LoginScreen next={safeReturnPath(next)} />;
 }

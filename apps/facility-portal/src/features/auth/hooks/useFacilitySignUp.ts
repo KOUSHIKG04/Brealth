@@ -4,7 +4,9 @@ import { userErrorMessage } from "@startup/contracts";
 import { useState, type FormEvent } from "react";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
-export function useFacilitySignUp() {
+export function useFacilitySignUp({
+  invited = false,
+}: { invited?: boolean } = {}) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -30,7 +32,9 @@ export function useFacilitySignUp() {
       }
       if (error) throw error;
       setMessage(
-        "Check your email to confirm this account, then sign in and register your facility."
+        invited
+          ? "Check your email to confirm this account, then sign in to accept your invitation."
+          : "Check your email to confirm this account, then sign in and register your facility."
       );
     } catch (cause) {
       setMessage(userErrorMessage(cause, "Sign-up failed."));

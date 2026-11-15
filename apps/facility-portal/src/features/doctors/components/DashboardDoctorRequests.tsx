@@ -26,12 +26,12 @@ export function DashboardDoctorRequests({
   return (
     <div className="space-y-3.5">
       <div className="flex items-center justify-between gap-3">
-        <h4 className="text-[13px] font-semibold text-[#475569]">
+        <h4 className="text-sm font-semibold text-[#475569]">
           Doctor associations ({pending.length})
         </h4>
         <Link
           href="/doctor-management#doctor-association-requests"
-          className="text-[13px] font-semibold text-[#07595d] hover:underline"
+          className="text-sm font-semibold text-[#07595d] hover:underline"
         >
           View all
         </Link>
@@ -43,21 +43,21 @@ export function DashboardDoctorRequests({
         >
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h4 className="text-[14px] font-bold text-[#0f172a]">
+              <h4 className="text-sm font-bold text-[#0f172a]">
                 {request.doctor_name}
               </h4>
-              <p className="mt-1 text-[12px] text-[#475569]">
+              <p className="mt-1 text-xs text-[#475569]">
                 Requested association with {request.facility_name}
               </p>
             </div>
-            <span className="rounded-md bg-[#fff7ed] px-2.5 py-1 text-[11px] font-semibold text-[#9a3412]">
+            <span className="rounded-md bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#9a3412]">
               Pending
             </span>
           </div>
           <div className="mt-3 flex justify-end">
             <Link
               href="/doctor-management#doctor-association-requests"
-              className="text-[13px] font-semibold text-[#07595d] hover:underline"
+              className="text-sm font-semibold text-[#07595d] hover:underline"
             >
               Review request
             </Link>

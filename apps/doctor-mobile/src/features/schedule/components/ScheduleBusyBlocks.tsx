@@ -20,7 +20,7 @@ export function ScheduleBusyBlocks({
   const clashing = new Set(overlaps.map((item) => item.rule_id));
   return (
     <ScheduleSection title="Already scheduled elsewhere">
-      <Label muted style={{ fontSize: 12 }}>
+      <Label variant="caption" muted>
         Choose hours outside these blocks to publish without conflicts.
       </Label>
       {overlaps.length ? (
@@ -42,7 +42,7 @@ export function ScheduleBusyBlocks({
             {scheduleServiceLabel(item.mode)} · {item.facility_name}
             {clashing.has(item.rule_id) ? " · overlaps" : ""}
           </Label>
-          <Label muted style={{ fontSize: 12 }}>
+          <Label variant="caption" muted>
             {scheduleBlockSummary(item)}
             {item.travel_buffer_minutes
               ? ` · ${item.travel_buffer_minutes} min travel buffer`

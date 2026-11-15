@@ -10,7 +10,10 @@ import {
   getMyDoctorProfile,
   listClinicUnavailability,
   listMyPractices,
+  listMyScheduleChangeRequests,
   revokeClinicUnavailability,
+  scheduleChangeRequiresApproval,
+  submitScheduleChangeRequest,
 } from "@startup/data-access";
 import {
   type ClinicUnavailability,
@@ -63,6 +66,26 @@ export function useUnavailableTimeManager() {
       });
     }, [client])
   );
+  // At hospitals and clinics the doctor does not run, time off is approved.
+  const approval = useQuery({
+    queryKey: ["schedule-approval", practiceId],
+    queryFn: () => scheduleChangeRequiresApproval(supabase!, practiceId!),
+    enabled: Boolean(supabase && practiceId),
+  });
+  const approvalRequired = approval.data === true;
+  const changeRequests = useQuery({
+    queryKey: ["schedule-change-requests", practiceId],
+    queryFn: () => listMyScheduleChangeRequests(supabase!, practiceId!),
+    enabled: Boolean(supabase && practiceId && approvalRequired),
+  });
+  const timeOffRequests = (changeRequests.data ?? []).filter(
+    (request) =>
+      request.status === "pending" &&
+      (request.kind === "time_off_add" || request.kind === "time_off_remove")
+  );
+  const facilityName =
+    availablePractices?.find((p) => p.practice_id === practiceId)
+      ?.facility_name ?? "The facility";
   const [scopes, setScopes] = useState<Scope[]>(["all"]);
   function toggleScope(value: Scope) {
     setScopes((current) => {
@@ -90,6 +113,9 @@ export function useUnavailableTimeManager() {
   async function refresh() {
     await Promise.all([
       client.invalidateQueries({
+        queryKey: ["schedule-change-requests", practiceId],
+      }),
+      client.invalidateQueries({
         queryKey: ["doctor-clinic-unavailability", practiceId],
       }),
       client.invalidateQueries({
@@ -107,19 +133,39 @@ export function useUnavailableTimeManager() {
       const endsAt = practiceTimeIso(day, end, zone);
       if (endsAt <= startsAt)
         throw new Error("End time must be after start time.");
-      await addClinicUnavailability(supabase, {
-        practiceId,
-        startsAt,
-        endsAt,
-        reason,
-        serviceModes: scopes,
-      });
+      if (approvalRequired)
+        await submitScheduleChangeRequest(supabase, {
+          practiceId,
+          kind: "time_off_add",
+          payload: {
+            starts_at: startsAt,
+            ends_at: endsAt,
+            reason,
+            service_modes: scopes,
+          },
+        });
+      else
+        await addClinicUnavailability(supabase, {
+          practiceId,
+          startsAt,
+          endsAt,
+          reason,
+          serviceModes: scopes,
+        });
       await refresh();
       setDate("");
       setStart("");
       setEnd("");
       setReason("");
-      showToast({ title: "Unavailable time saved", type: "success" });
+      showToast(
+        approvalRequired
+          ? {
+              title: "Time off sent for approval",
+              message: `${facilityName} will review it. Your slots stay open until it is approved.`,
+              type: "success",
+            }
+          : { title: "Unavailable time saved", type: "success" }
+      );
     } catch (cause) {
       showToast({
         title: "Could not add unavailable time",
@@ -134,10 +180,29 @@ export function useUnavailableTimeManager() {
     if (!supabase || busy) return;
     setPending(`remove-leave:${item.id}`);
     try {
-      await revokeClinicUnavailability(supabase, {
-        exceptionId: item.id,
-        expectedVersion: Number(item.row_version),
-      });
+      if (approvalRequired) {
+        await submitScheduleChangeRequest(supabase, {
+          practiceId: practiceId!,
+          kind: "time_off_remove",
+          // Dates and reason are shown to the approver; the server uses the id.
+          payload: {
+            exception_id: item.id,
+            expected_version: Number(item.row_version),
+            starts_at: item.starts_at,
+            ends_at: item.ends_at,
+            reason: item.reason,
+          },
+        });
+        showToast({
+          title: "Removal sent for approval",
+          message: `${facilityName} will review it.`,
+          type: "success",
+        });
+      } else
+        await revokeClinicUnavailability(supabase, {
+          exceptionId: item.id,
+          expectedVersion: Number(item.row_version),
+        });
       await refresh();
     } catch (cause) {
       showToast({
@@ -191,5 +256,8 @@ export function useUnavailableTimeManager() {
     busy,
     add,
     remove,
+    approvalRequired,
+    timeOffRequests,
+    facilityName,
   };
 }

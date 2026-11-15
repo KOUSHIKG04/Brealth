@@ -34,6 +34,37 @@ and `soft` support tinted component variants. Fixed illustration/SOS/decorative
 colors live in `colors.ui` or the SOS palette rather than arbitrary hex values
 inside components. Caller styles remain the final override.
 
+## Text roles
+
+All mobile text uses `AppText` (usually imported as `AppText as Text`) with a
+`variant` from `mobileTypography` in `@startup/design-tokens`. Patient, Doctor and
+Driver enable the roles with `MobileTypographyProvider` in their root layouts.
+The scale follows Material 3 and Apple HIG at the default text size:
+
+| Role             | Size / line | Weight   | Use                                    |
+| ---------------- | ----------- | -------- | -------------------------------------- |
+| `pageHeadline`   | 28 / 36     | semibold | One per screen, hero or welcome titles |
+| `screenTitle`    | 22 / 28     | semibold | Screen and dialog titles               |
+| `sectionHeading` | 18 / 24     | semibold | Section headings within a screen       |
+| `cardHeading`    | 16 / 22     | semibold | Card, row and list-item titles         |
+| `bodyEmphasis`   | 16 / 24     | medium   | Emphasised reading text, key values    |
+| `body`           | 16 / 24     | regular  | Default reading text                   |
+| `bodySmall`      | 14 / 20     | regular  | Supporting and secondary text          |
+| `label`          | 14 / 20     | medium   | Form labels, links, chips, controls    |
+| `labelSmall`     | 12 / 16     | medium   | Badges, tab labels, compact metadata   |
+| `caption`        | 12 / 16     | regular  | Timestamps, hints, fine print          |
+| `button`         | 16 / 24     | semibold | Button labels                          |
+
+- The role owns font family, size, line height and weight; `style` sets colour,
+  alignment and spacing. Font properties in `style` are ignored while the
+  provider is enabled.
+- Use `variant="inherit"` for nested spans that take the parent's role, and for
+  rare fixed-size glyphs or display numerals that keep their own style.
+- Text grows with the OS text-size setting, capped per role in
+  `utils/appTextConstants.ts` (reading text up to 2×, titles and control text
+  1.4–1.6×). Pass `maxFontSizeMultiplier` only for fixed-size glyphs.
+- Do not add new inline `fontSize` values to app screens; pick the nearest role.
+
 ## Components and ownership
 
 - `primitives/`: Button, Input, TextArea, SearchInput, Chip, Card, Dropdown,

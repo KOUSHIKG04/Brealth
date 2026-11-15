@@ -16,6 +16,8 @@ export { FacilityDoctorScheduleScreen } from "./screens/FacilityDoctorScheduleSc
 
 export { DashboardDoctorRequests } from "./components/DashboardDoctorRequests";
 
+export { ScheduleChangeRequests } from "./components/ScheduleChangeRequests";
+
 export { doctorApi } from "./services/doctorApi";
 
 export type { PracticeSession } from "./types/facilitySchedule";

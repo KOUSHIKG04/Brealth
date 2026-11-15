@@ -9,6 +9,7 @@ import { ConnectionState } from "livekit-client";
 import { UserRound } from "lucide-react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { ConsultationCall } from "@startup/mobile-ui";
+import { endConsultationCall } from "../utils/callControl";
 
 export function LiveConsultationCall({
   appointmentId,
@@ -17,6 +18,7 @@ export function LiveConsultationCall({
   initialChat = false,
   onBack,
   onEnd,
+  onRemoteEnded,
 }: LiveConsultationCallProps) {
   const {
     room,
@@ -28,7 +30,8 @@ export function LiveConsultationCall({
     profile,
     deviceBusy,
     sending,
-    front,
+    frontCamera,
+    notice,
     messages,
     device,
     flip,
@@ -40,6 +43,7 @@ export function LiveConsultationCall({
     initialChat,
     onBack,
     onEnd,
+    onRemoteEnded,
   });
   const fallback = (label: string) => (
     <View style={styles.placeholder}>
@@ -66,7 +70,7 @@ export function LiveConsultationCall({
         local && isTrackReference(local) && isCameraEnabled ? (
           <VideoTrack
             trackRef={local}
-            mirror={front.current}
+            mirror={frontCamera}
             zOrder={1}
             style={StyleSheet.absoluteFill}
           />
@@ -82,6 +86,7 @@ export function LiveConsultationCall({
       sending={sending}
       messages={messages.data}
       identityId={profile?.identity_id}
+      notice={notice}
       onSend={send}
       onCamera={() =>
         void device(
@@ -103,10 +108,8 @@ export function LiveConsultationCall({
       }
       onFlipCamera={() => void flip()}
       onEnd={() => {
-        void room
-          .disconnect()
-          .then(onEnd)
-          .catch(() => onEnd());
+        // Tell the doctor first so their call closes too, then leave.
+        void endConsultationCall(room, "patient").finally(onEnd);
       }}
       onBack={onBack}
     />

@@ -14,7 +14,7 @@ export function ConsultationChargesPanel({
 }: ConsultationChargesPanelProps) {
   return (
     <ScheduleSection title="Consultation Charges">
-      <Label muted style={{ fontSize: 12 }}>
+      <Label variant="caption" muted>
         Set your appointment fee.
       </Label>
       {consultationCharges
@@ -29,7 +29,7 @@ export function ConsultationChargesPanel({
         )
         .map(([title, key]) => (
           <View key={key} style={ui.between}>
-            <Label style={{ fontSize: 13, flex: 1 }}>{title}</Label>
+            <Label style={{ flex: 1 }}>{title}</Label>
             <Label>₹</Label>
             <Input
               accessibilityLabel={`${title} charge in rupees`}

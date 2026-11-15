@@ -22,7 +22,7 @@ export function AcceptPendingAppointmentButton({
         type="button"
         disabled={pending}
         onClick={acceptAppointment}
-        className="flex cursor-pointer items-center gap-1 rounded-md bg-[#22c55e] px-2.5 py-1 text-[11px] font-bold text-white shadow-2xs transition-colors hover:bg-[#16a34a] disabled:opacity-50"
+        className="flex cursor-pointer items-center gap-1 rounded-md bg-[#22c55e] px-2.5 py-1 text-xs font-bold text-white shadow-2xs transition-colors hover:bg-[#16a34a] disabled:opacity-50"
       >
         <Check className="size-3 stroke-[2.5]" />
         Accept

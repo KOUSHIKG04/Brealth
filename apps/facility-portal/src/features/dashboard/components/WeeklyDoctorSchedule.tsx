@@ -18,6 +18,8 @@ import type { DashboardScreenProps } from "../types/dashboardScreen";
 import {
   scheduleDays,
   weeklySchedulePageSize,
+  fullScheduleDateFormatter,
+  weekRangeFormatter,
 } from "../utils/dashboardConstants";
 
 function getDoctorInitials(name: string): string {
@@ -47,18 +49,6 @@ export function WeeklyDoctorSchedule({
   const dates = scheduleDays.map(
     (_, index) => new Date(monday.getTime() + index * 86400000)
   );
-  const weekFormatter = new Intl.DateTimeFormat("en-IN", {
-    timeZone: "UTC",
-    day: "numeric",
-    month: "short",
-  });
-  const fullDateFormatter = new Intl.DateTimeFormat("en-IN", {
-    timeZone: "UTC",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
   const [search, setSearch] = useState("");
   const [pageIndex, setPageIndex] = useState(0);
   const query = search.trim().toLowerCase();
@@ -87,7 +77,7 @@ export function WeeklyDoctorSchedule({
               <h2 className="text-foreground text-lg font-semibold tracking-tight">
                 Doctor weekly schedule
               </h2>
-              <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium">
+              <span className="bg-primary/10 text-primary inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium">
                 Live Roster
               </span>
             </div>
@@ -97,8 +87,8 @@ export function WeeklyDoctorSchedule({
                 className="text-foreground/80 font-medium tabular-nums"
                 suppressHydrationWarning
               >
-                {weekFormatter.format(dates[0])} –{" "}
-                {weekFormatter.format(dates[6])}
+                {weekRangeFormatter.format(dates[0])} –{" "}
+                {weekRangeFormatter.format(dates[6])}
               </span>
               <span aria-hidden="true" className="text-muted-foreground/40">
                 ·
@@ -135,7 +125,7 @@ export function WeeklyDoctorSchedule({
                   setSearch(event.target.value);
                   setPageIndex(0);
                 }}
-                className="border-border/80 bg-muted/20 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:ring-primary/20 h-9 w-full rounded-lg border pr-8 pl-9 text-sm transition-all outline-none focus:ring-2"
+                className="border-border/80 bg-muted/20 text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:bg-background focus:ring-primary/20 h-9 w-full rounded-lg border pr-8 pl-9 text-sm transition-[color,background-color,border-color,box-shadow] outline-none focus:ring-2"
               />
               {search ? (
                 <button
@@ -191,7 +181,7 @@ export function WeeklyDoctorSchedule({
                       <div
                         role="columnheader"
                         key={day}
-                        aria-label={fullDateFormatter.format(date)}
+                        aria-label={fullScheduleDateFormatter.format(date)}
                         aria-current={isToday ? "date" : undefined}
                         className={
                           "relative flex flex-col items-center justify-center gap-1 px-1 py-2.5 text-xs transition-colors " +
@@ -202,7 +192,7 @@ export function WeeklyDoctorSchedule({
                       >
                         <span
                           className={
-                            "text-[11px] font-semibold tracking-wider uppercase " +
+                            "text-xs font-semibold tracking-wider uppercase " +
                             (isToday
                               ? "text-primary"
                               : "text-muted-foreground/80")

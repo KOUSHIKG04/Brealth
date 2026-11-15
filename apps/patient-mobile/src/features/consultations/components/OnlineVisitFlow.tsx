@@ -92,6 +92,22 @@ export function OnlineVisitFlow({
         initialChat={initialChat}
         onBack={onBackPress}
         onEnd={() => void leave()}
+        onRemoteEnded={(reason) => {
+          // One-time event: say why the call closed, then continue as if the
+          // patient had left (completion screen or back to the appointment).
+          showToast({
+            title:
+              reason === "ended"
+                ? `${appointment.doctorName} ended the call`
+                : "Call ended: connection lost",
+            message:
+              reason === "ended"
+                ? undefined
+                : "You can rejoin from your appointment while the visit is open.",
+            type: "info",
+          });
+          void leave();
+        }}
       />
     </LiveKitRoom>
   );

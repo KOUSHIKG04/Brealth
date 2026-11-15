@@ -60,7 +60,7 @@ export default function DashboardScreen({
       <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-foreground text-2xl font-bold tracking-tight">
+            <h1 className="text-foreground text-2xl font-semibold tracking-tight">
               Hospital Dashboard
             </h1>
             <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-400">

@@ -2,6 +2,7 @@ import { expect, test } from "bun:test";
 import {
   preferencesToScheduleSettings,
   rebaseScheduleSettings,
+  scheduleBatchingHints,
   scheduleBusyOverlaps,
   scheduleChangePreviewSchema,
   scheduleErrorMessage,
@@ -132,6 +133,89 @@ test("busy overlaps include travel buffers on both sides", () => {
   expect(
     scheduleBusyOverlaps(busy, [1], [{ start: "14:00", end: "15:15" }], 20)
   ).toHaveLength(1);
+});
+
+const clinicBlock = (
+  start: string,
+  end: string,
+  days = [1]
+): ScheduleBusyBlock => ({
+  rule_id: "5d1b2c3a-4e5f-4a6b-8c7d-9e0f1a2b3c4d",
+  practice_id: "9b0e2c1d-3f4a-4b5c-8d6e-7f8091a2b3c4",
+  facility_name: "City Hospital",
+  mode: "clinic",
+  days,
+  start,
+  end,
+  travel_buffer_minutes: 0,
+  effective_from: "2026-11-20",
+  effective_until: null,
+});
+
+test("batching hints flag online hours between clinic blocks", () => {
+  const clinic = [clinicBlock("09:00", "11:00"), clinicBlock("12:00", "14:00")];
+  const hints = scheduleBatchingHints(
+    "online",
+    [1],
+    [{ start: "11:00", end: "12:00" }],
+    clinic
+  );
+  expect(hints).toHaveLength(1);
+  expect(hints[0]).toContain("between clinic hours");
+  // Before or after clinic, or on another day, is fine.
+  expect(
+    scheduleBatchingHints(
+      "online",
+      [1],
+      [{ start: "14:00", end: "16:00" }],
+      clinic
+    )
+  ).toEqual([]);
+  expect(
+    scheduleBatchingHints(
+      "online",
+      [2],
+      [{ start: "11:00", end: "12:00" }],
+      clinic
+    )
+  ).toEqual([]);
+});
+
+test("batching hints check the published online side when editing clinic", () => {
+  const online = { ...clinicBlock("11:00", "12:00"), mode: "online" as const };
+  expect(
+    scheduleBatchingHints(
+      "clinic",
+      [1],
+      [
+        { start: "09:00", end: "11:00" },
+        { start: "12:00", end: "14:00" },
+      ],
+      [online]
+    )[0]
+  ).toContain("Online 11:00–12:00");
+  expect(
+    scheduleBatchingHints(
+      "home",
+      [1],
+      [{ start: "11:00", end: "12:00" }],
+      [online]
+    )
+  ).toEqual([]);
+});
+
+test("batching hints suggest online blocks of at least an hour", () => {
+  const hints = scheduleBatchingHints(
+    "online",
+    [1],
+    [{ start: "18:00", end: "18:30" }],
+    []
+  );
+  expect(hints).toHaveLength(1);
+  expect(hints[0]).toContain("under an hour");
+  expect(
+    scheduleBatchingHints("online", [1], [{ start: "18:00", end: "19:00" }], [])
+  ).toEqual([]);
 });
 
 test("schedule errors map to safe, specific copy", () => {

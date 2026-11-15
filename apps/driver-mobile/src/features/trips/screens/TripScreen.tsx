@@ -85,7 +85,9 @@ export function TripScreen() {
               {trip.status === "in_progress" ||
               trip.status === "arrived_at_destination" ? (
                 <>
-                  <Copy style={ui.caption}>DESTINATION HOSPITAL</Copy>
+                  <Copy variant="caption" style={ui.caption}>
+                    DESTINATION HOSPITAL
+                  </Copy>
                   <Heading>
                     {trip.destination_address ?? "Destination to be confirmed"}
                   </Heading>
@@ -98,7 +100,7 @@ export function TripScreen() {
                 </View>
                 <View style={ui.grow}>
                   <Heading>{trip.patient_name_snapshot ?? "Patient"}</Heading>
-                  <Copy style={ui.caption}>
+                  <Copy variant="caption" style={ui.caption}>
                     {trip.capability_code ?? "Service pending"}
                   </Copy>
                 </View>
@@ -142,14 +144,18 @@ export function TripScreen() {
               {trip.status !== "in_progress" ? (
                 <>
                   <View style={ui.divider} />
-                  <Copy style={ui.caption}>PICKUP ADDRESS</Copy>
+                  <Copy variant="caption" style={ui.caption}>
+                    PICKUP ADDRESS
+                  </Copy>
                   <Copy>
                     {trip.pickup_address ?? "Pickup location in request"}
                   </Copy>
                   {trip.status === "arrived_at_pickup" ||
                   trip.status === "arrived_at_destination" ? (
                     <>
-                      <Copy style={ui.caption}>HOSPITAL DESTINATION</Copy>
+                      <Copy variant="caption" style={ui.caption}>
+                        HOSPITAL DESTINATION
+                      </Copy>
                       <Copy>
                         {trip.destination_address ??
                           "Destination to be confirmed"}
@@ -202,7 +208,10 @@ export function TripScreen() {
                 onPress={() => void complete(trip)}
               />
             ) : null}
-            <Copy style={[ui.caption, { textAlign: "center" }]}>
+            <Copy
+              variant="caption"
+              style={[ui.caption, { textAlign: "center" }]}
+            >
               Route map is a reference image until live navigation is connected.
             </Copy>
           </>
@@ -213,10 +222,14 @@ export function TripScreen() {
                 <Check size={32} color={palette.primary} />
               </View>
               <Heading>Trip Completed Successfully!</Heading>
-              <Copy style={ui.caption}>Your trip summary is ready</Copy>
+              <Copy variant="caption" style={ui.caption}>
+                Your trip summary is ready
+              </Copy>
             </View>
             <Card>
-              <Copy style={ui.caption}>TRIP SUMMARY RECEIPT</Copy>
+              <Copy variant="caption" style={ui.caption}>
+                TRIP SUMMARY RECEIPT
+              </Copy>
               <View style={ui.divider} />
               {[
                 ["Pickup Location", trip.pickup_address ?? "—"],
@@ -237,7 +250,7 @@ export function TripScreen() {
               ].map(([label, value]) => (
                 <View key={label} style={ui.between}>
                   <Copy style={{ color: palette.muted }}>{label}</Copy>
-                  <Copy style={{ fontWeight: "600" }}>{value}</Copy>
+                  <Copy variant="label">{value}</Copy>
                 </View>
               ))}
             </Card>

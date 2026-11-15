@@ -1,12 +1,15 @@
 "use client";
 
 import type { LiveFacilityUpdatesProps } from "../types/liveFacilityUpdates";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
-import { subscribeAppChanges, type AppLiveChange } from "@startup/data-access";
+import { onlineManager, useQueryClient } from "@tanstack/react-query";
+import {
+  reportError,
+  subscribeAppChanges,
+  type AppLiveChange,
+} from "@startup/data-access";
 import { createBrowserSupabaseClient } from "@/lib/supabase/browser";
-import { toast } from "@startup/web-ui/components/ui/toast";
 
 export function useLiveFacilityUpdates({
   facilityIds,
@@ -16,6 +19,8 @@ export function useLiveFacilityUpdates({
   const router = useRouter();
   const pathname = usePathname();
   const path = useRef(pathname);
+  // True only during a sustained outage; brief drops recover silently.
+  const [outage, setOutage] = useState(false);
   useEffect(() => {
     path.current = pathname;
   }, [pathname]);
@@ -23,8 +28,8 @@ export function useLiveFacilityUpdates({
     if (!scope) return;
     let active = true,
       queued = false,
-      catchUp = false,
-      warned = false;
+      catchUp = false;
+    const outages = new Set<string>();
     const changes = new Map<string, AppLiveChange>();
     const refresh = (change?: AppLiveChange) => {
       if (!active) return;
@@ -52,6 +57,10 @@ export function useLiveFacilityUpdates({
         ) {
           void queryClient.invalidateQueries(
             { queryKey: ["schedule-adjustments"] },
+            { cancelRefetch: false }
+          );
+          void queryClient.invalidateQueries(
+            { queryKey: ["facility-schedule-change-requests"] },
             { cancelRefetch: false }
           );
           void queryClient.invalidateQueries(
@@ -104,25 +113,26 @@ export function useLiveFacilityUpdates({
       { facilityIds: scope.split(":") },
       {
         onChange: refresh,
-        onConnected: () => {
-          warned = false;
-          refresh();
+        onConnected: () => refresh(),
+        onStatus: (status, topic) => {
+          if (status === "down") outages.add(topic);
+          else outages.delete(topic);
+          if (active) setOutage(outages.size > 0);
         },
         onError: () => {
-          if (active && !warned) {
-            warned = true;
-            toast.add({
-              title: "Live updates disconnected",
-              description: "Updates will catch up when the connection returns.",
-              type: "info",
+          // Only lasting outages while the browser is online are worth a report.
+          if (onlineManager.isOnline())
+            reportError(new Error("Live updates unavailable"), {
+              source: "realtime",
             });
-          }
         },
       }
     );
     return () => {
       active = false;
+      setOutage(false);
       cleanup();
     };
   }, [scope, queryClient, router]);
+  return { outage };
 }

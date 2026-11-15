@@ -1,6 +1,8 @@
 import { useAppointments } from "../hooks/useAppointments";
 import { appointmentRecoveryView } from "@startup/contracts";
 import { AppointmentRecoveryActions } from "../components/AppointmentRecoveryActions";
+import { AppointmentRecovery } from "../components/AppointmentRecovery";
+import { bookAgainRoute } from "../utils/bookAgain";
 import { bookingFilters } from "../utils/appointmentsConstants";
 import { AppText as Text } from "@startup/mobile-ui";
 import { useState } from "react";
@@ -30,10 +32,31 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
   const [menuAppointmentId, setMenuAppointmentId] = useState<string | null>(
     null
   );
-  const menuAppointment = visible.find(
-    (item) =>
-      item.id === menuAppointmentId &&
-      appointmentRecoveryView(item, now).canCancel
+  const [recoveryTarget, setRecoveryTarget] = useState<{
+    id: string;
+    intent: "reschedule" | "review";
+  } | null>(null);
+  // Optional actions live behind the card's ⋮ menu. A doctor's rescheduling
+  // request stays on the card itself because the patient must respond.
+  const menuActions = (item: (typeof visible)[number]) => {
+    const view = appointmentRecoveryView(item, now);
+    return {
+      reschedule:
+        view.canReschedule && !item.recovery?.schedule_change?.pending,
+      rescheduleLabel: view.requiresApproval
+        ? "Request reschedule"
+        : "Reschedule",
+      review: view.canReview,
+      bookAgain: view.bookAgain,
+      cancel: view.canCancel,
+    };
+  };
+  const hasMenuActions = (actions: ReturnType<typeof menuActions>) =>
+    actions.reschedule || actions.review || actions.bookAgain || actions.cancel;
+  const menuAppointment = visible.find((item) => item.id === menuAppointmentId);
+  const menu = menuAppointment ? menuActions(menuAppointment) : null;
+  const recoveryAppointment = visible.find(
+    (item) => item.id === recoveryTarget?.id
   );
   return (
     <View style={styles.screen}>
@@ -91,16 +114,22 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
           const recovery = appointmentRecoveryView(item, now);
           const canShowQr = recovery.canShowQr;
           const canJoin = recovery.canJoin;
-          const canCancel = recovery.canCancel;
           const showQueue = recovery.canShowQueue;
+          const actions = menuActions(item);
+          const doctorRequested =
+            recovery.canReschedule &&
+            Boolean(item.recovery?.schedule_change?.pending);
+          const paymentDue =
+            item.confirmation_payment_pending &&
+            item.status === "pending" &&
+            Date.parse(item.request_expires_at ?? "") > now;
           const hasFooter =
+            paymentDue ||
             canShowQr ||
             canJoin ||
             showQueue ||
             item.status === "completed" ||
-            recovery.canReschedule ||
-            recovery.canReview ||
-            recovery.bookAgain ||
+            doctorRequested ||
             Boolean(recovery.message) ||
             Boolean(item.recovery?.request) ||
             Boolean(item.recovery?.rescheduled_to_id);
@@ -110,7 +139,9 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
               appointment={clinicAppointmentCard(item)}
               statusLabel={recovery.patientStatus}
               onMorePress={
-                canCancel ? () => setMenuAppointmentId(item.id) : undefined
+                hasMenuActions(actions)
+                  ? () => setMenuAppointmentId(item.id)
+                  : undefined
               }
               moreDisabled={cancel.isPending}
               moreLoading={cancel.isPending && cancel.variables?.id === item.id}
@@ -123,9 +154,7 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
               footer={
                 hasFooter ? (
                   <View style={styles.cardActions}>
-                    {item.confirmation_payment_pending &&
-                    item.status === "pending" &&
-                    Date.parse(item.request_expires_at ?? "") > now ? (
+                    {paymentDue ? (
                       <Button
                         label="Complete payment"
                         onPress={() =>
@@ -141,6 +170,7 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
                     <AppointmentRecoveryActions
                       item={item}
                       now={now}
+                      placement="card"
                       buttonStyle={styles.actionButton}
                       labelStyle={styles.actionLabel}
                     />
@@ -199,7 +229,7 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
         })}
       </FadedScrollView>
       <ModalSurface
-        visible={Boolean(menuAppointment)}
+        visible={Boolean(menuAppointment && menu && hasMenuActions(menu))}
         onClose={() => setMenuAppointmentId(null)}
         dismissOnBackdrop
       >
@@ -210,20 +240,61 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
           {menuAppointment?.doctor_name}
           {menuAppointment ? ` · ${menuAppointment.public_code.slice(-8)}` : ""}
         </Text>
-        <Button
-          theme="patient"
-          label="Cancel booking"
-          variant="danger"
-          disabled={cancel.isPending || !menuAppointment}
-          loading={
-            cancel.isPending && cancel.variables?.id === menuAppointmentId
-          }
-          onPress={() => {
-            if (!menuAppointment || cancel.isPending) return;
-            setMenuAppointmentId(null);
-            cancel.mutate(menuAppointment);
-          }}
-        />
+        {menu?.reschedule ? (
+          <Button
+            theme="patient"
+            label={menu.rescheduleLabel}
+            variant="outline"
+            onPress={() => {
+              if (!menuAppointment) return;
+              setMenuAppointmentId(null);
+              setRecoveryTarget({
+                id: menuAppointment.id,
+                intent: "reschedule",
+              });
+            }}
+          />
+        ) : null}
+        {menu?.review ? (
+          <Button
+            theme="patient"
+            label="Report a problem"
+            variant="outline"
+            onPress={() => {
+              if (!menuAppointment) return;
+              setMenuAppointmentId(null);
+              setRecoveryTarget({ id: menuAppointment.id, intent: "review" });
+            }}
+          />
+        ) : null}
+        {menu?.bookAgain ? (
+          <Button
+            theme="patient"
+            label="Book again"
+            variant="outline"
+            onPress={() => {
+              if (!menuAppointment) return;
+              setMenuAppointmentId(null);
+              router.push(bookAgainRoute(menuAppointment));
+            }}
+          />
+        ) : null}
+        {menu?.cancel ? (
+          <Button
+            theme="patient"
+            label="Cancel booking"
+            variant="danger"
+            disabled={cancel.isPending || !menuAppointment}
+            loading={
+              cancel.isPending && cancel.variables?.id === menuAppointmentId
+            }
+            onPress={() => {
+              if (!menuAppointment || cancel.isPending) return;
+              setMenuAppointmentId(null);
+              cancel.mutate(menuAppointment);
+            }}
+          />
+        ) : null}
         <Button
           theme="patient"
           label="Close"
@@ -231,6 +302,14 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
           onPress={() => setMenuAppointmentId(null)}
         />
       </ModalSurface>
+      {recoveryAppointment && recoveryTarget ? (
+        <AppointmentRecovery
+          key={`${recoveryAppointment.id}-${recoveryTarget.intent}`}
+          item={recoveryAppointment}
+          intent={recoveryTarget.intent}
+          onClose={() => setRecoveryTarget(null)}
+        />
+      ) : null}
     </View>
   );
 }

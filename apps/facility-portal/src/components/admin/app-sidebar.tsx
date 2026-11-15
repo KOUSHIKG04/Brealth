@@ -35,6 +35,8 @@ export function AppSidebar({
   logoutAction,
   sidebarWidth,
   onSidebarWidthChange,
+  allowedAreas,
+  roleLabel = "Facility admin",
   ...props
 }: React.ComponentProps<typeof Sidebar> & {
   facilityName: string;
@@ -42,7 +44,19 @@ export function AppSidebar({
   logoutAction: React.ReactNode;
   sidebarWidth: number;
   onSidebarWidthChange: (width: number) => void;
+  /** Portal areas the signed-in role may see; all when omitted. */
+  allowedAreas?: readonly string[];
+  roleLabel?: string;
 }) {
+  const allowed = (area: string) =>
+    !allowedAreas || allowedAreas.includes(area);
+  const visibleItems = navItems
+    .filter((item) => allowed(item.area))
+    .map((item) =>
+      item.items
+        ? { ...item, items: item.items.filter((child) => allowed(child.area)) }
+        : item
+    );
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const notificationsActive =
@@ -75,7 +89,7 @@ export function AppSidebar({
         <SidebarGroup>
           <SidebarGroupLabel>Facility</SidebarGroupLabel>
           <SidebarMenu>
-            {navItems.map((item) => {
+            {visibleItems.map((item) => {
               const isActive =
                 item.title === "Notifications"
                   ? notificationsActive
@@ -168,7 +182,7 @@ export function AppSidebar({
 
       <SidebarFooter>
         <NavUser
-          user={{ name: "Facility admin", email: userName }}
+          user={{ name: roleLabel, email: userName }}
           logoutAction={logoutAction}
         />
       </SidebarFooter>

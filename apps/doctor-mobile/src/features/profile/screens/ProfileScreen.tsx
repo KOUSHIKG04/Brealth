@@ -5,7 +5,7 @@ import { rows } from "../utils/profileConstants";
 
 import { StatusBar } from "expo-status-bar";
 
-import { Image, Pressable, Text, View } from "react-native";
+import { Image, Pressable, View } from "react-native";
 import { router } from "expo-router";
 import {
   Building,
@@ -19,6 +19,7 @@ import {
   BadgeCheck,
 } from "lucide-react-native";
 import {
+  AppText as Text,
   Accordion,
   Button,
   Card,
@@ -79,28 +80,30 @@ export function ProfileScreen() {
                     style={styles.photo}
                   />
                 ) : (
-                  <Text style={styles.initials}>{initials}</Text>
+                  <Text variant="screenTitle" style={styles.initials}>
+                    {initials}
+                  </Text>
                 )}
               </View>
             </View>
             <View style={styles.identityCopy}>
-              <Text style={styles.name}>
+              <Text variant="cardHeading" style={styles.name}>
                 {name}
                 {profile.data?.qualification ||
                 profile.data?.qualification_claim ? (
-                  <Text style={styles.qualification}>
+                  <Text variant="caption" style={styles.qualification}>
                     {" "}
                     {profile.data.qualification ||
                       profile.data.qualification_claim}
                   </Text>
                 ) : null}
               </Text>
-              <Text style={styles.specialty}>
+              <Text variant="bodySmall" style={styles.specialty}>
                 {profile.data?.specialties
                   .map((item) => item.name)
                   .join(", ") || "Specialty awaiting review"}
               </Text>
-              <Text style={styles.email} numberOfLines={1}>
+              <Text variant="bodySmall" style={styles.email} numberOfLines={1}>
                 {profile.data?.contact_email || session?.user.email || ""}
               </Text>
             </View>
@@ -225,7 +228,9 @@ export function ProfileScreen() {
                 value={profile.data?.bio || "Not added"}
               />
               <View style={styles.details}>
-                <Text style={styles.contactLabel}>Languages</Text>
+                <Text variant="caption" style={styles.contactLabel}>
+                  Languages
+                </Text>
                 {profile.data?.languages.length ? (
                   <View style={ui.wrap}>
                     {Array.from(
@@ -235,7 +240,7 @@ export function ProfileScreen() {
                     ))}
                   </View>
                 ) : (
-                  <Text style={styles.contactValue}>
+                  <Text variant="label" style={styles.contactValue}>
                     No languages added yet.
                   </Text>
                 )}
@@ -296,7 +301,9 @@ export function ProfileScreen() {
                 <View style={styles.actionIcon}>
                   <Icon size={21} color={palette.white} />
                 </View>
-                <Text style={styles.actionTitle}>{title}</Text>
+                <Text variant="label" style={styles.actionTitle}>
+                  {title}
+                </Text>
                 <ChevronRight
                   size={24}
                   color={palette.muted}

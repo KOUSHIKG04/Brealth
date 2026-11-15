@@ -67,10 +67,10 @@ export function ProfileScreen() {
               profile?.display_name ??
               "Ambulance Partner"}
           </Heading>
-          <Copy style={ui.caption}>
+          <Copy variant="caption" style={ui.caption}>
             {driver.data?.contact_phone ?? "Add your contact details"}
           </Copy>
-          <Copy style={ui.badge}>
+          <Copy variant="labelSmall" style={ui.badge}>
             {profile?.driver?.status === "verified"
               ? "Verified partner"
               : "Verification pending"}
@@ -80,7 +80,7 @@ export function ProfileScreen() {
           <View style={ui.between}>
             <View style={ui.grow}>
               <Heading>Availability</Heading>
-              <Copy style={ui.caption}>
+              <Copy variant="caption" style={ui.caption}>
                 {online ? "Online for emergency requests" : "Currently offline"}
               </Copy>
             </View>
@@ -134,7 +134,9 @@ export function ProfileScreen() {
               <View style={styles.actionIcon}>
                 <Icon color={colors.white} size={21} />
               </View>
-              <Copy style={styles.actionTitle}>{label}</Copy>
+              <Copy variant="label" style={styles.actionTitle}>
+                {label}
+              </Copy>
               <ChevronRight
                 color={palette.muted}
                 size={24}
@@ -158,7 +160,7 @@ export function ProfileScreen() {
           label="Sign out"
           onPress={() => void signOutWithPushCleanup()}
         />
-        <Copy style={[ui.caption, { textAlign: "center" }]}>
+        <Copy variant="caption" style={[ui.caption, { textAlign: "center" }]}>
           CLINZO Rescue · Ambulance Partner
         </Copy>
       </ScrollView>
@@ -203,13 +205,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  actionTitle: {
-    flex: 1,
-    fontFamily: fontFamilies.semibold,
-    fontWeight: "600",
-    fontSize: 14,
-    lineHeight: 19,
-  },
+  actionTitle: { flex: 1 },
   trailingIcon: { transform: [{ translateX: -1 }] },
   pressed: { opacity: 0.75 },
 });

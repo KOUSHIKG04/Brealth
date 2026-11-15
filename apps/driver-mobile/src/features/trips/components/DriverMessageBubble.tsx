@@ -18,7 +18,9 @@ export const DriverMessageBubble = memo(function DriverMessageBubble({
     >
       <Copy>{message.text}</Copy>
       <View style={styles.time}>
-        <Copy style={ui.caption}>{message.time}</Copy>
+        <Copy variant="caption" style={ui.caption}>
+          {message.time}
+        </Copy>
         {!message.incoming && <CheckCheck size={14} color={palette.primary} />}
       </View>
     </View>

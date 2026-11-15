@@ -1,5 +1,54 @@
 # Shared Supabase backend
 
+## Facility teams and roles (local, not deployed)
+
+`20261114120000_facility_team_roles.sql` adds invitation links and team
+management. Ranks: owner 4 > organization_admin 3 (all facilities) >
+facility_admin 2 (one facility) > receptionist 1 (one facility, assigned
+doctors via `member_doctor_scope`); nobody grants a role at or above their
+own and owners are not managed here. `member_invitation` stores only a token
+hash; links last 7 days and only the invited (confirmed) email can accept,
+which creates the identity when needed. RPCs: `list_my_facility_roles`,
+`list_facility_team`, `create_/revoke_/get_/accept_member_invitation`,
+`update_facility_member`. Money: `can_manage_appointment_money` now includes
+receptionists assigned to the doctor (cash, desk checkout, billing and
+transactions for those doctors); `guard_refund_decision_role` keeps refund
+approval, rejection and cash refunds with owners, administrators and the
+doctor. Requires `20261114095000` (`clinzo.current_identity`). Not applied.
+
+## Facility approval of doctor schedule changes (local, not deployed)
+
+`20261114095000_schedule_approval_rules.sql` decides who changes a practice's
+schedule directly: the doctor at their own facility (owner or administrator
+member), and facility owners/administrators. At hospitals and at clinics the
+doctor does not run, the doctor's changes need the facility's approval.
+`20261114100000_schedule_change_requests.sql` adds:
+
+- triggers on `doctor_schedule_preferences`, `schedule_rule` and
+  `schedule_exception` that reject such a doctor's direct changes (`PT403`)
+  from any RPC; previews mark themselves (`clinzo.schedule_preview`) and are allowed;
+- `schedule_change_request` (schedule per service, time off add/remove,
+  recovery policy), with one pending schedule/policy request per service,
+  newer submissions superseding older ones, and `stale` when the practice
+  changed after submission;
+- doctor RPCs `submit_/withdraw_/list_my_schedule_change_request(s)` and
+  `schedule_change_requires_approval`; approver RPCs
+  `list_facility_/preview_/approve_/reject_schedule_change_request`. Approval
+  applies the change through the existing publisher, conflict resolution,
+  time-off and policy RPCs as the approver; decisions notify the doctor
+  (`schedule.request_*` push templates) and are audited;
+- single-doctor clinics (owned by a doctor identity) removed from the join
+  list; pending requests to them are closed with a reason.
+
+`20261114096000_schedule_preview_approval_guard.sql` recreates the preview so
+it marks itself for the guard and stops a doctor trimming an approval-required
+practice from another practice's conflict dialog. None of this is applied or
+verified. `tests/smoke/schedule-change-requests.cli-smoke.sql` (approvals) and
+`tests/smoke/facility-team-roles.cli-smoke.sql` (team roles) are rollback
+suites written without a database run; run them after applying
+`20261114095000` through `20261114120000` to the test project. `20261113103000`
+is already applied on test and stays unchanged.
+
 ## Schedule update smoothness (local, not deployed)
 
 `20261113103000_schedule_update_smoothness.sql` adds no tables. It recreates

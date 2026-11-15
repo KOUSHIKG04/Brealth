@@ -23,7 +23,7 @@ export function ClinicHoursPanel({
   }
   return (
     <ScheduleSection title={title}>
-      <Label muted style={{ fontSize: 12 }}>
+      <Label variant="caption" muted>
         Add separate time blocks for these working days. Leave gaps for online
         consultations, other visits or breaks.
       </Label>

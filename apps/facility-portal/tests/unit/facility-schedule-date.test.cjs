@@ -141,6 +141,17 @@ function scheduleViewFixture(
     "@startup/web-ui/components/ui/input": { Input: "Input" },
     "../utils/facilitySchedule": { facilityDayKey: () => "2026-10-30" },
     "../utils/doctorSchedulesConstants": {
+      shiftDayLabelFormatter: new Intl.DateTimeFormat("en-IN", {
+        timeZone: "UTC",
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      }),
+      shiftWeekdayFormatter: new Intl.DateTimeFormat("en-US", {
+        timeZone: "UTC",
+        weekday: "short",
+      }),
       scheduleTimeLabels: [
         "00:00",
         "04:00",

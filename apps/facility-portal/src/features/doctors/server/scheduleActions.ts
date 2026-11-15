@@ -35,6 +35,10 @@ import {
   addClinicUnavailability,
   revokeClinicUnavailability,
   setAppointmentRecoveryPolicy,
+  listFacilityScheduleChangeRequests,
+  previewScheduleChangeRequest,
+  approveScheduleChangeRequest,
+  rejectScheduleChangeRequest,
 } from "@startup/data-access";
 import { recoveryPolicySchema } from "@startup/contracts";
 import { requireApprovedFacility } from "@/server/auth/facilityAccess";
@@ -131,7 +135,7 @@ function parsePublication(
   const value = doctorScheduleSettingsSchema.parse(settings);
   uuidSchema.parse(practiceId);
   z.enum(["clinic", "online", "home"]).parse(mode);
-  z.number().int().safe().nonnegative().parse(expectedVersion);
+  z.number().int().nonnegative().parse(expectedVersion);
   if (effectiveFrom) z.iso.date().parse(effectiveFrom);
   if (previewToken)
     z.string()
@@ -310,7 +314,7 @@ export async function saveFacilityDoctorSchedule(
 ) {
   try {
     const value = doctorScheduleSettingsSchema.parse(settings);
-    z.number().int().safe().nonnegative().parse(expectedVersion);
+    z.number().int().nonnegative().parse(expectedVersion);
     const { client } = await authorizedPractice(practiceId);
     const saved = await saveMySchedulePreferences(
       client,
@@ -343,5 +347,82 @@ export async function publishFacilityDoctorSlots(
       ok: false as const,
       error: userErrorMessage(error, "Could not publish slots."),
     };
+  }
+}
+
+// Doctor schedule, time-off and policy requests at facilities that approve
+// them. The database checks the approver role on every call.
+export async function loadFacilityScheduleChangeRequests() {
+  try {
+    await requireApprovedFacility();
+    const client = await createClient();
+    return {
+      ok: true as const,
+      requests: await listFacilityScheduleChangeRequests(client, "pending"),
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not load schedule requests.");
+  }
+}
+
+export async function previewFacilityScheduleChangeRequest(requestId: string) {
+  try {
+    uuidSchema.parse(requestId);
+    await requireApprovedFacility();
+    const client = await createClient();
+    const result = await previewScheduleChangeRequest(client, requestId);
+    if (result.status === "stale") revalidatePath("/doctor-schedules");
+    return { ok: true as const, ...result };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not review this request.");
+  }
+}
+
+export async function approveFacilityScheduleChangeRequest(
+  requestId: string,
+  previewToken?: string,
+  decision?: ScheduleConflictDecision
+) {
+  try {
+    uuidSchema.parse(requestId);
+    if (previewToken)
+      z.string()
+        .regex(/^[a-f0-9]{32}$/)
+        .parse(previewToken);
+    await requireApprovedFacility();
+    const client = await createClient();
+    const status = await approveScheduleChangeRequest(client, {
+      requestId,
+      previewToken,
+      decision: decision
+        ? scheduleConflictDecisionSchema.parse(decision)
+        : undefined,
+    });
+    revalidatePath("/doctor-schedules");
+    revalidatePath("/appointments");
+    return { ok: true as const, status };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not approve this request.");
+  }
+}
+
+export async function rejectFacilityScheduleChangeRequest(
+  requestId: string,
+  reason: string
+) {
+  try {
+    uuidSchema.parse(requestId);
+    z.string().trim().min(5).max(500).parse(reason);
+    await requireApprovedFacility();
+    const client = await createClient();
+    await rejectScheduleChangeRequest(client, requestId, reason);
+    revalidatePath("/doctor-schedules");
+    return { ok: true as const };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not decline this request.");
   }
 }

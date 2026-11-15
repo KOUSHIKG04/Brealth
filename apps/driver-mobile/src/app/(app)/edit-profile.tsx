@@ -1,5 +1,5 @@
-import { Text, View } from "react-native";
-import { Loader } from "@startup/mobile-ui";
+import { View } from "react-native";
+import { AppText as Text, Loader } from "@startup/mobile-ui";
 import { router } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Crypto from "expo-crypto";
@@ -42,7 +42,7 @@ export default function EditDriverProfile() {
   if (current.error || !current.data)
     return (
       <View style={{ padding: 24 }}>
-        <Text accessibilityRole="alert">
+        <Text variant="bodySmall" accessibilityRole="alert">
           Could not load your driver profile.
         </Text>
       </View>

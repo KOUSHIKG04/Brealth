@@ -25,6 +25,30 @@ function notificationCopy(delivery: PushDelivery) {
           : "Your verification status changed.",
     };
   }
+  if (delivery.template_key.startsWith("schedule.request_")) {
+    const facility =
+      typeof delivery.safe_parameters.facility_name === "string"
+        ? delivery.safe_parameters.facility_name.slice(0, 120)
+        : "The facility";
+    const reason =
+      typeof delivery.safe_parameters.reason === "string"
+        ? ` Reason: ${delivery.safe_parameters.reason.slice(0, 300)}`
+        : "";
+    if (delivery.template_key === "schedule.request_approved")
+      return {
+        title: "Schedule change approved",
+        body: `${facility} approved your request. It is now live.`,
+      };
+    if (delivery.template_key === "schedule.request_rejected")
+      return {
+        title: "Schedule change declined",
+        body: `${facility} declined your request.${reason}`,
+      };
+    return {
+      title: "Schedule request needs resubmitting",
+      body: `${facility} changed this schedule after your request. Review it and submit again.`,
+    };
+  }
   if (delivery.template_key.startsWith("appointment.")) {
     if (delivery.template_key === "appointment.reschedule_requested") {
       return {
@@ -124,7 +148,9 @@ export default {
                     route: "/appointments",
                     appointmentId: delivery.safe_parameters.appointment_id,
                   }
-                : {}),
+                : delivery.template_key.startsWith("schedule.request_")
+                  ? { route: "/schedule" }
+                  : {}),
             },
             sound: "default",
           }))

@@ -32,6 +32,12 @@ export interface DataTableProps<TData, TValue> {
   manualSorting?: boolean;
   // Row click
   onRowClick?: (row: TData) => void;
+  /**
+   * Optional grouping: a full-width header row is rendered before each row
+   * whose group key differs from the previous row's. Data must already be
+   * sorted by group.
+   */
+  groupBy?: (row: TData) => { key: string; label: React.ReactNode } | undefined;
   // Header / Footer slot
   hidePagination?: boolean;
 }

@@ -4,7 +4,15 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getSupabaseConfig } from "@/lib/supabase/config";
-import { listMyInventoryFacilities } from "@startup/data-access";
+import {
+  listMyFacilityRoles,
+  listMyInventoryFacilities,
+} from "@startup/data-access";
+import {
+  canUsePortalArea,
+  highestFacilityRole,
+  type PortalArea,
+} from "@startup/contracts";
 
 async function readFacilityAccess<T>(read: () => Promise<T>): Promise<T> {
   for (let attempt = 0; attempt < 2; attempt++) {
@@ -86,4 +94,25 @@ export async function requireApprovedFacility() {
   const access = await getFacilityAccess();
   if (!access.approved) redirect("/facility-verification");
   return access;
+}
+
+/**
+ * The signed-in user's facility roles and highest role. Before the team
+ * migration every portal member is an owner, so that is the fallback.
+ */
+export const getFacilityRoles = cache(async () => {
+  const client = await createClient();
+  const roles = await readFacilityAccess(() => listMyFacilityRoles(client));
+  return {
+    roles: roles ?? [],
+    role: roles ? highestFacilityRole(roles) : ("owner" as const),
+  };
+});
+
+/** Redirects roles that cannot use a portal area (receptionists, mostly). */
+export async function requirePortalArea(area: PortalArea) {
+  const access = await requireApprovedFacility();
+  const { role, roles } = await getFacilityRoles();
+  if (!canUsePortalArea(role, area)) redirect("/appointments");
+  return { ...access, role, roles };
 }

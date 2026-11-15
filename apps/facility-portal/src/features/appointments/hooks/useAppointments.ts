@@ -6,7 +6,10 @@ import type { IScannerControls } from "@zxing/browser";
 import { useRouter } from "next/navigation";
 import type { ClinicAppointment } from "@startup/contracts";
 import { appointmentRecoveryView } from "@startup/contracts";
-import { compareAppointmentQueue } from "../utils/appointmentOrder";
+import {
+  appointmentDayOffset,
+  compareAppointmentQueue,
+} from "../utils/appointmentOrder";
 import {
   changePortalAppointment,
   redeemPortalCheckinToken,
@@ -62,16 +65,10 @@ export function useAppointments({
   }, [router]);
 
   const displayedAppointments = React.useMemo(() => {
-    const today = new Date();
-
     return appointments
       .filter((item) => {
-        const start = new Date(item.starts_at);
-        const dayOffset = Math.floor(
-          (Date.UTC(start.getFullYear(), start.getMonth(), start.getDate()) -
-            Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
-            86400000
-        );
+        // The clinic's calendar day, matching the sort and the date groups.
+        const dayOffset = appointmentDayOffset(item, now);
 
         const periodMatch =
           filterPeriod === "All" ||

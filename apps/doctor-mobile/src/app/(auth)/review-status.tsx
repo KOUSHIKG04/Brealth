@@ -1,6 +1,6 @@
-import { Image, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, View } from "react-native";
 import { router, type Href } from "expo-router";
-import { Button, useToastFeedback } from "@startup/mobile-ui";
+import { AppText as Text, Button, useToastFeedback } from "@startup/mobile-ui";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { OnboardingShell } from "../../features/auth/components/OnboardingShell";
 import { useDoctorVerification } from "../../features/auth/hooks/useDoctorVerification";
@@ -26,8 +26,12 @@ export default function ReviewStatus() {
           style={styles.image}
           resizeMode="contain"
         />
-        <Text style={styles.title}>Thank You!</Text>
-        <Text style={styles.description}>{description}</Text>
+        <Text variant="pageHeadline" style={styles.title}>
+          Thank You!
+        </Text>
+        <Text variant="body" style={styles.description}>
+          {description}
+        </Text>
         <View style={styles.actions}>
           <Button
             theme="doctor"
@@ -44,19 +48,11 @@ export default function ReviewStatus() {
 const styles = StyleSheet.create({
   body: { flex: 1, alignItems: "center", paddingTop: 75, paddingBottom: 30 },
   image: { width: "100%", height: 240, maxWidth: 361 },
-  title: {
-    marginTop: 10,
-    fontFamily: fontFamilies.bold,
-    color: "#0A4A47",
-    fontSize: 26,
-  },
+  title: { marginTop: 10, color: "#0A4A47" },
   description: {
     marginTop: 16,
-    fontFamily: fontFamilies.regular,
     color: colors.textPrimary,
-    fontSize: 17,
     textAlign: "center",
-    lineHeight: 27,
   },
   actions: { width: "100%", maxWidth: 296, marginTop: 30 },
 });

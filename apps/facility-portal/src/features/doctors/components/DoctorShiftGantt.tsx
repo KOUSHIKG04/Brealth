@@ -10,6 +10,10 @@ import {
   shiftStyles,
 } from "../utils/doctorSchedulesConstants";
 import { facilityDayKey } from "../utils/facilitySchedule";
+import {
+  shiftDayLabelFormatter,
+  shiftWeekdayFormatter,
+} from "../utils/doctorSchedulesConstants";
 
 function moveDay(day: string, offset: number) {
   return new Date(Date.parse(day + "T12:00:00Z") + offset * 86400000)
@@ -40,13 +44,7 @@ export function DoctorShiftGantt({
   const selectedDate = new Date(selectedDay + "T12:00:00Z");
   const monday = moveDay(selectedDay, -((selectedDate.getUTCDay() + 6) % 7));
   const week = Array.from({ length: 7 }, (_, index) => moveDay(monday, index));
-  const selectedLabel = new Intl.DateTimeFormat("en-IN", {
-    timeZone: "UTC",
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  }).format(selectedDate);
+  const selectedLabel = shiftDayLabelFormatter.format(selectedDate);
   const shiftCount = departments.reduce(
     (sum, department) => sum + department.shifts.length,
     0
@@ -130,10 +128,7 @@ export function DoctorShiftGantt({
           <div className="grid min-w-[308px] grid-cols-7 gap-1.5">
             {week.map((day) => {
               const date = new Date(day + "T12:00:00Z");
-              const name = new Intl.DateTimeFormat("en-US", {
-                timeZone: "UTC",
-                weekday: "short",
-              }).format(date);
+              const name = shiftWeekdayFormatter.format(date);
               return (
                 <button
                   type="button"

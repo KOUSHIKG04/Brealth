@@ -15,18 +15,62 @@ export type AppChangeKind =
 
 export type AppLiveChange = { kind: AppChangeKind; topic: string };
 
+/**
+ * live: subscribed. reconnecting: a drop the client is recovering from on its
+ * own (backgrounding, network switch, token rejoin). down: still disconnected
+ * after the outage delay; only this state deserves user-facing feedback.
+ */
+export type LiveConnectionStatus = "live" | "reconnecting" | "down";
+
 type Listener = {
   onChange: (change: AppLiveChange) => void;
   onConnected?: (topic: string) => void;
+  /** Once per sustained outage; brief drops and reconnects never call it. */
   onError?: () => void;
+  onStatus?: (status: LiveConnectionStatus, topic: string) => void;
 };
 
 type Entry = {
   listeners: Set<Listener>;
   channel?: RealtimeChannel;
   connected: boolean;
-  warned: boolean;
+  status: LiveConnectionStatus;
+  outageTimer?: ReturnType<typeof setTimeout>;
 };
+
+/**
+ * A drop becomes an outage after initial + confirm milliseconds without a
+ * reconnect. The confirm window is scheduled only after the initial timer
+ * fires, so it always runs after any app suspension: resuming from the
+ * background gives Realtime time to rejoin instead of reporting an outage.
+ */
+export const liveOutageDelays = { initial: 35_000, confirm: 10_000 };
+
+function setStatus(entry: Entry, topic: string, status: LiveConnectionStatus) {
+  if (entry.status === status) return;
+  entry.status = status;
+  for (const target of entry.listeners) target.onStatus?.(status, topic);
+  if (status === "down")
+    for (const target of entry.listeners) target.onError?.();
+}
+
+function clearOutage(entry: Entry) {
+  if (entry.outageTimer !== undefined) clearTimeout(entry.outageTimer);
+  entry.outageTimer = undefined;
+}
+
+function markDisconnected(entry: Entry, topic: string) {
+  entry.connected = false;
+  if (entry.status === "live") setStatus(entry, topic, "reconnecting");
+  if (entry.outageTimer !== undefined || entry.status === "down") return;
+  entry.outageTimer = setTimeout(() => {
+    entry.outageTimer = setTimeout(() => {
+      entry.outageTimer = undefined;
+      if (!entry.connected && entry.listeners.size)
+        setStatus(entry, topic, "down");
+    }, liveOutageDelays.confirm);
+  }, liveOutageDelays.initial);
+}
 
 const clients = new WeakMap<AppSupabaseClient, Map<string, Entry>>();
 
@@ -70,7 +114,11 @@ export function subscribeAppChanges(
   for (const topic of topics) {
     let entry = entries.get(topic);
     if (!entry) {
-      entry = { listeners: new Set(), connected: false, warned: false };
+      entry = {
+        listeners: new Set(),
+        connected: false,
+        status: "reconnecting",
+      };
       entries.set(topic, entry);
       const current = entry;
       void Promise.resolve(closingTopics.get(topic))
@@ -88,25 +136,20 @@ export function subscribeAppChanges(
             .subscribe((status) => {
               if (status === "SUBSCRIBED") {
                 current.connected = true;
-                current.warned = false;
+                clearOutage(current);
+                setStatus(current, topic, "live");
                 for (const target of current.listeners)
                   target.onConnected?.(topic);
               } else if (
                 status === "CHANNEL_ERROR" ||
                 status === "TIMED_OUT" ||
                 status === "CLOSED"
-              ) {
-                current.connected = false;
-                if (!current.warned) {
-                  current.warned = true;
-                  for (const target of current.listeners) target.onError?.();
-                }
-              }
+              )
+                // Realtime rejoins by itself; only a lasting drop is an outage.
+                markDisconnected(current, topic);
             });
         })
-        .catch(() => {
-          for (const target of current.listeners) target.onError?.();
-        });
+        .catch(() => markDisconnected(current, topic));
     }
     entry.listeners.add(listener);
     attached.push([topic, entry]);
@@ -114,11 +157,22 @@ export function subscribeAppChanges(
       queueMicrotask(() => {
         if (entry?.listeners.has(listener)) listener.onConnected?.(topic);
       });
+    else if (entry.status === "down") {
+      // A late subscriber learns about an outage that is already in progress.
+      const current = entry;
+      queueMicrotask(() => {
+        if (current.listeners.has(listener)) {
+          listener.onStatus?.("down", topic);
+          listener.onError?.();
+        }
+      });
+    }
   }
   return () => {
     for (const [topic, entry] of attached) {
       entry.listeners.delete(listener);
       if (!entry.listeners.size) {
+        clearOutage(entry);
         entries!.delete(topic);
         if (entry.channel) {
           entry.connected = false;

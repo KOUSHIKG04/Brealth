@@ -30,8 +30,12 @@ export function DriverOfferDialog({
         <View style={styles.request}>
           <View style={styles.alert}>
             <CircleAlert size={20} color="white" />
-            <Copy style={styles.alertText}>New Emergency Request</Copy>
-            <Copy style={styles.counter}>{remaining}s</Copy>
+            <Copy variant="label" style={styles.alertText}>
+              New Emergency Request
+            </Copy>
+            <Copy variant="label" style={styles.counter}>
+              {remaining}s
+            </Copy>
           </View>
           <View style={ui.row}>
             <View style={styles.avatar}>
@@ -42,7 +46,10 @@ export function DriverOfferDialog({
                 ? "SOS request"
                 : "Ambulance request"}
             </Heading>
-            <Copy style={[ui.badge, { marginLeft: "auto", maxWidth: 140 }]}>
+            <Copy
+              variant="labelSmall"
+              style={[ui.badge, { marginLeft: "auto", maxWidth: 140 }]}
+            >
               {offer?.capability_code}
             </Copy>
           </View>
@@ -94,8 +101,10 @@ export function DriverOfferDialog({
 function Address({ label, text }: { label: string; text: string }) {
   return (
     <View style={styles.address}>
-      <Copy style={ui.caption}>{label}</Copy>
-      <Copy style={{ fontWeight: "600" }}>{text}</Copy>
+      <Copy variant="caption" style={ui.caption}>
+        {label}
+      </Copy>
+      <Copy variant="label">{text}</Copy>
     </View>
   );
 }

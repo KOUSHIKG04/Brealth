@@ -1,8 +1,8 @@
 import { useVerifyOtp } from "../hooks/useVerifyOtp";
 import { Button } from "@startup/mobile-ui";
-import { Input } from "@startup/mobile-ui";
+import { AppText as Text, Input } from "@startup/mobile-ui";
 
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { colors, fontFamilies } from "@startup/design-tokens";
 
@@ -23,9 +23,15 @@ export default function VerifyOtpScreen() {
   return (
     <OnboardingShell onBack={() => router.back()}>
       <View style={styles.body}>
-        <Text style={styles.title}>Verify OTP</Text>
-        <Text style={styles.caption}>Enter the 6-digit OTP sent to</Text>
-        <Text style={styles.phone}>{phone}</Text>
+        <Text variant="screenTitle" style={styles.title}>
+          Verify OTP
+        </Text>
+        <Text variant="bodySmall" style={styles.caption}>
+          Enter the 6-digit OTP sent to
+        </Text>
+        <Text variant="label" style={styles.phone}>
+          {phone}
+        </Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Enter six-digit code"
@@ -34,7 +40,9 @@ export default function VerifyOtpScreen() {
         >
           {Array.from({ length: 6 }, (_, index) => (
             <View key={index} style={styles.digit}>
-              <Text style={styles.digitText}>{code[index] ?? ""}</Text>
+              <Text variant="screenTitle" style={styles.digitText}>
+                {code[index] ?? ""}
+              </Text>
             </View>
           ))}
           <Input
@@ -66,7 +74,7 @@ export default function VerifyOtpScreen() {
           onPress={() => void resend()}
           style={styles.resend}
         >
-          <Text style={styles.resendText}>
+          <Text variant="body" style={styles.resendText}>
             Resend OTP{" "}
             {seconds > 0 ? `in 00:${String(seconds).padStart(2, "0")}` : "now"}
           </Text>
@@ -78,19 +86,12 @@ export default function VerifyOtpScreen() {
 
 const styles = StyleSheet.create({
   body: { alignItems: "center", paddingTop: 24 },
-  title: { fontFamily: fontFamilies.medium, fontSize: 24, color: colors.black },
-  caption: {
-    marginTop: 8,
-    fontFamily: fontFamilies.regular,
-    fontStyle: "italic",
-    fontSize: 14,
-  },
+  title: { color: colors.black },
+  caption: { marginTop: 8, fontStyle: "italic" },
   phone: {
     marginTop: 8,
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.medium,
     fontStyle: "italic",
-    fontSize: 14,
   },
   digits: {
     width: "100%",
@@ -108,11 +109,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  digitText: {
-    fontFamily: fontFamilies.medium,
-    fontSize: 23,
-    color: colors.black,
-  },
+  digitText: { color: colors.black },
   hiddenInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
   resend: { marginTop: 25, padding: 8 },
   resendText: {

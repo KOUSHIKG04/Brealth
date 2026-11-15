@@ -8,6 +8,7 @@ import type { DoctorSchedulesScreenProps } from "../types/doctorSchedulesScreen"
 import { DoctorSchedulesStats } from "../components/DoctorSchedulesStats";
 import { DoctorShiftGantt } from "../components/DoctorShiftGantt";
 import { DoctorAssignmentsTable } from "../components/DoctorAssignmentsTable";
+import { ScheduleChangeRequests } from "../components/ScheduleChangeRequests";
 
 export default function DoctorSchedulesScreen({
   doctors,
@@ -58,6 +59,7 @@ export default function DoctorSchedulesScreen({
           </Button>
         </div>
       ) : null}
+      <ScheduleChangeRequests />
       <DoctorSchedulesStats
         scheduleSummary={schedule.summary}
         scheduledShifts={schedule.departments.reduce(

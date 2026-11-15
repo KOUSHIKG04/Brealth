@@ -75,3 +75,17 @@ export const scheduleDays = [
 ] as const;
 
 export const weeklySchedulePageSize = 5;
+
+export const weekRangeFormatter = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "UTC",
+  day: "numeric",
+  month: "short",
+});
+
+export const fullScheduleDateFormatter = new Intl.DateTimeFormat("en-IN", {
+  timeZone: "UTC",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});

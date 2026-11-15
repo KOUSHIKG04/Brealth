@@ -10,6 +10,7 @@ import {
   formatDisplayDate,
   preferencesToScheduleSettings,
   rebaseScheduleSettings,
+  scheduleBatchingHints,
   scheduleBusyOverlaps,
   scheduleErrorCodes,
   scheduleErrorMessage,
@@ -143,6 +144,14 @@ export function useFacilityDoctorSchedule({
     serviceDays,
     timeBlocks,
     mode === "home" ? (draft.homeTravelBufferMinutes ?? 0) : 0
+  );
+  // Advisory only: online hours are kept on time best when batched before
+  // or after clinic hours, in blocks of at least an hour.
+  const batchingHints = scheduleBatchingHints(
+    mode,
+    serviceDays,
+    timeBlocks,
+    busyBlocks.data ?? []
   );
   const update = (changes: Partial<DoctorScheduleSettings>) => {
     setConflict(null);
@@ -376,6 +385,7 @@ export function useFacilityDoctorSchedule({
     conflict,
     busyBlocks: busyBlocks.data ?? [],
     busyOverlaps,
+    batchingHints,
     remoteChanged,
     dismissConflict: () => setConflict(null),
     confirmConflict: (decision?: ScheduleConflictDecision) => {

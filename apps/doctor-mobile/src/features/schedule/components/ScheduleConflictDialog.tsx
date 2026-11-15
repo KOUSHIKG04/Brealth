@@ -137,7 +137,7 @@ export function ScheduleConflictDialog({
       <View style={{ gap: spacing.md }}>
         {preview?.conflicts.map((item) => (
           <View key={item.rule_id} style={{ gap: 6 }}>
-            <Heading style={{ fontSize: 15 }}>
+            <Heading>
               {scheduleServiceLabel(item.mode)} · {item.facility_name}
             </Heading>
             <Label>{scheduleBlockSummary(item)}</Label>

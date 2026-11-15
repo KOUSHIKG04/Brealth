@@ -21,7 +21,10 @@ export const DayPill = memo(function DayPill({
       <Heading style={selected ? styles.dayTextSelected : styles.dayText}>
         {day.day}
       </Heading>
-      <Label style={selected ? styles.dayLabelSelected : styles.dayLabel}>
+      <Label
+        variant="caption"
+        style={selected ? styles.dayLabelSelected : styles.dayLabel}
+      >
         {day.label}
       </Label>
     </Pressable>

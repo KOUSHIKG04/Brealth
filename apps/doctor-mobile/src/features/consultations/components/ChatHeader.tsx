@@ -5,7 +5,7 @@ import { Label } from "../../../components/DoctorScreen";
 
 export const ChatHeader = memo(function ChatHeader({ mode }: ChatHeaderProps) {
   return (
-    <Label muted style={styles.headerLabel}>
+    <Label variant="caption" muted style={styles.headerLabel}>
       TODAY Â· {mode === "home" ? "HOME VISIT" : "ONLINE CONSULTATION"}
     </Label>
   );

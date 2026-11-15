@@ -22,7 +22,7 @@ export function useVerificationStatus() {
   useToastFeedback({ error });
   const [uploading, setUploading] = useState(false);
   const [continuing, setContinuing] = useState(false);
-  const refreshRotation = useRef(new Animated.Value(0)).current;
+  const [refreshRotation] = useState(() => new Animated.Value(0));
   useEffect(() => {
     if (!refreshing) {
       refreshRotation.setValue(0);

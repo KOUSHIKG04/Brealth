@@ -18,7 +18,7 @@ export const ChatMessageItem = memo(function ChatMessageItem({
     >
       <Label style={styles.messageText}>{message.text}</Label>
       <View style={styles.metaRow}>
-        <Label muted style={styles.metaTime}>
+        <Label variant="caption" muted style={styles.metaTime}>
           {message.time}
         </Label>
         {message.sent && <Check size={12} color={palette.muted} />}

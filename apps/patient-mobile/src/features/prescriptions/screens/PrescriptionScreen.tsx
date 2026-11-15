@@ -30,11 +30,12 @@ export function PrescriptionScreen({
 }: PrescriptionScreenProps) {
   const {
     downloaded,
-    setDownloaded,
+    pdfAction,
     clinicalRecords,
     record,
     primaryDiagnosis,
     sharePrescription,
+    downloadPrescription,
     formatDate,
   } = usePrescription({
     appointment,
@@ -220,17 +221,21 @@ export function PrescriptionScreen({
 
             <View style={styles.actionRow}>
               <Button
-                label={downloaded ? "Downloaded" : "Download PDF"}
+                label={downloaded ? "Saved as PDF" : "Download PDF"}
                 leftIcon={<Download color={colors.white} size={18} />}
-                onPress={() => setDownloaded(true)}
+                onPress={() => void downloadPrescription()}
+                loading={pdfAction === "download"}
+                disabled={pdfAction !== null}
                 style={styles.downloadButton}
               />
               <Button
-                label="Share"
+                label="Share PDF"
                 leftIcon={
                   <Share2 color={colors.patient.primaryDark} size={17} />
                 }
-                onPress={sharePrescription}
+                onPress={() => void sharePrescription()}
+                loading={pdfAction === "share"}
+                disabled={pdfAction !== null}
                 style={styles.shareButton}
                 variant="outline"
               />

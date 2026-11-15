@@ -44,7 +44,7 @@ export async function PaymentsScreen({ beforeId }: { beforeId?: string }) {
   if (!data)
     return (
       <section className="mx-auto max-w-3xl space-y-3">
-        <h1 className="text-2xl font-semibold">Payments</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Payments</h1>
         <p>
           Company finance access is required. Ask the account owner to grant
           finance access to your reviewer account.
@@ -56,7 +56,7 @@ export async function PaymentsScreen({ beforeId }: { beforeId?: string }) {
   return (
     <div className="mx-auto max-w-6xl space-y-8">
       <header className="space-y-2">
-        <h1 className="flex items-center gap-2 text-2xl font-semibold">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight">
           <IndianRupee aria-hidden className="size-6" />
           Payments & provider payouts
         </h1>

@@ -1,9 +1,9 @@
 import { userErrorMessage } from "@startup/contracts";
 import { Button } from "@startup/mobile-ui";
 import { Input } from "@startup/mobile-ui";
-import { useToastFeedback } from "@startup/mobile-ui";
+import { AppText as Text, useToastFeedback } from "@startup/mobile-ui";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import * as Crypto from "expo-crypto";
@@ -144,8 +144,10 @@ export default function DriverDocuments() {
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Vehicle & documents</Text>
-        <Text style={styles.headerCopy}>
+        <Text variant="screenTitle" style={styles.headerTitle}>
+          Vehicle & documents
+        </Text>
+        <Text variant="bodySmall" style={styles.headerCopy}>
           Add your ambulance and upload proof for review.
         </Text>
       </View>
@@ -153,7 +155,9 @@ export default function DriverDocuments() {
         contentContainerStyle={styles.body}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.label}>Ambulance category</Text>
+        <Text variant="label" style={styles.label}>
+          Ambulance category
+        </Text>
         <View style={styles.categories}>
           {(["BLS", "ALS", "NICU"] as const).map((code) => (
             <Pressable
@@ -164,6 +168,7 @@ export default function DriverDocuments() {
               style={[styles.category, capability === code && styles.selected]}
             >
               <Text
+                variant="label"
                 style={[
                   styles.categoryText,
                   capability === code && styles.selectedText,
@@ -182,8 +187,10 @@ export default function DriverDocuments() {
         )}
         {field("Vehicle name", label, setLabel, "Name shown to dispatch")}
         {field("Inspection expiry", expiry, setExpiry, "DD-MM-YYYY")}
-        <Text style={styles.section}>Upload documents</Text>
-        <Text style={styles.hint}>
+        <Text variant="sectionHeading" style={styles.section}>
+          Upload documents
+        </Text>
+        <Text variant="bodySmall" style={styles.hint}>
           PDF, JPG or PNG · 10 MB maximum per file
         </Text>
         <View style={styles.grid}>
@@ -200,15 +207,23 @@ export default function DriverDocuments() {
               ) : (
                 <FileUp color={colors.driver.primary} size={24} />
               )}
-              <Text style={styles.tileTitle}>{item.title}</Text>
-              <Text numberOfLines={1} style={styles.tileStatus}>
+              <Text variant="label" style={styles.tileTitle}>
+                {item.title}
+              </Text>
+              <Text
+                variant="caption"
+                numberOfLines={1}
+                style={styles.tileStatus}
+              >
                 {picked[item.kind]?.name ?? "Tap to upload"}
               </Text>
             </Pressable>
           ))}
         </View>
-        <Text style={styles.section}>Review details</Text>
-        <Text style={styles.hint}>
+        <Text variant="sectionHeading" style={styles.section}>
+          Review details
+        </Text>
+        <Text variant="bodySmall" style={styles.hint}>
           Company reviewers use these notes to check that your vehicle is ready
           for its selected category.
         </Text>
@@ -235,7 +250,7 @@ export default function DriverDocuments() {
           onPress={() => void submit()}
           style={[styles.button, busy && { opacity: 0.6 }]}
         >
-          <Text style={styles.buttonText}>
+          <Text variant="cardHeading" style={styles.buttonText}>
             {busy ? "Uploading…" : "Submit for Verification"}
           </Text>
         </Button>
@@ -273,8 +288,8 @@ const styles = StyleSheet.create({
     paddingTop: 56,
     paddingBottom: 29,
   },
-  headerTitle: { color: "white", fontFamily: fontFamilies.bold, fontSize: 25 },
-  headerCopy: { color: "#E3F7F2", marginTop: 6, fontSize: 14 },
+  headerTitle: { color: "white" },
+  headerCopy: { color: "#E3F7F2", marginTop: 6 },
   body: { padding: 22, paddingBottom: 40, gap: 13 },
   label: {
     color: colors.driver.text,
@@ -304,15 +319,10 @@ const styles = StyleSheet.create({
     backgroundColor: "white",
   },
   selected: { backgroundColor: colors.driver.primary },
-  categoryText: { color: colors.driver.primary, fontFamily: fontFamilies.bold },
+  categoryText: { color: colors.driver.primary },
   selectedText: { color: "white" },
-  section: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 19,
-    color: colors.driver.text,
-    marginTop: 12,
-  },
-  hint: { color: colors.driver.textSecondary, fontSize: 13, lineHeight: 19 },
+  section: { color: colors.driver.text, marginTop: 12 },
+  hint: { color: colors.driver.textSecondary },
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 11 },
   tile: {
     width: "48%",
@@ -326,17 +336,8 @@ const styles = StyleSheet.create({
     padding: 10,
     gap: 5,
   },
-  tileTitle: {
-    color: colors.driver.text,
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    textAlign: "center",
-  },
-  tileStatus: {
-    color: colors.driver.textSecondary,
-    fontSize: 11,
-    textAlign: "center",
-  },
+  tileTitle: { color: colors.driver.text, textAlign: "center" },
+  tileStatus: { color: colors.driver.textSecondary, textAlign: "center" },
   error: { color: colors.danger },
   button: {
     minHeight: 54,
