@@ -376,7 +376,7 @@ export function useDoctorBooking({
             confirmed = true;
             showToast({
               title: "Appointment confirmed",
-              message: `Your ${booked.visit_mode === "online" ? "online consultation" : booked.visit_mode === "home" ? "home visit" : "clinic visit"} with ${booked.doctor_name} is confirmed.`,
+              message: `Your ${booked.visit_mode === "online" ? "online consultation" : booked.visit_mode === "home" ? "home visit" : "in-person (OPD) visit"} with ${booked.doctor_name} is confirmed.`,
               type: "success",
             });
           }

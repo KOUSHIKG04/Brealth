@@ -208,7 +208,7 @@ test("Doctor preserves requested and check-in notification copy", () => {
   );
   assert.equal(
     wrapper("patient", [checkIn]).render().props.notifications[0].title,
-    "Clinic check-in confirmed"
+    "Checked in"
   );
 });
 

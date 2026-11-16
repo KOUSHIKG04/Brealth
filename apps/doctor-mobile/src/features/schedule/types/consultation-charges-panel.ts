@@ -1,5 +1,7 @@
 export type ConsultationChargesPanelProps = {
   mode: "clinic" | "online" | "home";
+  /** Label for the in-person fee, e.g. "Hospital Visit". */
+  inPersonTitle?: string;
   draft: {
     onlineFee: string;
     clinicFee: string;

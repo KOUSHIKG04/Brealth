@@ -174,6 +174,8 @@ export const clinicPracticeSchema = z.object({
   practice_id: uuidSchema,
   doctor_name: z.string(),
   facility_name: z.string(),
+  /** Optional until every environment runs the practice_facility_kind migration. */
+  facility_kind: z.enum(["hospital", "clinic"]).optional(),
   verified: z.boolean(),
   is_clinician: z.boolean(),
 });

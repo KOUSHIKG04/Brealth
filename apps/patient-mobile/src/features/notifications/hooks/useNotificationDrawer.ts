@@ -11,6 +11,10 @@ import { type InAppNotification, notificationTime } from "@startup/contracts";
 import { supabase } from "../../../services/supabase";
 
 import type { NotificationDrawerProps } from "../types/notifications";
+import {
+  notificationCopy,
+  notificationPrefixCopy,
+} from "../utils/notificationsConstants";
 
 export function useNotificationDrawer({
   visible,
@@ -49,39 +53,35 @@ export function useNotificationDrawer({
   });
   const notifications: NotificationItem[] = (notificationsQuery.data ?? []).map(
     (item) => {
-      const status = item.safe_parameters.status;
-      const isAppointment = item.template_key.startsWith("appointment.");
-      const isAmbulance = item.template_key.startsWith("ambulance.");
+      const params = item.safe_parameters;
+      const copy = notificationCopy[item.template_key] ??
+        notificationPrefixCopy.find(([prefix]) =>
+          item.template_key.startsWith(prefix)
+        )?.[1] ?? { kind: "general" as const, title: "Update", message: "" };
+      const reason =
+        typeof params.reason === "string" && params.reason.trim()
+          ? params.reason.trim()
+          : null;
+      const status =
+        typeof params.status === "string"
+          ? `Status: ${params.status.replaceAll("_", " ")}`
+          : null;
+      const detail =
+        item.template_key === "appointment.reschedule_requested"
+          ? `Doctor’s reason: ${reason ?? "the doctor’s hours have changed"}. Choose another time or contact the hospital or clinic. Your booking and payment stay in place until a separate decision is made`
+          : copy.message ||
+            reason ||
+            status ||
+            "Open your bookings for details";
+      const bookingCode =
+        typeof params.booking_code === "string" ? params.booking_code : null;
       return {
         id: item.id,
-        title:
-          item.template_key === "appointment.reschedule_requested"
-            ? "Your doctor requested a new appointment time"
-            : item.template_key === "appointment.check_in"
-              ? "Clinic check-in confirmed"
-              : item.template_key === "appointment.requested"
-                ? "Appointment requested"
-                : item.template_key === "appointment.auto_confirmed" ||
-                    item.template_key === "appointment.approve"
-                  ? "Appointment confirmed"
-                  : isAppointment
-                    ? "Appointment update"
-                    : isAmbulance
-                      ? "Ambulance trip update"
-                      : item.template_key.startsWith("verification.")
-                        ? "Verification update"
-                        : "Notification",
-        message:
-          item.template_key === "appointment.reschedule_requested"
-            ? `Doctor’s reason: ${typeof item.safe_parameters.reason === "string" ? item.safe_parameters.reason : "Clinic hours have changed."} Choose another time or contact the clinic. Your booking and payment stay in place until a separate decision is made.`
-            : item.template_key === "appointment.check_in" &&
-                typeof item.safe_parameters.booking_code === "string"
-              ? `Booking ${item.safe_parameters.booking_code} - Patient checked in`
-              : typeof status === "string"
-                ? `Status: ${status.replaceAll("_", " ")}`
-                : "You have a new update.",
+        title: copy.title,
+        message: bookingCode ? `${detail} · Booking ${bookingCode}` : detail,
         time: notificationTime(item.created_at),
-        type: isAppointment ? ("appointment" as const) : ("general" as const),
+        createdAt: item.created_at,
+        type: copy.kind,
         read: item.is_read,
         important: item.is_important,
         emergency: item.is_emergency,

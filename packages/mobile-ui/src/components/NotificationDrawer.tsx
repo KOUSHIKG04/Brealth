@@ -4,7 +4,10 @@ import { ModalSurface } from "../primitives/ModalSurface";
 import { Dropdown } from "../primitives/Dropdown";
 import { Header } from "./Header";
 import { NotificationCard } from "./NotificationCard";
-import type { NotificationDrawerProps, NotificationItem } from "../types/notification";
+import type {
+  NotificationDrawerProps,
+  NotificationItem,
+} from "../types/notification";
 import {
   createNotificationStyles,
   notificationPalette,
@@ -26,8 +29,16 @@ import { Filter } from "lucide-react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
+function notificationSection(item?: NotificationItem) {
+  if (!item?.createdAt) return undefined;
+  return new Date(item.createdAt).toDateString() === new Date().toDateString()
+    ? "Today"
+    : "Earlier";
+}
+
 export type {
   NotificationItem,
+  NotificationKind,
   NotificationDrawerProps,
 } from "../types/notification";
 
@@ -61,16 +72,40 @@ export function NotificationDrawer({
       (filter === "emergency" && item.emergency)
   );
   const renderNotification = useCallback(
-    ({ item }: { item: NotificationItem }) => (
-      <NotificationCard
-        theme={app}
-        item={item}
-        onPress={onNotificationPress}
-        onDelete={onDelete}
-        deleting={deletingId === item.id}
-      />
-    ),
-    [app, onNotificationPress, onDelete, deletingId]
+    ({ item, index }: { item: NotificationItem; index: number }) => {
+      const section = notificationSection(item);
+      const showSection =
+        section !== undefined &&
+        section !== notificationSection(filteredNotifications[index - 1]);
+      return (
+        <>
+          {showSection ? (
+            <Text
+              variant="labelSmall"
+              accessibilityRole="header"
+              style={styles.sectionLabel}
+            >
+              {section}
+            </Text>
+          ) : null}
+          <NotificationCard
+            theme={app}
+            item={item}
+            onPress={onNotificationPress}
+            onDelete={onDelete}
+            deleting={deletingId === item.id}
+          />
+        </>
+      );
+    },
+    [
+      app,
+      filteredNotifications,
+      onNotificationPress,
+      onDelete,
+      deletingId,
+      styles.sectionLabel,
+    ]
   );
   const slideAnimRef = useRef<Animated.Value | null>(null);
   if (slideAnimRef.current === null) {
@@ -249,16 +284,18 @@ export function NotificationDrawer({
             ]}
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={loading ? <Loader theme={app} /> : null}
-            ListEmptyComponent={!loading && !loadFailed ? (
-              <Text
-                variant="body"
-                style={[styles.itemMessage, styles.emptyMessage]}
-              >
-                {filter === "all"
-                  ? "No notifications yet."
-                  : "No notifications match this filter."}
-              </Text>
-            ) : null}
+            ListEmptyComponent={
+              !loading && !loadFailed ? (
+                <Text
+                  variant="body"
+                  style={[styles.itemMessage, styles.emptyMessage]}
+                >
+                  {filter === "all"
+                    ? "No notifications yet."
+                    : "No notifications match this filter."}
+                </Text>
+              ) : null
+            }
           />
         </Animated.View>
       </View>

@@ -12,7 +12,10 @@ import {
   OnlineConsultation,
   ProfileTabs,
 } from "../components/index";
-import { consultationFlows } from "../../appointments/utils/consultationConstants";
+import {
+  consultationFlows,
+  inPersonVisitLabels,
+} from "../../appointments/utils/consultationConstants";
 import {
   formatConsultationFee,
   practiceAvailabilityLabel,
@@ -119,7 +122,7 @@ export function DoctorProfileScreen({
                 selectedConsultationType === "Online"
                   ? undefined
                   : selectedConsultationType === "Clinic Visit"
-                    ? "Clinic Visit"
+                    ? inPersonVisitLabels[practice.facility_kind]
                     : consultationFlows[selectedConsultationType].profileContext
               }
             />

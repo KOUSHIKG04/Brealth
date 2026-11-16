@@ -30,7 +30,7 @@ export function PatientCard({
       ? "Video Consultation"
       : appointment.visit_mode === "home"
         ? "Home Visit"
-        : "In-Clinic Consultation";
+        : "In-person (OPD) Consultation";
   const time = new Date(appointment.starts_at).toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
@@ -89,7 +89,9 @@ export function PatientCard({
                 ? recovery.staffStatus
                 : appointment.visit_mode === "online"
                   ? "ONLINE"
-                  : "CLINIC VISIT"}
+                  : appointment.visit_mode === "home"
+                    ? "HOME VISIT"
+                    : "IN-PERSON (OPD)"}
           </Label>
         </View>
         {!home ? (

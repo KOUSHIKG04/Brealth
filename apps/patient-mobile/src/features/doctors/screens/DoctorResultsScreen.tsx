@@ -23,6 +23,7 @@ import { filterOptions } from "../utils/doctorResultsConstants";
 
 import type { DoctorResultsScreenProps } from "../types/doctor-results";
 import { formatConsultationFee } from "../utils/doctorDisplay";
+import { inPersonVisitLabels } from "../../appointments/utils/consultationConstants";
 
 export function DoctorResultsScreen({
   symptom,
@@ -186,7 +187,7 @@ export function DoctorResultsScreen({
                   ? "Video consultation"
                   : consultationType === "Home Visit"
                     ? "Home Visit"
-                    : "Clinic Visit"
+                    : inPersonVisitLabels[practice.facility_kind]
               }
               onPress={() =>
                 router.push({

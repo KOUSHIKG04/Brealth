@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   autoBookingHelpItems,
   durationPresets,
+  workplaceCopy,
 } from "../utils/scheduleConstants";
 import { appointmentsPerDay } from "../utils/scheduleOverview";
 import { ClinicCapacityBar } from "../components/ClinicCapacityBar";
@@ -88,6 +89,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     confirmConflict,
     startFromSuggestedDate,
   } = useScheduleEditor({ mode });
+  const workplace = workplaceCopy[selectedPractice?.facility_kind ?? "unknown"];
   const duration =
     mode === "online"
       ? draft.onlineDuration
@@ -153,7 +155,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     <DoctorScreen
       title={
         mode === "clinic"
-          ? "Clinic Schedule"
+          ? workplace.schedule
           : mode === "online"
             ? "Online Schedule"
             : "Home Visit Schedule"
@@ -166,7 +168,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         <Loader theme="doctor" style={{ minHeight: 40 }} />
       ) : null}
       {practices.data && practices.data.length > 1 ? (
-        <ScheduleSection title="Your clinic">
+        <ScheduleSection title="Your workplace">
           <Label variant="caption" muted>
             Select your clinic or hospital.
           </Label>
@@ -248,7 +250,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       <ClinicHoursPanel
         title={
           mode === "clinic"
-            ? "Clinic hours"
+            ? workplace.hours
             : mode === "online"
               ? "Online hours"
               : "Home-visit hours"
@@ -343,7 +345,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         {mode === "clinic" ? (
           <View style={{ gap: 12 }}>
             <NumberSetting
-              title="Total clinic capacity"
+              title={workplace.capacity}
               stepper
               disabled={busy}
               value={draft.walkIn}
@@ -401,7 +403,12 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       </ScheduleSection>
 
       {/* 3. Fee */}
-      <ConsultationChargesPanel mode={mode} draft={draft} onUpdate={update} />
+      <ConsultationChargesPanel
+        mode={mode}
+        inPersonTitle={workplace.visitFee}
+        draft={draft}
+        onUpdate={update}
+      />
 
       <Accordion
         title="More options"

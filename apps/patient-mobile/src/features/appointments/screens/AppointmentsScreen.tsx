@@ -3,7 +3,10 @@ import { appointmentRecoveryView } from "@startup/contracts";
 import { AppointmentRecoveryActions } from "../components/AppointmentRecoveryActions";
 import { AppointmentRecovery } from "../components/AppointmentRecovery";
 import { bookAgainRoute } from "../utils/bookAgain";
-import { bookingFilters } from "../utils/appointmentsConstants";
+import {
+  bookingFilterLabels,
+  bookingFilters,
+} from "../utils/appointmentsConstants";
 import { AppText as Text } from "@startup/mobile-ui";
 import { useState } from "react";
 
@@ -78,7 +81,7 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
               variant="radio"
               selected={filter === option}
               theme="patient"
-              label={option}
+              label={bookingFilterLabels[option]}
               onPress={() => setFilter(option)}
             />
           ))}

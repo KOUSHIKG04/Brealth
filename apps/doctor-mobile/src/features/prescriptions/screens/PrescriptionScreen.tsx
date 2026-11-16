@@ -101,7 +101,7 @@ export function PrescriptionScreen() {
           }
         />
         <Label variant="caption" muted>
-          Clinic visit · Date format: DD-MM-YYYY
+          In-person (OPD) visit · Date format: DD-MM-YYYY
         </Label>
       </Panel>
       {!readOnly && !editing && (

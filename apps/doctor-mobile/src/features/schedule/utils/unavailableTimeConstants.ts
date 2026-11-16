@@ -1,6 +1,6 @@
 export const filters = [
   ["all", "All"],
   ["online", "Online"],
-  ["clinic", "Clinic"],
+  ["clinic", "In-person (OPD)"],
   ["home", "Home"],
 ] as const;

@@ -50,7 +50,7 @@ export function ScheduleOptionsScreen() {
         <Loader theme="doctor" style={{ minHeight: 40 }} />
       ) : null}
       {availablePractices && availablePractices.length > 1 ? (
-        <ScheduleSection title="Your clinic">
+        <ScheduleSection title="Your workplace">
           <View style={ui.wrap}>
             {availablePractices.map((p) => (
               <Choice

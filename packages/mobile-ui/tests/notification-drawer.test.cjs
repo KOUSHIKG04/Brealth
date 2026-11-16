@@ -103,6 +103,11 @@ function harness({
               primary: "patient-primary",
               primaryDark: "patient-dark",
               accent: "patient-accent",
+              sos: {
+                primary: "sos-primary",
+                dark: "sos-dark",
+                surface: "sos-surface",
+              },
             },
             doctor: {
               primary: "doctor-primary",
@@ -172,8 +177,11 @@ function harness({
     list.push(element);
     if (element.type === "FlatList") {
       nodes(element.props.ListHeaderComponent, list);
-      if (!element.props.data.length) nodes(element.props.ListEmptyComponent, list);
-      element.props.data.forEach((item, index) => nodes(element.props.renderItem({ item, index }), list));
+      if (!element.props.data.length)
+        nodes(element.props.ListEmptyComponent, list);
+      element.props.data.forEach((item, index) =>
+        nodes(element.props.renderItem({ item, index }), list)
+      );
     }
     nodes(element.props?.children, list);
     return list;
@@ -217,8 +225,10 @@ test("opening mounts before animation; native show and completed close report pr
   assert.equal(opening.animations.length, 0);
   const shown = harness();
   const changes = [];
-  shown.nodes(shown.render({ onVisibilityChange: (value) => changes.push(value) }))
-    .find((node) => node.type === "ModalSurface").props.onShow();
+  shown
+    .nodes(shown.render({ onVisibilityChange: (value) => changes.push(value) }))
+    .find((node) => node.type === "ModalSurface")
+    .props.onShow();
   assert.deepEqual(changes, [true]);
   const closing = harness({ visible: false, mounted: true });
   closing.render({ onVisibilityChange: (value) => changes.push(value) });
@@ -344,7 +354,7 @@ test("drawer inherits or overrides its theme and preserves each app's icon color
     assert.equal(nodes.find((n) => n.type === "Dropdown").props.theme, theme);
     assert.equal(
       nodes.find((n) => n.type === "Bell").props.color,
-      theme === "driver" ? "driver-primary" : `${theme}-accent`
+      `${theme}-dark`
     );
     assert.equal(
       h.nodes(h.render({ theme: "doctor" })).find((n) => n.type === "Header")

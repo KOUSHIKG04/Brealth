@@ -45,7 +45,7 @@ export function useSchedulePractice() {
         )
         .catch(() =>
           showToast({
-            title: "Could not remember clinic",
+            title: "Could not remember workplace",
             type: "error",
           })
         );

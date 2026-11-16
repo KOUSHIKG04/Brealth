@@ -47,7 +47,7 @@ export function ClinicVisitFlow({
       {appointments.isLoading && live ? <Loader theme="patient" /> : null}
       {appointments.isError ? (
         <Card theme="patient" gap={12}>
-          <Text>Could not load your clinic visit.</Text>
+          <Text>Could not load your in-person (OPD) visit.</Text>
           <Button label="Retry" onPress={() => void appointments.refetch()} />
         </Card>
       ) : null}
@@ -91,7 +91,7 @@ export function ClinicVisitFlow({
                         ? "Generate a fresh QR code before checking in."
                         : item.status === "confirmed" &&
                             item.queue_state === "awaiting_arrival"
-                          ? "Your QR code is available on the day of your clinic appointment."
+                          ? "Your QR code is available on the day of your in-person (OPD) appointment."
                           : `Appointment ${item.status.replaceAll("_", " ")}. Check-in is unavailable.`}
             </Text>
             {canShowQr ? (

@@ -7,8 +7,8 @@ import { IconLabel, Skeleton, useToastFeedback } from "@startup/mobile-ui";
 import { homeActions } from "../utils/homeActionsConstants";
 import AmbulanceBanner from "./AmbulanceBanner";
 import UpcomingAppointmentCard from "../../appointments/components/UpcomingAppointmentCard";
-import PopularServices from "./PopularServices";
 import { formatDisplayDate } from "@startup/contracts";
+import PopularServices from "./PopularServices";
 
 export function HomeFeedContent({
   upcoming,
@@ -53,21 +53,19 @@ export function HomeFeedContent({
         />
       </View>
 
-      {upcoming?.length ? (
-        upcoming.map((appointment, index) => (
-          <UpcomingAppointmentCard
-            key={appointment.id}
-            showHeader={index === 0}
-            doctorName={appointment.doctor_name}
-            specialization={appointment.facility_name}
-            date={formatDisplayDate(appointment.starts_at)}
-            time={new Date(appointment.starts_at).toLocaleTimeString([], {
-              hour: "numeric",
-              minute: "2-digit",
-            })}
-            onCardPress={() => router.push("/appointments" as Href)}
-          />
-        ))
+      {/* Home shows only the next appointment; View all opens the full list. */}
+      {upcoming?.[0] ? (
+        <UpcomingAppointmentCard
+          key={upcoming[0].id}
+          doctorName={upcoming[0].doctor_name}
+          specialization={upcoming[0].facility_name}
+          date={formatDisplayDate(upcoming[0].starts_at)}
+          time={new Date(upcoming[0].starts_at).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          })}
+          onCardPress={() => router.push("/appointments" as Href)}
+        />
       ) : isLoading ? (
         <Skeleton theme="patient" height={118} radius={16} />
       ) : null}
@@ -91,7 +89,7 @@ const styles = StyleSheet.create({
     color: colors.patient.text,
   },
   ambulanceBanner: {
-    marginTop: 10,
+    marginTop: 12,
     alignItems: "center",
   },
 });

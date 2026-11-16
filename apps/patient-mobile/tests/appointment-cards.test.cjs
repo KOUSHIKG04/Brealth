@@ -58,6 +58,10 @@ function renderCard(appointment, onPress, options = {}) {
       },
       "expo-router": { router: { push: (value) => routes.push(value) } },
       "expo-linear-gradient": { LinearGradient: "Gradient" },
+      "../utils/consultationConstants": load(
+        "../src/features/appointments/utils/consultationConstants.ts",
+        {}
+      ),
       "lucide-react-native": {
         CalendarDays: "Calendar",
         ChevronRight: "Chevron",
@@ -288,7 +292,10 @@ function bookingsView(rows, { cancelPending = false } = {}) {
         ModalSurface: "Modal",
       },
       "../components/BookingCard": { __esModule: true, default: "BookingCard" },
-      "../utils/appointmentsConstants": { bookingFilters: ["All"] },
+      "../utils/appointmentsConstants": {
+        bookingFilters: ["All"],
+        bookingFilterLabels: { All: "All" },
+      },
       "../utils/clinicVisit": {
         canOpenClinicVisit: (item) =>
           item.visit_mode === "clinic" &&

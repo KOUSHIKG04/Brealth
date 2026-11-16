@@ -1,4 +1,5 @@
 import type { BookingCardProps } from "../types/booking-card";
+import { consultationTypeLabels } from "../utils/consultationConstants";
 import { AppText as Text, Card, useToast } from "@startup/mobile-ui";
 import {
   Pressable,
@@ -93,7 +94,7 @@ export default function BookingCard({
       />
       <Pressable
         accessibilityRole={onPress ? "button" : undefined}
-        accessibilityLabel={`${appointment.consultationType} with ${appointment.doctorName} on ${appointment.date} at ${appointment.time}${onPress ? ". Open appointment details" : ""}`}
+        accessibilityLabel={`${consultationTypeLabels[appointment.consultationType]} with ${appointment.doctorName} on ${appointment.date} at ${appointment.time}${onPress ? ". Open appointment details" : ""}`}
         accessibilityActions={[
           { name: "doctorProfile", label: doctorLinkLabel },
           ...(onMorePress
@@ -145,7 +146,7 @@ export default function BookingCard({
               </Pressable>
               <Text variant="inherit" style={styles.specialty}>
                 {appointment.specialty ? `${appointment.specialty} · ` : ""}
-                {appointment.consultationType}
+                {consultationTypeLabels[appointment.consultationType]}
               </Text>
             </View>
           </View>

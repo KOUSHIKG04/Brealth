@@ -105,7 +105,7 @@ export function usePatientQrScan() {
     setError(
       match
         ? ""
-        : "No patient with this ID is in your accessible clinic appointments."
+        : "No patient with this ID is in your accessible in-person (OPD) appointments."
     );
     setMessage("");
   }

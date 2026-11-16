@@ -12,6 +12,7 @@ export {
   NotificationDrawer,
   type NotificationDrawerProps,
   type NotificationItem,
+  type NotificationKind,
 } from "./NotificationDrawer";
 
 export { ErrorFallback, type ErrorFallbackProps } from "./ErrorFallback";

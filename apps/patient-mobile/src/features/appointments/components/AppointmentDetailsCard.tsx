@@ -1,4 +1,5 @@
 import type { AppointmentDetailsCardProps } from "../types/appointments";
+import { consultationTypeLabels } from "../utils/consultationConstants";
 import { AppText as Text } from "@startup/mobile-ui";
 import type { ReactNode } from "react";
 import { StyleSheet, View } from "react-native";
@@ -37,7 +38,7 @@ export default function AppointmentDetailsCard({
         label="Consultation Type"
         value={
           <Chip
-            label={appointment.consultationType}
+            label={consultationTypeLabels[appointment.consultationType]}
             style={styles.typeChip}
             labelStyle={styles.typeChipLabel}
           />

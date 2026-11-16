@@ -3,57 +3,37 @@ import { Loader } from "../primitives/Loader";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { Animated, PanResponder, Pressable, View } from "react-native";
 import {
+  Ambulance,
   Bell,
-  Trash2,
   CalendarCheck,
   FileText,
   Pill,
+  ShieldCheck,
   Stethoscope,
+  Trash2,
+  Wallet,
 } from "lucide-react-native";
 import { colors } from "@startup/design-tokens";
 import type {
   NotificationItem,
   NotificationCardProps,
 } from "../types/notification";
+import { notificationKindLabels } from "../utils/notificationConstants";
 import {
   createNotificationStyles,
   notificationPalette,
 } from "./NotificationDrawer.styles";
 
-function renderIcon(
-  type: NotificationItem["type"],
-  palette: ReturnType<typeof notificationPalette>
-) {
-  switch (type) {
-    case "appointment":
-      return (
-        <CalendarCheck color={palette.primary} size={22} strokeWidth={2} />
-      );
-    case "prescription":
-      return <FileText color="#0284C7" size={22} strokeWidth={2} />;
-    case "medicine":
-      return <Pill color="#D97706" size={22} strokeWidth={2} />;
-    case "queue":
-      return <Stethoscope color={palette.dark} size={22} strokeWidth={2} />;
-    default:
-      return <Bell color={palette.accent} size={22} strokeWidth={2} />;
-  }
-}
-
-function getIconBg(type: NotificationItem["type"]) {
-  switch (type) {
-    case "appointment":
-      return "#E6F7F5";
-    case "prescription":
-      return "#E0F2FE";
-    case "medicine":
-      return "#FEF3C7";
-    case "queue":
-      return "#E6F5F4";
-    default:
-      return "#E8F8F4";
-  }
-}
+const kindIcons = {
+  appointment: CalendarCheck,
+  queue: Stethoscope,
+  payment: Wallet,
+  prescription: FileText,
+  medicine: Pill,
+  ambulance: Ambulance,
+  account: ShieldCheck,
+  general: Bell,
+} satisfies Record<NotificationItem["type"], unknown>;
 
 export function NotificationCard({
   item,
@@ -64,6 +44,7 @@ export function NotificationCard({
 }: NotificationCardProps) {
   const styles = useMemo(() => createNotificationStyles(theme), [theme]);
   const palette = notificationPalette(theme);
+  const KindIcon = kindIcons[item.type] ?? Bell;
   const translateX = useRef(new Animated.Value(0)).current;
   const [open, setOpen] = useState(false);
   const openRef = useRef(false);
@@ -138,7 +119,6 @@ export function NotificationCard({
           }}
           style={({ pressed }) => [
             styles.notificationCard,
-            !item.read ? styles.unreadCard : undefined,
             pressed ? styles.cardPressed : undefined,
           ]}
           onPress={handlePress}
@@ -146,29 +126,56 @@ export function NotificationCard({
           <View
             style={[
               styles.iconContainer,
-              { backgroundColor: getIconBg(item.type) },
+              item.emergency ? styles.emergencyIconContainer : undefined,
             ]}
           >
-            {renderIcon(item.type, palette)}
+            <KindIcon
+              size={20}
+              strokeWidth={1.75}
+              color={item.emergency ? colors.patient.sos.dark : palette.dark}
+            />
           </View>
 
           <View style={styles.textContainer}>
             <View style={styles.cardHeaderRow}>
               <Text
-                variant="cardHeading"
+                variant="labelSmall"
                 numberOfLines={1}
                 style={[
-                  styles.itemTitle,
-                  !item.read ? styles.unreadItemTitle : undefined,
+                  styles.itemKind,
+                  item.emergency ? styles.emergencyKind : undefined,
                 ]}
               >
-                {item.title}
+                {item.emergency
+                  ? "Emergency"
+                  : notificationKindLabels[item.type]}
               </Text>
               <Text variant="caption" style={styles.itemTime}>
                 {item.time}
               </Text>
+              {!item.read ? (
+                <View
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                  style={styles.unreadDot}
+                />
+              ) : null}
             </View>
-            <Text variant="body" style={styles.itemMessage}>
+            <Text
+              variant="cardHeading"
+              numberOfLines={2}
+              style={[
+                styles.itemTitle,
+                item.read ? styles.readItemTitle : undefined,
+              ]}
+            >
+              {item.title}
+            </Text>
+            <Text
+              variant="bodySmall"
+              numberOfLines={3}
+              style={styles.itemMessage}
+            >
               {item.message}
             </Text>
           </View>

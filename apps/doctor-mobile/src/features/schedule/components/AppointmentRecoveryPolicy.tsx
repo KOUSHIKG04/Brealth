@@ -133,7 +133,7 @@ export function AppointmentRecoveryPolicy({
       ) : null}
       <ClockDurationPicker
         theme="doctor"
-        label="Clinic arrival grace"
+        label="In-person (OPD) arrival grace"
         value={draft.clinicGraceMinutes}
         min={0}
         max={180}

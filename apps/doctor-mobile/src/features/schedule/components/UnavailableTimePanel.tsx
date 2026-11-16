@@ -83,7 +83,7 @@ export function UnavailableTimePanel({
                     ? "Home visits"
                     : item.service_mode === "online"
                       ? "Online"
-                      : "Clinic"}{" "}
+                      : "In-person (OPD)"}{" "}
                 · {item.reason}
               </Label>
             </View>

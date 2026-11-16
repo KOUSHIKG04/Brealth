@@ -272,7 +272,13 @@ function scheduleView({
       useQuery: ({ queryKey }) => ({
         data:
           queryKey[0] === "my-practices"
-            ? [{ practice_id: "practice", verified: true }]
+            ? [
+                {
+                  practice_id: "practice",
+                  facility_kind: "clinic",
+                  verified: true,
+                },
+              ]
             : queryKey[0] === "my-doctor-schedule"
               ? prefs
               : queryKey[0] === "my-doctor-profile"

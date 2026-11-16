@@ -9,6 +9,7 @@ import { ui } from "../../../components/theme";
 
 export function ConsultationChargesPanel({
   mode,
+  inPersonTitle,
   draft,
   onUpdate,
 }: ConsultationChargesPanelProps) {
@@ -26,6 +27,15 @@ export function ConsultationChargesPanel({
               : mode === "online"
                 ? "onlineFee"
                 : "homeFee")
+        )
+        .map(
+          ([defaultTitle, key]) =>
+            [
+              key === "clinicFee"
+                ? (inPersonTitle ?? defaultTitle)
+                : defaultTitle,
+              key,
+            ] as const
         )
         .map(([title, key]) => (
           <View key={key} style={ui.between}>

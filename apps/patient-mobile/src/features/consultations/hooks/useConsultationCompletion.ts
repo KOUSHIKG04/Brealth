@@ -40,7 +40,7 @@ export function useConsultationCompletion({
   const isClinic = appointment.consultationType === "Clinic Visit";
   const isHome = appointment.consultationType === "Home Visit";
   const completionCopy = isClinic
-    ? "Your Clinic Visit is Completed"
+    ? "Your In-person (OPD) Visit is Completed"
     : isHome
       ? "Your Home Visit is Completed"
       : "Your online consultation is Completed";

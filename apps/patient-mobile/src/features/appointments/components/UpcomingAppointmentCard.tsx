@@ -34,7 +34,7 @@ import { router } from "expo-router";
 export default function UpcomingAppointmentCard({
   showHeader = true,
   doctorName,
-  specialization = "Clinic visit",
+  specialization = "In-person (OPD)",
   date,
   time,
   onCardPress,

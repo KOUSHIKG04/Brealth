@@ -160,7 +160,7 @@ export function HomeScreen() {
         !appointments.isError ? (
           <View style={styles.emptyAppointments}>
             <Label muted style={styles.emptyText}>
-              No clinic appointments today.
+              No in-person (OPD) appointments today.
             </Label>
           </View>
         ) : null}

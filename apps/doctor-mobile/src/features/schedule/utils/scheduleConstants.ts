@@ -23,8 +23,8 @@ export const cutoffMinuteOptions = Array.from({ length: 60 }, (_, value) => ({
 export const scheduleServices = [
   {
     mode: "clinic",
-    short: "Clinic",
-    title: "Clinic appointments",
+    short: "In-person (OPD)",
+    title: "In-person (OPD) appointments",
     description: "Visits at your clinic or hospital",
   },
   {
@@ -51,7 +51,7 @@ export const draftChangeLabels = {
   onlineDuration: "appointment length",
   homeDuration: "appointment length",
   online: "daily booking limit",
-  walkIn: "clinic capacity",
+  walkIn: "total capacity",
   clinicApp: "app booking quota",
   clinicWalkin: "walk-in quota",
   autoAccept: "auto-accept",
@@ -59,9 +59,32 @@ export const draftChangeLabels = {
   homeVisits: "home visits",
   homeRadius: "travel radius",
   homeTravelBuffer: "travel buffer",
-  clinicFee: "clinic fee",
+  clinicFee: "in-person fee",
   onlineFee: "online fee",
   homeFee: "home-visit fee",
+} as const;
+
+// In-person wording for the selected workplace. `unknown` covers practices
+// returned before the practice_facility_kind migration is deployed.
+export const workplaceCopy = {
+  hospital: {
+    schedule: "Hospital Schedule",
+    hours: "Hospital hours",
+    visitFee: "Hospital Visit",
+    capacity: "Total hospital capacity",
+  },
+  clinic: {
+    schedule: "Clinic Schedule",
+    hours: "Clinic hours",
+    visitFee: "Clinic Visit",
+    capacity: "Total clinic capacity",
+  },
+  unknown: {
+    schedule: "In-person (OPD) Schedule",
+    hours: "OPD hours",
+    visitFee: "In-person (OPD) Visit",
+    capacity: "Total OPD capacity",
+  },
 } as const;
 
 export const durationPresets = {

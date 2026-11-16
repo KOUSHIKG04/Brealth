@@ -8,6 +8,7 @@ import { appointmentRecoveryView } from "@startup/contracts";
 import { AppointmentRecoveryActions } from "../../../features/appointments/components/AppointmentRecoveryActions";
 import { AppointmentPayment } from "../../../features/appointments/components/AppointmentPayment";
 import { useAppointmentClock } from "../../../features/appointments/hooks/useAppointmentClock";
+import { consultationTypeLabels } from "../../../features/appointments/utils/consultationConstants";
 import { colors, fontFamilies, spacing } from "@startup/design-tokens";
 import {
   Card,
@@ -84,7 +85,10 @@ export default function AppointmentDetailsRoute() {
                 Appointment details
               </Text>
               <Detail label="Appointment ID" value={card.id.slice(-8)} />
-              <Detail label="Visit type" value={card.consultationType} />
+              <Detail
+                label="Visit type"
+                value={consultationTypeLabels[card.consultationType]}
+              />
               <Detail
                 label="Date and time"
                 value={`${card.date}, ${card.time}`}

@@ -1,15 +1,21 @@
-import { type ReactNode } from "react";
-
 export type SosEmergencyScreenProps = {
-  onCancel: () => void;
-  onCallEmergency: () => void;
+  onClose: () => void;
 };
 
-export type DarkButtonProps = {
-  label: string;
-  icon: ReactNode;
-  onPress: () => void;
-  compact?: boolean;
+export type SosPhase = "starting" | "locating" | "sending" | "failed" | "live";
+
+export type ActivatingSosProps = {
+  phase: SosPhase;
+  failure: string;
+  onCancel: () => void;
+  onRetry: () => void;
+};
+
+export type SosCancelSheetProps = {
+  visible: boolean;
+  cancelling: boolean;
+  onConfirm: () => void;
+  onDismiss: () => void;
 };
 
 export type HotlineProps = {

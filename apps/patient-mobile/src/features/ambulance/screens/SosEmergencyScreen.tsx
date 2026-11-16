@@ -1,30 +1,49 @@
 import { useSosEmergency } from "../hooks/useSosEmergency";
 import { Hotline } from "../components/Hotline";
-import { DarkButton } from "../components/DarkButton";
 import { ActivatingSos } from "../components/ActivatingSos";
+import { SosCancelSheet } from "../components/SosCancelSheet";
 import { s } from "../components/SosEmergency.styles";
-import { AppText as Text } from "@startup/mobile-ui";
-
-import { Linking, Pressable, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import {
-  AlertCircle,
-  ArrowRight,
-  Phone,
-  PhoneCall,
-  Siren,
-  Star,
-} from "lucide-react-native";
-import { colors } from "@startup/design-tokens";
-import { SafeAreaView } from "@startup/mobile-ui";
+import { sosTripStatusLabels } from "../utils/sosConstants";
+import { sosDistanceLabel } from "../utils/sosDistance";
 import type { SosEmergencyScreenProps } from "../types/sos";
+import { AppText as Text, Loader, SafeAreaView } from "@startup/mobile-ui";
 
-export function SosEmergencyScreen({
-  onCancel,
-  onCallEmergency,
-}: SosEmergencyScreenProps) {
-  const { dispatched } = useSosEmergency({ onCancel, onCallEmergency });
-  if (!dispatched) return <ActivatingSos />;
+import { Linking, Pressable, ScrollView, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { ArrowRight, ChevronDown, Siren, Star } from "lucide-react-native";
+import { colors } from "@startup/design-tokens";
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+export function SosEmergencyScreen({ onClose }: SosEmergencyScreenProps) {
+  const sos = useSosEmergency({ onClose });
+  if (sos.phase !== "live")
+    return (
+      <ActivatingSos
+        phase={sos.phase}
+        failure={sos.failure}
+        onCancel={sos.leaveBeforeSending}
+        onRetry={sos.retry}
+      />
+    );
+
+  const booking = sos.booking;
+  const status = booking?.status;
+  const assigned = status === "assigned";
+  const searching =
+    !booking || status === "searching" || status === "awaiting_location";
+  const ended =
+    status === "fulfilled" ||
+    status === "cancelled" ||
+    status === "unfulfilled";
+  const driverDistance = sosDistanceLabel(sos.tracking, sos.pickup);
 
   return (
     <LinearGradient colors={["#3A0508", "#1A0102"]} style={s.screen}>
@@ -33,111 +52,165 @@ export function SosEmergencyScreen({
           <View style={s.sirenCircle}>
             <Siren color="#FFFFFF" size={20} />
           </View>
-          <Text variant="screenTitle" style={s.headerTitle}>
+          <Text
+            variant="cardHeading"
+            accessibilityRole="header"
+            style={s.headerTitle}
+          >
             EMERGENCY ACTIVATED
           </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Minimise. Your SOS stays active"
+            hitSlop={8}
+            onPress={onClose}
+            style={({ pressed }) => [s.minimise, pressed && s.pressed]}
+          >
+            <ChevronDown color="rgba(255,255,255,0.8)" size={22} />
+          </Pressable>
         </View>
 
-        <View style={s.content}>
-          <View style={s.driverCard}>
-            <View style={s.driverTop}>
-              <View style={s.avatar}>
-                <Text variant="body" style={s.avatarText}>
-                  SN
+        <ScrollView contentContainerStyle={s.content}>
+          <View style={s.driverCard} accessibilityLiveRegion="polite">
+            {assigned && booking?.driver_name ? (
+              <>
+                <View style={s.driverTop}>
+                  <View style={s.avatar}>
+                    <Text variant="label" style={s.avatarText}>
+                      {initials(booking.driver_name)}
+                    </Text>
+                  </View>
+                  <View style={s.driverCopy}>
+                    <Text variant="bodyEmphasis" style={s.driverName}>
+                      {booking.driver_name}
+                    </Text>
+                    <Text variant="caption" style={s.driverMeta}>
+                      {[
+                        booking.vehicle_registration,
+                        `${booking.capability_code.toUpperCase()} ambulance`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  </View>
+                  {booking.driver_rating ? (
+                    <View style={s.rating}>
+                      <Star color={colors.patient.sos.dark} size={12} />
+                      <Text variant="labelSmall" style={s.ratingText}>
+                        {booking.driver_rating}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={s.etaRow}>
+                  <View style={s.etaCell}>
+                    <Text variant="caption" style={s.caption}>
+                      Distance
+                    </Text>
+                    <Text variant="bodyEmphasis" style={s.etaValue}>
+                      {driverDistance ?? "Locating driver"}
+                    </Text>
+                  </View>
+                  <View style={[s.etaCell, s.etaCellEnd]}>
+                    <Text variant="caption" style={s.caption}>
+                      Status
+                    </Text>
+                    <Text variant="bodyEmphasis" style={s.etaValue}>
+                      {booking.trip_status
+                        ? sosTripStatusLabels[booking.trip_status]
+                        : "Driver accepted"}
+                    </Text>
+                  </View>
+                </View>
+                {sos.pinVisible ? (
+                  <View style={s.pinBox}>
+                    <Text variant="caption" style={s.caption}>
+                      Completion PIN · give it to the driver at the hospital
+                    </Text>
+                    {sos.verificationPin.data ? (
+                      <Text
+                        variant="pageHeadline"
+                        accessibilityLabel="Four-digit completion PIN"
+                        style={s.pin}
+                      >
+                        {sos.verificationPin.data}
+                      </Text>
+                    ) : (
+                      <Loader theme="patient" style={{ minHeight: 36 }} />
+                    )}
+                  </View>
+                ) : null}
+              </>
+            ) : ended ? (
+              <View style={s.searchingRow}>
+                <Text variant="bodyEmphasis" style={s.driverName}>
+                  {status === "unfulfilled"
+                    ? "No ambulance accepted"
+                    : status === "fulfilled"
+                      ? "Trip completed"
+                      : "SOS cancelled"}
+                </Text>
+                <Text variant="bodySmall" style={s.driverMeta}>
+                  {status === "unfulfilled"
+                    ? "No nearby ambulance took this request. Call 108 now."
+                    : `Request ${booking?.public_code ?? ""}`}
                 </Text>
               </View>
-              <View style={s.driverCopy}>
-                <Text variant="body" style={s.driverName}>
-                  Suresh Nair
+            ) : (
+              <View style={s.searchingRow}>
+                <Loader theme="patient" style={{ minHeight: 32 }} />
+                <Text variant="bodyEmphasis" style={s.driverName}>
+                  Finding the nearest ambulance
                 </Text>
-                <Text variant="body" style={s.driverMeta}>
-                  KA02CD5678 • BLS Ambulance
-                </Text>
-              </View>
-              <View style={s.rating}>
-                <Star color="#C0392B" size={11} />
-                <Text variant="bodyEmphasis" style={s.ratingText}>
-                  4.6
+                <Text variant="bodySmall" style={s.driverMeta}>
+                  Your location went to ambulances near you. The first driver to
+                  accept is assigned.
                 </Text>
               </View>
-            </View>
-            <View style={s.etaRow}>
-              <View>
-                <Text variant="caption" style={s.caption}>
-                  DISTANCE
-                </Text>
-                <Text variant="bodyEmphasis" style={s.etaValue}>
-                  5.1 km
-                </Text>
-              </View>
-              <View>
-                <Text variant="caption" style={s.caption}>
-                  TRAFFIC ETA
-                </Text>
-                <Text variant="bodyEmphasis" style={s.etaValue}>
-                  8 mins away
-                </Text>
-              </View>
-            </View>
-            <DarkButton
-              label="Call Driver Now"
-              icon={<PhoneCall color="#FFFFFF" size={16} />}
-              onPress={() => void Linking.openURL("tel:9876543210")}
-            />
+            )}
           </View>
 
-          <View style={s.hospitalCard}>
-            <Text variant="caption" style={s.hospitalBadge}>
-              NEAREST EMERGENCY HOSPITAL
-            </Text>
-            <Text variant="cardHeading" style={s.hospitalName}>
-              Victoria Government Hospital
-            </Text>
-            <Text variant="body" style={s.hospitalAddress}>
-              Ft. Victoria Rd, Shivajinagar, Bengaluru
-            </Text>
-            <View style={s.capacityPill}>
-              <View style={s.openDot} />
-              <Text variant="body" style={s.capacityStrong}>
-                ER Open
+          {sos.hospital ? (
+            <View style={s.hospitalCard}>
+              <Text variant="labelSmall" style={s.hospitalBadge}>
+                Nearest registered hospital
               </Text>
-              <Text variant="body" style={s.capacityText}>
-                •
+              <Text variant="cardHeading" style={s.hospitalName}>
+                {sos.hospital.name}
               </Text>
-              <Text variant="body" style={s.capacityText}>
-                200 Beds Available
+              <Text variant="bodySmall" style={s.hospitalAddress}>
+                {sos.hospital.address}
               </Text>
-              <Text variant="body" style={s.capacityText}>
-                •
-              </Text>
-              <Text variant="body" style={s.capacityText}>
-                ~1 min drive
-              </Text>
-            </View>
-            <View style={s.hospitalActions}>
-              <DarkButton
-                compact
-                label="Call ER"
-                icon={<Phone color="#FFFFFF" size={14} />}
-                onPress={() => void Linking.openURL("tel:108")}
-              />
-              <Pressable style={s.directionButton}>
-                <ArrowRight color="#0C2434" size={15} />
-                <Text variant="body" style={s.directionText}>
+              {sos.hospital.distance_meters !== null ? (
+                <View style={s.capacityPill}>
+                  <View style={s.openDot} />
+                  <Text variant="labelSmall" style={s.capacityStrong}>
+                    {(sos.hospital.distance_meters / 1000).toFixed(1)} km from
+                    you
+                  </Text>
+                </View>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Directions to ${sos.hospital.name}`}
+                onPress={() =>
+                  void Linking.openURL(
+                    `https://www.google.com/maps/dir/?api=1&destination=${sos.hospital!.latitude},${sos.hospital!.longitude}`
+                  )
+                }
+                style={({ pressed }) => [
+                  s.directionButton,
+                  pressed && s.pressed,
+                ]}
+              >
+                <ArrowRight color="#0C2434" size={16} />
+                <Text variant="button" style={s.directionText}>
                   Directions
                 </Text>
               </Pressable>
             </View>
-          </View>
-
-          <View style={s.warning}>
-            <AlertCircle color="rgba(255,255,255,0.63)" size={16} />
-            <Text variant="body" style={s.warningText}>
-              Emergency contacts will be updated automatically with your active
-              status, location details and hospital route map.
-            </Text>
-          </View>
-        </View>
+          ) : null}
+        </ScrollView>
 
         <View style={s.bottomActions}>
           <View style={s.hotlineRow}>
@@ -145,18 +218,46 @@ export function SosEmergencyScreen({
               label="Ambulance 108"
               onPress={() => void Linking.openURL("tel:108")}
             />
-            <Hotline label="Emergency 112" onPress={onCallEmergency} />
+            <Hotline
+              label="Emergency 112"
+              onPress={() => void Linking.openURL("tel:112")}
+            />
           </View>
-          <Pressable
-            onPress={onCancel}
-            style={({ pressed }) => [s.cancel, pressed && s.pressed]}
-          >
-            <Text variant="body" style={s.cancelText}>
-              I'm Safe — Cancel Emergency
+          {searching && booking ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => sos.setCancelOpen(true)}
+              style={({ pressed }) => [s.cancel, pressed && s.pressed]}
+            >
+              <Text variant="button" style={s.cancelText}>
+                I’m safe — Cancel emergency
+              </Text>
+            </Pressable>
+          ) : assigned ? (
+            <Text variant="caption" style={s.footnote}>
+              A driver has accepted your SOS, so it can’t be cancelled in the
+              app. Call 108 if your situation changes.
             </Text>
-          </Pressable>
+          ) : ended ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onClose}
+              style={({ pressed }) => [s.cancel, pressed && s.pressed]}
+            >
+              <Text variant="button" style={s.cancelText}>
+                Close
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </SafeAreaView>
+
+      <SosCancelSheet
+        visible={sos.cancelOpen}
+        cancelling={sos.cancel.isPending}
+        onConfirm={() => sos.cancel.mutate()}
+        onDismiss={() => sos.setCancelOpen(false)}
+      />
     </LinearGradient>
   );
 }

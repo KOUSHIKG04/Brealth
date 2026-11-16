@@ -133,7 +133,7 @@ export function useScheduleEditor({
   });
   useToastFeedback({
     error: practices.isError
-      ? "Could not load your clinics."
+      ? "Could not load your workplaces."
       : saved.isError
         ? "Could not load saved schedule."
         : "",

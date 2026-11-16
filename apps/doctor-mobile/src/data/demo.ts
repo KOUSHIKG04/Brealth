@@ -137,7 +137,7 @@ export const initialSchedule: Schedule = {
 };
 
 export const modeLabels = {
-  clinic: "Clinic",
+  clinic: "In-person (OPD)",
   online: "Online",
   home: "Home Visit",
 };

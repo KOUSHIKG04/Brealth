@@ -1,6 +1,6 @@
 import { router } from "expo-router";
-import { LiveSosScreen } from "../../../features/ambulance/screens/LiveSosScreen";
+import { SosEmergencyScreen } from "../../../features/ambulance/screens/SosEmergencyScreen";
 
 export default function SosRoute() {
-  return <LiveSosScreen onBackPress={() => router.back()} />;
+  return <SosEmergencyScreen onClose={() => router.back()} />;
 }

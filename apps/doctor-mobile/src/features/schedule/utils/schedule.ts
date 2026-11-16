@@ -57,12 +57,12 @@ export function scheduleError(
       (schedule.clinicApp ?? schedule.walkIn) + (schedule.clinicWalkin ?? 0) >
         schedule.walkIn)
   )
-    return "App and walk-in quotas must fit within total clinic capacity.";
+    return "App and walk-in quotas must fit within total capacity.";
   if (
     !Number.isFinite(minutes(schedule.start)) ||
     !Number.isFinite(endMinutes(schedule.end))
   )
-    return "Enter clinic hours as HH:MM; the end may be 24:00.";
+    return "Enter hours as HH:MM; the end may be 24:00.";
   if (endMinutes(schedule.end) <= minutes(schedule.start))
     return "End time must be after start time.";
   const duration =

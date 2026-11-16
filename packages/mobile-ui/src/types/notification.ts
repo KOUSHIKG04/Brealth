@@ -1,14 +1,26 @@
 import type { AppTheme } from "../utils/appTheme";
 
+export type NotificationKind =
+  | "appointment"
+  | "queue"
+  | "payment"
+  | "prescription"
+  | "medicine"
+  | "ambulance"
+  | "account"
+  | "general";
+
 export type NotificationItem = {
   id: string;
   title: string;
   message: string;
   time: string;
-  type: "appointment" | "prescription" | "medicine" | "queue" | "general";
+  type: NotificationKind;
   read: boolean;
   important: boolean;
   emergency: boolean;
+  /** ISO time; when set, the drawer groups items under Today and Earlier. */
+  createdAt?: string;
 };
 
 export type NotificationDrawerProps = {
