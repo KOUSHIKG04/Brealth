@@ -61,10 +61,11 @@ export function ClockTimePicker({
   return (
     <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
       <Text
-        variant="inherit"
+        variant="label"
         style={{
-          fontSize: 13,
-          fontFamily: fontFamilies.regular,
+          fontSize: 14,
+          lineHeight: 20,
+          fontFamily: fontFamilies.medium,
           color: colors.text,
         }}
       >
@@ -90,11 +91,12 @@ export function ClockTimePicker({
         ]}
       >
         <Text
-          variant="inherit"
+          variant="body"
           style={{
             flex: 1,
             fontFamily: fontFamilies.regular,
-            fontSize: 14,
+            fontSize: 16,
+            lineHeight: 24,
             color: colors.text,
           }}
         >
@@ -119,11 +121,12 @@ export function ClockTimePicker({
               onAccessibilityEscape={close}
             >
               <Text
-                variant="inherit"
+                variant="sectionHeading"
                 accessibilityRole="header"
                 style={{
                   fontSize: 18,
-                  fontFamily: fontFamilies.medium,
+                  lineHeight: 24,
+                  fontFamily: fontFamilies.semibold,
                   color: colors.text,
                 }}
               >
@@ -176,10 +179,11 @@ export function ClockTimePicker({
                       ]}
                     >
                       <Text
-                        variant="inherit"
+                        variant="label"
                         style={{
-                          fontFamily: fontFamilies.regular,
+                          fontFamily: fontFamilies.medium,
                           fontSize: 14,
+                          lineHeight: 20,
                           color: period === item ? colors.surface : colors.text,
                         }}
                       >
@@ -282,10 +286,11 @@ export function ClockTimePicker({
                 </View>
               </View>
               <Text
-                variant="inherit"
+                variant="caption"
                 style={{
                   textAlign: "center",
                   fontSize: 12,
+                  lineHeight: 16,
                   fontFamily: fontFamilies.regular,
                   color: colors.textMuted,
                 }}

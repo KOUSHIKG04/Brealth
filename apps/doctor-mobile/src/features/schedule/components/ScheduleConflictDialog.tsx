@@ -210,7 +210,7 @@ export function ScheduleConflictDialog({
         ) : null}
         {decision && affected.length ? (
           <View style={{ gap: spacing.sm }}>
-            <Label>Reason shown to patients</Label>
+            <Label variant="label">Reason shown to patients</Label>
             <TextInput
               accessibilityLabel="Reason shown to patients"
               multiline

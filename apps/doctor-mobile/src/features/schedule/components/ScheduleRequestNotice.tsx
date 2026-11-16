@@ -27,7 +27,7 @@ export function ScheduleRequestNotice({
   return (
     <ScheduleSection title="Approval required">
       <View accessibilityLiveRegion="polite" style={{ gap: 8 }}>
-        <Label variant="caption" muted >
+        <Label variant="caption" muted>
           {facilityName} approves changes to your schedule here. Your current
           schedule stays live until a change is approved.
         </Label>

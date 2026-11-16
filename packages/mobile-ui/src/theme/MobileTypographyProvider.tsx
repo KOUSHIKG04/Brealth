@@ -5,7 +5,7 @@ import {
 } from "@startup/design-tokens";
 
 const TypographyContext = createContext(false);
-/** Explicit opt-in keeps Doctor and Driver unchanged while Patient trials the scale. */
+/** Opt-in switch for the shared type scale; Patient, Doctor and Driver all enable it. */
 
 export function MobileTypographyProvider({
   enabled = true,

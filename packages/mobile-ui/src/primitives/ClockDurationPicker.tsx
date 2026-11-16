@@ -50,12 +50,12 @@ export function ClockDurationPicker({
   return (
     <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
       <Text
-        variant="inherit"
+        variant="label"
         style={{
-          fontSize: 13,
+          fontSize: 14,
           lineHeight: 20,
           includeFontPadding: false,
-          fontFamily: fontFamilies.regular,
+          fontFamily: fontFamilies.medium,
           color: colors.text,
         }}
       >
@@ -77,11 +77,12 @@ export function ClockDurationPicker({
         ]}
       >
         <Text
-          variant="inherit"
+          variant="body"
           style={{
             flex: 1,
             fontFamily: fontFamilies.regular,
-            fontSize: 14,
+            fontSize: 16,
+            lineHeight: 24,
             color: colors.text,
           }}
         >
@@ -106,11 +107,12 @@ export function ClockDurationPicker({
               onAccessibilityEscape={() => setOpen(false)}
             >
               <Text
-                variant="inherit"
+                variant="sectionHeading"
                 accessibilityRole="header"
                 style={{
                   fontSize: 18,
-                  fontFamily: fontFamilies.medium,
+                  lineHeight: 24,
+                  fontFamily: fontFamilies.semibold,
                   color: colors.text,
                 }}
               >
@@ -229,10 +231,11 @@ export function ClockDurationPicker({
                 </View>
               </View>
               <Text
-                variant="inherit"
+                variant="caption"
                 style={{
                   textAlign: "center",
                   fontSize: 12,
+                  lineHeight: 16,
                   fontFamily: fontFamilies.regular,
                   color: colors.textMuted,
                 }}

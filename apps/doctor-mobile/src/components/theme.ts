@@ -4,7 +4,8 @@ import { colors, fontFamilies, surfaces } from "@startup/design-tokens";
 export const palette = {
   ...colors.doctor,
   white: colors.white,
-  muted: "#71818F",
+  // WCAG AA (4.5:1) for small supporting text on white and subtle surfaces.
+  muted: "#5F6E7B",
   card: "#0A8C84",
   subtle: "#F2F7F7",
   danger: colors.danger,

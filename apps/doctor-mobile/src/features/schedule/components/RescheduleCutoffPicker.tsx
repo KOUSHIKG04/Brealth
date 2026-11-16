@@ -22,7 +22,7 @@ export function RescheduleCutoffPicker({
   const minutes = value % 60;
   return (
     <View style={{ gap: 6 }}>
-      <Label>Self-reschedule cutoff before start</Label>
+      <Label variant="body">Self-reschedule cutoff before start</Label>
       <View style={{ flexDirection: "row", gap: 8 }}>
         <Dropdown
           theme="doctor"

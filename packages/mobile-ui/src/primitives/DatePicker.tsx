@@ -35,7 +35,7 @@ export function DatePicker({
   return (
     <View style={styles.fieldGroup}>
       {label ? (
-        <Text variant="inherit" style={[styles.label, { color: colors.text }]}>
+        <Text variant="label" style={[styles.label, { color: colors.text }]}>
           {label}
         </Text>
       ) : null}
@@ -56,7 +56,7 @@ export function DatePicker({
       >
         <CalendarDays size={18} color={colors.primary} />
         <Text
-          variant="inherit"
+          variant="body"
           style={[
             styles.value,
             { color: selected ? colors.text : colors.textMuted },
@@ -67,7 +67,7 @@ export function DatePicker({
       </Pressable>
       {error ? (
         <Text
-          variant="inherit"
+          variant="caption"
           style={[styles.error, { color: colors.danger }]}
         >
           {error}
@@ -80,7 +80,7 @@ export function DatePicker({
         contentStyle={styles.dialog}
       >
         <Text
-          variant="inherit"
+          variant="sectionHeading"
           accessibilityRole="header"
           style={[styles.heading, { color: colors.text }]}
         >
@@ -109,7 +109,7 @@ export function DatePicker({
 
 const styles = StyleSheet.create({
   fieldGroup: { gap: 6 },
-  label: { fontFamily: fontFamilies.regular, fontSize: 14 },
+  label: { fontFamily: fontFamilies.medium, fontSize: 14, lineHeight: 20 },
   field: {
     minHeight: 48,
     borderWidth: 1,
@@ -119,9 +119,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  value: { flex: 1, fontFamily: fontFamilies.regular, fontSize: 14 },
+  value: {
+    flex: 1,
+    fontFamily: fontFamilies.regular,
+    fontSize: 16,
+    lineHeight: 24,
+  },
   disabled: { opacity: 0.5 },
   dialog: { maxWidth: 380 },
-  heading: { fontFamily: fontFamilies.semibold, fontSize: 18 },
-  error: { fontFamily: fontFamilies.regular, fontSize: 12 },
+  heading: { fontFamily: fontFamilies.semibold, fontSize: 18, lineHeight: 24 },
+  error: { fontFamily: fontFamilies.regular, fontSize: 12, lineHeight: 16 },
 });

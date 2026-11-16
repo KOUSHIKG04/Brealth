@@ -29,8 +29,10 @@ export function ConsultationChargesPanel({
         )
         .map(([title, key]) => (
           <View key={key} style={ui.between}>
-            <Label style={{ flex: 1 }}>{title}</Label>
-            <Label>₹</Label>
+            <Label variant="body" style={{ flex: 1 }}>
+              {title}
+            </Label>
+            <Label variant="body">₹</Label>
             <Input
               accessibilityLabel={`${title} charge in rupees`}
               value={draft[key]}

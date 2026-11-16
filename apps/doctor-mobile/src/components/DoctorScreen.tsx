@@ -219,7 +219,7 @@ export function Choice({
       ]}
     >
       <Label
-        variant="caption"
+        variant="label"
         style={{ color: selected ? palette.white : palette.dark }}
       >
         {label}

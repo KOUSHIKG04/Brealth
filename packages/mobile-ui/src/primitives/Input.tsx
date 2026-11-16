@@ -87,7 +87,7 @@ export function Input({
       {control}
 
       {error ? (
-        <Text variant="label" style={[styles.error, errorStyle]}>
+        <Text variant="caption" style={[styles.error, errorStyle]}>
           {error}
         </Text>
       ) : null}
@@ -112,10 +112,10 @@ const styles = StyleSheet.create({
   label: {
     marginBottom: 4,
     color: colors.textPrimary,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 11,
-    fontWeight: "600",
-    lineHeight: 14,
+    fontFamily: fontFamilies.medium,
+    fontSize: 14,
+    fontWeight: "500",
+    lineHeight: 20,
   },
   container: {
     width: "100%",
@@ -130,8 +130,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     color: colors.textPrimary,
     fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 24,
   },
   inputError: {
     borderColor: colors.danger,

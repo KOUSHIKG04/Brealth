@@ -37,7 +37,14 @@ export function Calendar({
   }, [value]);
   const cells = calendarMonthDays(month).map((day, offset) => ({
     day,
-    dateKey: formatCalendarDay(new Date(month.getFullYear(), month.getMonth(), 1 - month.getDay() + offset, 12)),
+    dateKey: formatCalendarDay(
+      new Date(
+        month.getFullYear(),
+        month.getMonth(),
+        1 - month.getDay() + offset,
+        12
+      )
+    ),
   }));
   const previousMonthLastDay = formatCalendarDay(
     new Date(month.getFullYear(), month.getMonth(), 0, 12)
@@ -70,7 +77,7 @@ export function Calendar({
           />
         </Pressable>
         <Text
-          variant="inherit"
+          variant="cardHeading"
           accessibilityRole="header"
           style={[styles.month, { color: colors.text }]}
         >
@@ -94,7 +101,7 @@ export function Calendar({
         {weekdays.map((day) => (
           <View key={day} style={styles.cell}>
             <Text
-              variant="inherit"
+              variant="labelSmall"
               style={[styles.weekday, { color: colors.textMuted }]}
             >
               {day}
@@ -128,7 +135,7 @@ export function Calendar({
                   ]}
                 >
                   <Text
-                    variant="inherit"
+                    variant="label"
                     style={[
                       styles.dayText,
                       {
@@ -166,7 +173,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  month: { fontFamily: fontFamilies.semibold, fontSize: 17 },
+  month: { fontFamily: fontFamilies.semibold, fontSize: 16, lineHeight: 22 },
   grid: { flexDirection: "row", flexWrap: "wrap", rowGap: 4 },
   cell: {
     width: "14.285714%",
@@ -174,7 +181,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  weekday: { fontFamily: fontFamilies.medium, fontSize: 12 },
+  weekday: { fontFamily: fontFamilies.medium, fontSize: 12, lineHeight: 16 },
   day: {
     width: "100%",
     maxWidth: 40,
@@ -183,6 +190,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dayText: { fontFamily: fontFamilies.medium, fontSize: 14 },
+  dayText: { fontFamily: fontFamilies.medium, fontSize: 14, lineHeight: 20 },
   disabled: { opacity: 0.45 },
 });

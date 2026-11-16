@@ -44,6 +44,7 @@ export function WorkingDaysPanel({
             }}
           >
             <Label
+              variant="label"
               style={{
                 color: selectedDays.includes(index)
                   ? palette.white

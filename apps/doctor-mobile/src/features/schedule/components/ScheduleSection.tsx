@@ -5,7 +5,7 @@ import { Heading, Panel } from "../../../components/DoctorScreen";
 export function ScheduleSection({ title, children }: ScheduleSectionProps) {
   return (
     <View style={{ gap: 8 }}>
-      <Heading variant="label">{title}</Heading>
+      <Heading variant="sectionHeading">{title}</Heading>
       <Panel>{children}</Panel>
     </View>
   );

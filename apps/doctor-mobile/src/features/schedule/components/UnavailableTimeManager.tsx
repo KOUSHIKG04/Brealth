@@ -53,7 +53,7 @@ export function UnavailableTimeManager() {
     <>
       {availablePractices && availablePractices.length > 1 ? (
         <Panel>
-          <Heading variant="label">Your clinic</Heading>
+          <Heading>Your clinic</Heading>
           <View style={ui.wrap}>
             {availablePractices.map((p) => (
               <Choice
@@ -67,7 +67,7 @@ export function UnavailableTimeManager() {
         </Panel>
       ) : null}
       <Panel>
-        <Heading variant="bodySmall">Unavailable time / Leave</Heading>
+        <Heading>Unavailable time / Leave</Heading>
         <FadedScrollView
           horizontal
           showsHorizontalScrollIndicator={false}

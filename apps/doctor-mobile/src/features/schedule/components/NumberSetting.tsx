@@ -29,7 +29,9 @@ export function NumberSetting({
   return (
     <View style={{ gap: 6 }}>
       <View style={ui.between}>
-        <Label style={{ includeFontPadding: false }}>{title}</Label>
+        <Label variant="body" style={{ includeFontPadding: false }}>
+          {title}
+        </Label>
         {!stepper ? (
           <Label variant="caption" muted>
             {min}–{max} {suffix}

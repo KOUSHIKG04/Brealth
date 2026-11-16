@@ -111,7 +111,14 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
           </View>
         </ScheduleSection>
       ) : null}
-      {selectedPractice ? (
+      {selectedPractice &&
+      // The clinic chips above already show the selection; keep this line for
+      // single-clinic doctors and for clinics still awaiting verification.
+      !(
+        practices.data &&
+        practices.data.length > 1 &&
+        selectedPractice.verified
+      ) ? (
         <Label muted>
           {selectedPractice.facility_name}
           {selectedPractice.verified ? "" : " · awaiting verification"}
@@ -311,7 +318,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       </ScheduleSection>
       <ScheduleSection title="Auto Accept Bookings">
         <View style={ui.between}>
-          <Label>Enable automatic acceptance</Label>
+          <Label variant="body">Enable automatic acceptance</Label>
           <Switch
             accessibilityLabel="Auto Accept Bookings"
             value={draft.autoAccept}
@@ -347,7 +354,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       {mode === "home" ? (
         <ScheduleSection title="Home Visit Appointments">
           <View style={ui.between}>
-            <Label>Enable home visits</Label>
+            <Label variant="body">Enable home visits</Label>
             <Switch
               accessibilityLabel="Home Visit Appointments"
               value={draft.homeVisits}
@@ -496,7 +503,9 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         <Heading variant="sectionHeading">
           Suggested consultation duration
         </Heading>
-        <Label>{suggestedDuration} minutes per consultation</Label>
+        <Label variant="body">
+          {suggestedDuration} minutes per consultation
+        </Label>
         <Label muted>
           {suggestedTimes.length} appointment times within your hours, with up
           to {dailyLimit} bookings per day.

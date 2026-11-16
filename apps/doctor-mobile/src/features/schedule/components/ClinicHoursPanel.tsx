@@ -3,7 +3,7 @@ import { ScheduleSection } from "./ScheduleSection";
 import type { ClinicHoursPanelProps } from "../types/clinic-hours-panel";
 import { View } from "react-native";
 import { Button, ClockTimePicker } from "@startup/mobile-ui";
-import { Label } from "../../../components/DoctorScreen";
+import { Heading, Label } from "../../../components/DoctorScreen";
 import { ui } from "../../../components/theme";
 
 export function ClinicHoursPanel({
@@ -29,7 +29,7 @@ export function ClinicHoursPanel({
       </Label>
       {blocks.map((block, index) => (
         <View key={index} style={{ gap: 8 }}>
-          <Label>Time block {index + 1}</Label>
+          <Heading>Time block {index + 1}</Heading>
           <View style={ui.row}>
             <ClockTimePicker
               theme="doctor"
