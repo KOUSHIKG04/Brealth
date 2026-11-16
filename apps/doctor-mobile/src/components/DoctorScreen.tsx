@@ -126,6 +126,7 @@ export function DoctorScreen({
   onBackPress,
   scrollResetKey,
   onRefresh,
+  footer,
 }: PropsWithChildren<{
   title: string;
   background?: string;
@@ -134,6 +135,8 @@ export function DoctorScreen({
   onBackPress?: () => void;
   scrollResetKey?: number;
   onRefresh?: PullToRefreshProps["onRefresh"];
+  /** Primary action kept visible below the scrolling content. */
+  footer?: ReactNode;
 }>) {
   const insets = useSafeAreaInsets();
   const { scrollRef, keyboardInset, revealFocusedInput, onScroll } =
@@ -170,6 +173,16 @@ export function DoctorScreen({
       >
         {children}
       </FadedScrollView>
+      {footer ? (
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: 12 + (keyboardInset ? 0 : insets.bottom) },
+          ]}
+        >
+          {footer}
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -227,3 +240,14 @@ export function Choice({
     </Pressable>
   );
 }
+
+const styles = StyleSheet.create({
+  footer: {
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.border,
+    backgroundColor: palette.white,
+  },
+});

@@ -8,6 +8,20 @@ Google sign-in button is hidden until its provider and native callback flow are
 implemented. Phone sign-in and the existing development-password gate are retained.
 These local changes do not verify hosted Auth settings or native-device behavior.
 
+## Simplified schedule editor
+
+`ScheduleScreen` groups each service into availability (days, hours, overlaps
+and tips), appointments (duration, limits and clinic quotas with a live
+capacity check) and fee. Auto-accept (one limit shared across services), home
+radius and travel buffer, and the start date sit under a "More options"
+`Accordion`. Publish stays visible in a fixed `DoctorScreen` footer that
+names the start date or the approving facility. The editor opens no pop-ups:
+the schedule tip shows inline until dismissed once (`services/scheduleHelp`),
+and the setup duration suggestion is an inline "Use N min" button. The
+recovery policy keeps its own save below the form. Save, preview, conflict,
+approval and merge logic in `useScheduleEditor` is unchanged. Local change;
+native-device verification pending.
+
 ## Smooth schedule updates
 
 `useScheduleEditor` keeps the saved copy each draft started from. When a newer

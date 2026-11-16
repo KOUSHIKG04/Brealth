@@ -42,6 +42,10 @@ import {
 import { selectedPracticeQueryKey } from "../../practices/utils/practiceQueryKeys";
 import { formatDisplayDate } from "@startup/contracts";
 import {
+  dismissScheduleHelp,
+  isScheduleHelpDismissed,
+} from "../services/scheduleHelp";
+import {
   draftFromSettings,
   previewTimeBlock,
   scheduleError,
@@ -56,12 +60,24 @@ export function useScheduleEditor({
   mode: "clinic" | "online" | "home";
 }) {
   const queryClient = useQueryClient();
+  // Inline tip until dismissed once; no pop-up on every visit.
   const [showScheduleHelp, setShowScheduleHelp] = useState(false);
+  useEffect(() => {
+    let active = true;
+    void isScheduleHelpDismissed().then((dismissed) => {
+      if (active) setShowScheduleHelp(!dismissed);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+  const hideScheduleHelp = () => {
+    setShowScheduleHelp(false);
+    void dismissScheduleHelp();
+  };
   useFocusEffect(
     useCallback(() => {
-      setShowScheduleHelp(true);
       void queryClient.invalidateQueries({ queryKey: ["my-doctor-schedule"] });
-      return () => setShowScheduleHelp(false);
     }, [queryClient, mode])
   );
   const { showToast } = useToast();
@@ -168,13 +184,6 @@ export function useScheduleEditor({
   const inFlight = useRef(false);
   const [conflict, setConflict] = useState<ScheduleChangePreview | null>(null);
   const [pendingAction, setPendingAction] = useState<string | null>(null);
-  const [availabilityDuration, setAvailabilityDuration] = useState<
-    number | null
-  >(null);
-  const [showAutoBookingHelp, setShowAutoBookingHelp] = useState(false);
-  const [suggestedDuration, setSuggestedDuration] = useState<number | null>(
-    null
-  );
   const [effectiveDate, setEffectiveDate] = useState("");
   const today = new Intl.DateTimeFormat("en-CA", {
     timeZone: zone || "Asia/Kolkata",
@@ -186,7 +195,6 @@ export function useScheduleEditor({
     effectiveDate && effectiveDate >= today ? effectiveDate : today;
   useEffect(() => {
     setEffectiveDate("");
-    setSuggestedDuration(null);
   }, [selectedPracticeId, mode]);
   const dailyLimit = mode === "online" ? draft.online : draft.walkIn;
   const suggestion = suggestConsultationDuration(
@@ -195,11 +203,32 @@ export function useScheduleEditor({
     dailyLimit,
     draft.timeBlocks
   );
-  const suggestedTimes = suggestedDuration
+  // Appointment times the suggested duration would create within the hours.
+  const suggestedTimes = suggestion
     ? (draft.timeBlocks ?? [{ start: draft.start, end: draft.end }]).flatMap(
-        (block) => previewTimeBlock(block.start, block.end, suggestedDuration)
+        (block) => previewTimeBlock(block.start, block.end, suggestion)
       )
     : [];
+  const currentDuration =
+    mode === "online"
+      ? draft.onlineDuration
+      : mode === "home"
+        ? draft.homeDuration
+        : draft.duration;
+  // Offered inline during setup only; a published duration is never recalculated.
+  const offerSuggestion =
+    mode !== "home" &&
+    suggestion !== null &&
+    suggestion !== currentDuration &&
+    !saved.data?.published_modes?.includes(mode);
+  const applySuggestion = () => {
+    if (suggestion === null) return;
+    update(
+      mode === "online"
+        ? { onlineDuration: suggestion }
+        : { duration: suggestion }
+    );
+  };
   const busyBlocks = useQuery({
     queryKey: ["schedule-busy-blocks", selectedPracticeId, mode, startsFrom],
     queryFn: () =>
@@ -569,7 +598,7 @@ export function useScheduleEditor({
     selectPractice,
     queryClient,
     showScheduleHelp,
-    setShowScheduleHelp,
+    hideScheduleHelp,
     showToast,
     doctorId,
     doctorProfile,
@@ -585,18 +614,17 @@ export function useScheduleEditor({
     draft,
     busy,
     pendingAction,
-    availabilityDuration,
-    setAvailabilityDuration,
-    showAutoBookingHelp,
-    setShowAutoBookingHelp,
-    suggestedDuration,
-    setSuggestedDuration,
     setEffectiveDate,
     today,
     startsFrom,
     dailyLimit,
     suggestion,
     suggestedTimes,
+    offerSuggestion,
+    applySuggestion,
+    hasChanges: dirty.current,
+    startsFromLabel:
+      startsFrom === today ? "today" : formatDisplayDate(startsFrom),
     update,
     save,
     conflict,

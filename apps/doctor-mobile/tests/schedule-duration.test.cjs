@@ -251,6 +251,7 @@ function scheduleView({
       Button: "Button",
       ClockDurationPicker: "Duration",
       ModalSurface: "Modal",
+      Accordion: "Accordion",
       useToast: () => ({ showToast: () => {} }),
       useToastFeedback: () => {},
     },
@@ -309,6 +310,11 @@ function scheduleView({
       DoctorScreen: "Screen",
       Label: "Label",
       Heading: "Heading",
+      Panel: "Panel",
+    },
+    "../services/scheduleHelp": {
+      isScheduleHelpDismissed: async () => true,
+      dismissScheduleHelp: async () => {},
     },
     "../../../components/theme": { palette: {}, ui: {} },
     "../../../components/DatePicker": { DatePicker: "DatePicker" },
@@ -333,6 +339,7 @@ function scheduleView({
       if (!node || typeof node !== "object") return;
       nodes.push(node);
       walk(node.props?.children);
+      walk(node.props?.footer);
     }
     walk(exports.ScheduleScreen({ mode: "clinic" }));
     effects.forEach((fn) => fn());
@@ -342,20 +349,21 @@ function scheduleView({
   return { render, publications, previews, prefs };
 }
 
-test("initial setup previews a suggestion, applies it only on confirmation, and sends the chosen date", async () => {
+const suggestionButton = (nodes) =>
+  nodes.find(
+    (node) =>
+      node.type === "Button" && /^Use \d+ min$/.test(node.props.label ?? "")
+  );
+
+test("initial setup offers an inline suggestion, applies it only when chosen, and sends the chosen date", async () => {
   const view = scheduleView();
   let nodes = view.render();
   assert.equal(nodes.find((node) => node.type === "Duration").props.value, 60);
-  nodes.find((node) => node.props.label === "Suggest duration").props.onPress();
-  nodes = view.render();
+  // No pop-ups: the suggestion is an inline button that changes nothing until pressed.
+  assert.equal(nodes.filter((node) => node.type === "Modal").length, 0);
+  assert.equal(suggestionButton(nodes).props.label, "Use 40 min");
   assert.equal(nodes.find((node) => node.type === "Duration").props.value, 60);
-  assert.equal(
-    nodes.filter((node) => node.type === "Modal").at(-1).props.visible,
-    true
-  );
-  nodes
-    .find((node) => node.props.label === "Use this duration")
-    .props.onPress();
+  suggestionButton(nodes).props.onPress();
   nodes = view.render();
   assert.equal(nodes.find((node) => node.type === "Duration").props.value, 40);
   nodes
@@ -397,10 +405,7 @@ test("initial setup previews a suggestion, applies it only on confirmation, and 
 test("published schedule keeps its saved duration and does not offer setup recalculation", () => {
   const view = scheduleView({ published: true });
   let nodes = view.render();
-  assert.equal(
-    nodes.find((node) => node.props.label === "Suggest duration"),
-    undefined
-  );
+  assert.equal(suggestionButton(nodes), undefined);
   nodes
     .find((node) => node.props.title === "Total clinic capacity")
     .props.onChange(30);
@@ -505,7 +510,7 @@ function nodes(tree) {
   if (!tree) return [];
   if (Array.isArray(tree)) return tree.flatMap(nodes);
   if (typeof tree !== "object") return [];
-  return [tree, ...nodes(tree.props?.children)];
+  return [tree, ...nodes(tree.props?.children), ...nodes(tree.props?.footer)];
 }
 
 const components = Object.fromEntries(
@@ -518,6 +523,7 @@ const components = Object.fromEntries(
     "Skeleton",
     "ClockDurationPicker",
     "ModalSurface",
+    "Accordion",
   ].map((name) => [name, name])
 );
 

@@ -2,11 +2,11 @@ import { autoBookingHelpItems } from "../utils/scheduleConstants";
 import type { ScheduleScreenProps } from "../types/schedule-screen";
 import { Switch, View } from "react-native";
 import {
+  Accordion,
   Button,
   ClockDurationPicker,
   Input,
   Loader,
-  ModalSurface,
   Skeleton,
 } from "@startup/mobile-ui";
 import { Calendar, Check } from "lucide-react-native";
@@ -17,6 +17,7 @@ import {
   DoctorScreen,
   Heading,
   Label,
+  Panel,
 } from "../../../components/DoctorScreen";
 import { palette, ui } from "../../../components/theme";
 import { DatePicker } from "../../../components/DatePicker";
@@ -38,7 +39,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     selectPractice,
     setPracticeId,
     showScheduleHelp,
-    setShowScheduleHelp,
+    hideScheduleHelp,
     doctorProfile,
     zone,
     practices,
@@ -51,18 +52,15 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     draft,
     busy,
     pendingAction,
-    availabilityDuration,
-    setAvailabilityDuration,
-    showAutoBookingHelp,
-    setShowAutoBookingHelp,
-    suggestedDuration,
-    setSuggestedDuration,
     setEffectiveDate,
     today,
     startsFrom,
-    dailyLimit,
+    startsFromLabel,
+    hasChanges,
     suggestion,
     suggestedTimes,
+    offerSuggestion,
+    applySuggestion,
     update,
     save,
     conflict,
@@ -78,6 +76,48 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     confirmConflict,
     startFromSuggestedDate,
   } = useScheduleEditor({ mode });
+  const duration =
+    mode === "online"
+      ? draft.onlineDuration
+      : mode === "home"
+        ? draft.homeDuration
+        : draft.duration;
+  const capacity = draft.walkIn ?? 0;
+  const appQuota = draft.clinicApp ?? capacity;
+  const walkinQuota = draft.clinicWalkin ?? 0;
+  const quotaExcess = appQuota + walkinQuota - capacity;
+  const publishLabel = approvalRequired
+    ? "Submit for approval"
+    : selectedPractice?.verified
+      ? "Publish Schedule"
+      : "Save Schedule";
+  const publishBar = (
+    <>
+      <Label variant="caption" muted>
+        {approvalRequired
+          ? `${selectedPractice?.facility_name ?? "Your facility"} reviews changes before they go live.`
+          : `New appointment times apply from ${startsFromLabel}.`}
+        {hasChanges ? " Unsaved changes." : ""}
+      </Label>
+      <Button
+        loading={pendingAction === "save"}
+        theme="doctor"
+        label={publishLabel}
+        leftIcon={<Calendar size={17} color="white" />}
+        disabled={
+          busy ||
+          approvalChecking ||
+          practices.isFetching ||
+          saved.isFetching ||
+          saved.isError ||
+          !zone ||
+          doctorProfile.isError ||
+          !selectedPracticeId
+        }
+        onPress={save}
+      />
+    </>
+  );
   return (
     <DoctorScreen
       title={
@@ -88,6 +128,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
             : "Home Visit Schedule"
       }
       bottomNav={false}
+      footer={publishBar}
     >
       {practices.isLoading ? (
         <Loader theme="doctor" style={{ minHeight: 40 }} />
@@ -111,18 +152,27 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
           </View>
         </ScheduleSection>
       ) : null}
-      {selectedPractice &&
-      // The clinic chips above already show the selection; keep this line for
-      // single-clinic doctors and for clinics still awaiting verification.
-      !(
-        practices.data &&
-        practices.data.length > 1 &&
-        selectedPractice.verified
-      ) ? (
+      {selectedPractice ? (
         <Label muted>
           {selectedPractice.facility_name}
           {selectedPractice.verified ? "" : " · awaiting verification"}
         </Label>
+      ) : null}
+      {showScheduleHelp ? (
+        <Panel style={{ gap: 8 }}>
+          <Label variant="label">How your schedule works</Label>
+          <Label variant="caption" muted>
+            Choose your days and hours, then the appointment length. Publishing
+            creates the next 30 days of appointment times; unavailable time and
+            existing appointments are respected.
+          </Label>
+          <Button
+            theme="doctor"
+            variant="ghost"
+            label="Got it"
+            onPress={hideScheduleHelp}
+          />
+        </Panel>
       ) : null}
       {remoteChanged ? (
         <View accessibilityLiveRegion="polite">
@@ -151,6 +201,8 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       {saved.isLoading ? (
         <Skeleton theme="doctor" height={72} radius={12} />
       ) : null}
+
+      {/* 1. When you're available */}
       <WorkingDaysPanel
         selectedDays={draft.days}
         onToggleDay={(index) =>
@@ -175,104 +227,83 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
         disabled={busy}
         onUpdate={update}
       />
-      {mode === "home" ? (
-        <ClockDurationPicker
-          theme="doctor"
-          label="Travel buffer before and after each block"
-          value={draft.homeTravelBuffer ?? 0}
-          min={0}
-          max={180}
-          disabled={busy}
-          onChange={(homeTravelBuffer) => update({ homeTravelBuffer })}
-        />
-      ) : null}
       <ScheduleBusyBlocks blocks={busyBlocks} overlaps={busyOverlaps} />
       {batchingHints.map((hint) => (
         <Label variant="caption" key={hint} muted>
           Tip: {hint}
         </Label>
       ))}
-      <ScheduleSection title="Appointment slots">
+
+      {/* 2. Appointments */}
+      <ScheduleSection title="Appointments">
+        <ClockDurationPicker
+          label={
+            mode === "home"
+              ? "Home-visit slot duration"
+              : "Consultation duration"
+          }
+          value={duration}
+          min={mode === "home" ? 30 : 5}
+          max={120}
+          theme="doctor"
+          disabled={busy}
+          onChange={(value) =>
+            update(
+              mode === "online"
+                ? { onlineDuration: value }
+                : mode === "home"
+                  ? { homeDuration: value }
+                  : { duration: value }
+            )
+          }
+        />
         <Label variant="caption" muted>
-          {mode === "home"
-            ? "Set your visit duration."
-            : "Duration sets appointment times. The daily limit caps bookings."}
+          Appointment times start every {duration} minutes within your hours.
         </Label>
-        <View
-          style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}
-        >
-          {mode === "clinic" ? (
-            <ClockDurationPicker
-              label="Consultation duration"
-              value={draft.duration}
-              min={5}
-              max={120}
+        {offerSuggestion ? (
+          <View style={[ui.between, { flexWrap: "wrap" }]}>
+            <Label variant="caption" muted style={{ flex: 1, minWidth: 160 }}>
+              {suggestion} minutes fits {suggestedTimes.length} appointment
+              times in your hours.
+            </Label>
+            <Button
               theme="doctor"
+              variant="outline"
+              label={`Use ${suggestion} min`}
               disabled={busy}
-              onChange={(duration) => {
-                update({ duration });
-                setAvailabilityDuration(duration);
-              }}
+              onPress={applySuggestion}
             />
-          ) : null}
-          {mode === "online" ? (
-            <ClockDurationPicker
-              label="Consultation duration"
-              value={draft.onlineDuration}
-              min={5}
-              max={120}
-              theme="doctor"
-              disabled={busy}
-              onChange={(onlineDuration) => {
-                update({ onlineDuration });
-                setAvailabilityDuration(onlineDuration);
-              }}
-            />
-          ) : null}
-          {mode === "home" ? (
-            <ClockDurationPicker
-              label="Home-visit slot duration"
-              value={draft.homeDuration}
-              min={30}
-              max={120}
-              theme="doctor"
-              disabled={busy}
-              onChange={(homeDuration) => {
-                update({ homeDuration });
-                setAvailabilityDuration(homeDuration);
-              }}
-            />
-          ) : null}
-          {mode !== "home" ? (
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <NumberSetting
-                title={
-                  mode === "clinic"
-                    ? "Total clinic capacity"
-                    : "Daily booking limit"
-                }
-                stepper
-                disabled={busy}
-                value={mode === "online" ? draft.online : draft.walkIn}
-                min={0}
-                max={100}
-                suffix="bookings"
-                onChange={(value) =>
-                  update(
-                    mode === "online" ? { online: value } : { walkIn: value }
-                  )
-                }
-              />
-            </View>
-          ) : null}
-        </View>
+          </View>
+        ) : null}
+        {mode === "online" ? (
+          <NumberSetting
+            title="Daily booking limit"
+            stepper
+            disabled={busy}
+            value={draft.online}
+            min={0}
+            max={100}
+            suffix="bookings"
+            onChange={(online) => update({ online })}
+          />
+        ) : null}
         {mode === "clinic" ? (
           <View style={{ gap: 12 }}>
+            <NumberSetting
+              title="Total clinic capacity"
+              stepper
+              disabled={busy}
+              value={draft.walkIn}
+              min={0}
+              max={100}
+              suffix="bookings"
+              onChange={(walkIn) => update({ walkIn })}
+            />
             <NumberSetting
               title="App booking quota"
               stepper
               disabled={busy}
-              value={draft.clinicApp ?? draft.walkIn}
+              value={appQuota}
               min={0}
               max={100}
               suffix="bookings"
@@ -282,79 +313,30 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
               title="Reception walk-in quota"
               stepper
               disabled={busy}
-              value={draft.clinicWalkin ?? 0}
+              value={walkinQuota}
               min={0}
               max={100}
               suffix="bookings"
               onChange={(clinicWalkin) => update({ clinicWalkin })}
             />
-            <Label muted>
-              App and walk-in quotas must fit within total clinic capacity. Set
-              a walk-in quota to accept reception registrations.
-            </Label>
+            <View accessibilityLiveRegion="polite">
+              <Label
+                variant="caption"
+                muted={quotaExcess <= 0}
+                style={quotaExcess > 0 ? { color: palette.danger } : undefined}
+              >
+                {appQuota} app + {walkinQuota} walk-in of {capacity}
+                {quotaExcess > 0
+                  ? ` · exceeds capacity by ${quotaExcess}`
+                  : " · fits"}
+                . Set a walk-in quota to accept reception registrations.
+              </Label>
+            </View>
           </View>
         ) : null}
-        {mode !== "home" ? (
-          <>
-            <Label variant="caption" muted>
-              Changing the daily limit does not change appointment times.
-            </Label>
-            {!saved.data?.published_modes?.includes(mode) ? (
-              <>
-                <Label variant="caption" muted>
-                  Preview a duration based on your hours and daily limit.
-                </Label>
-                <Button
-                  theme="doctor"
-                  variant="outline"
-                  label="Suggest duration"
-                  disabled={busy || suggestion === null}
-                  onPress={() => setSuggestedDuration(suggestion)}
-                />
-              </>
-            ) : null}
-          </>
-        ) : null}
-      </ScheduleSection>
-      <ScheduleSection title="Auto Accept Bookings">
-        <View style={ui.between}>
-          <Label variant="body">Enable automatic acceptance</Label>
-          <Switch
-            accessibilityLabel="Auto Accept Bookings"
-            value={draft.autoAccept}
-            onValueChange={(autoAccept) => update({ autoAccept })}
-            trackColor={{ false: "#D1D5DB", true: palette.primary }}
-          />
-        </View>
-        <Label variant="caption" muted>
-          Set your daily auto-booking limit.
-        </Label>
-        {draft.autoAccept && (
-          <>
-            <NumberSetting
-              title="Shared daily auto-accept limit"
-              stepper
-              disabled={busy}
-              value={draft.autoLimit}
-              min={1}
-              max={100}
-              suffix="bookings"
-              onChange={(autoLimit) => update({ autoLimit })}
-            />
-            <Button
-              theme="doctor"
-              variant="outline"
-              label="Set auto-booking limit"
-              disabled={busy}
-              onPress={() => setShowAutoBookingHelp(true)}
-            />
-          </>
-        )}
-      </ScheduleSection>
-      {mode === "home" ? (
-        <ScheduleSection title="Home Visit Appointments">
+        {mode === "home" ? (
           <View style={ui.between}>
-            <Label variant="body">Enable home visits</Label>
+            <Label>Accept home visits</Label>
             <Switch
               accessibilityLabel="Home Visit Appointments"
               value={draft.homeVisits}
@@ -362,21 +344,106 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
               trackColor={{ false: "#D1D5DB", true: palette.primary }}
             />
           </View>
+        ) : null}
+        {mode !== "home" ? (
           <Label variant="caption" muted>
-            Set your home-visit travel radius.
+            Changing the daily limit does not change appointment times.
           </Label>
-          {draft.homeVisits ? (
-            <Input
-              label="Travel radius from practice (km)"
-              accessibilityLabel="Home visit travel radius in kilometres"
-              value={draft.homeRadius}
-              onChangeText={(homeRadius) => update({ homeRadius })}
-              keyboardType="decimal-pad"
-            />
-          ) : null}
-        </ScheduleSection>
-      ) : null}
+        ) : null}
+      </ScheduleSection>
+
+      {/* 3. Fee */}
       <ConsultationChargesPanel mode={mode} draft={draft} onUpdate={update} />
+
+      <Accordion
+        title="More options"
+        subtitle={
+          mode === "home"
+            ? "Auto-accept, travel and start date"
+            : "Auto-accept and start date"
+        }
+        theme="doctor"
+        variant="outlined"
+        contentStyle={{ gap: 16 }}
+      >
+        <View style={{ gap: 8 }}>
+          <View style={ui.between}>
+            <Label>Auto-accept bookings</Label>
+            <Switch
+              accessibilityLabel="Auto Accept Bookings"
+              value={draft.autoAccept}
+              onValueChange={(autoAccept) => update({ autoAccept })}
+              trackColor={{ false: "#D1D5DB", true: palette.primary }}
+            />
+          </View>
+          <Label variant="caption" muted>
+            One daily limit shared across Clinic, Online and Home visits.
+          </Label>
+          {draft.autoAccept ? (
+            <>
+              <NumberSetting
+                title="Shared daily auto-accept limit"
+                stepper
+                disabled={busy}
+                value={draft.autoLimit}
+                min={1}
+                max={100}
+                suffix="bookings"
+                onChange={(autoLimit) => update({ autoLimit })}
+              />
+              {autoBookingHelpItems.map((text) => (
+                <View key={text} style={ui.row}>
+                  <Check size={14} color={palette.primary} />
+                  <Label variant="caption" muted style={{ flex: 1 }}>
+                    {text}
+                  </Label>
+                </View>
+              ))}
+            </>
+          ) : null}
+        </View>
+        {mode === "home" ? (
+          <View style={{ gap: 12 }}>
+            {draft.homeVisits ? (
+              <Input
+                label="Travel radius from practice (km)"
+                accessibilityLabel="Home visit travel radius in kilometres"
+                value={draft.homeRadius}
+                onChangeText={(homeRadius) => update({ homeRadius })}
+                keyboardType="decimal-pad"
+              />
+            ) : null}
+            <ClockDurationPicker
+              theme="doctor"
+              label="Travel buffer before and after each block"
+              value={draft.homeTravelBuffer ?? 0}
+              min={0}
+              max={180}
+              disabled={busy}
+              onChange={(homeTravelBuffer) => update({ homeTravelBuffer })}
+            />
+          </View>
+        ) : null}
+        {selectedPractice?.verified ? (
+          <View style={{ gap: 8 }}>
+            <Heading variant="label">Apply changes from</Heading>
+            <Label variant="caption" muted>
+              Existing appointments and pending requests keep their times. Daily
+              booking limits apply when saved.
+            </Label>
+            <DatePicker
+              key={`${selectedPracticeId}:${mode}`}
+              value={startsFrom}
+              onChange={setEffectiveDate}
+              timeZone={zone}
+              minDate={today}
+              disabled={busy}
+              label="Start date"
+            />
+          </View>
+        ) : null}
+      </Accordion>
+
       {!selectedPracticeId && associationRequests.isLoading ? (
         <Loader theme="doctor" style={{ minHeight: 40 }} />
       ) : null}
@@ -393,151 +460,13 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
                 : "An active clinic or hospital association is required before you can save a schedule."}
         </Label>
       ) : null}
-      {selectedPractice?.verified ? (
-        <ScheduleSection title="Apply changes from">
-          <Label variant="caption" muted>
-            New appointment times apply from this date. Existing appointments
-            and pending requests keep their times. Daily booking limits apply
-            when saved.
-          </Label>
-          <DatePicker
-            key={`${selectedPracticeId}:${mode}`}
-            value={startsFrom}
-            onChange={setEffectiveDate}
-            timeZone={zone}
-            minDate={today}
-            disabled={busy}
-            label="Start date"
-          />
-        </ScheduleSection>
-      ) : null}
-      <Button
-        loading={pendingAction === "save"}
-        theme="doctor"
-        label={
-          approvalRequired
-            ? "Submit for approval"
-            : selectedPractice?.verified
-              ? "Publish Schedule"
-              : "Save Schedule"
-        }
-        leftIcon={<Calendar size={17} color="white" />}
-        disabled={
-          busy ||
-          approvalChecking ||
-          practices.isFetching ||
-          saved.isFetching ||
-          saved.isError ||
-          !zone ||
-          doctorProfile.isError ||
-          !selectedPracticeId
-        }
-        onPress={save}
-      />
+      {/* Saved separately from the schedule; it has its own save button. */}
       {selectedPracticeId && saved.data ? (
         <AppointmentRecoveryPolicy
           key={selectedPracticeId}
           practiceId={selectedPracticeId}
         />
       ) : null}
-      <ModalSurface
-        visible={showAutoBookingHelp}
-        onClose={() => setShowAutoBookingHelp(false)}
-      >
-        <Heading variant="sectionHeading">Automatic bookings</Heading>
-        <Label muted>
-          Up to {draft.autoLimit} bookings per day are auto-accepted across
-          Clinic, Online and Home visits combined.
-        </Label>
-        {autoBookingHelpItems.map((text) => (
-          <View key={text} style={ui.row}>
-            <Check size={14} color={palette.primary} />
-            <Label muted style={{ flex: 1 }}>
-              {text}
-            </Label>
-          </View>
-        ))}
-        <Button
-          theme="doctor"
-          label="Got it"
-          onPress={() => setShowAutoBookingHelp(false)}
-        />
-      </ModalSurface>
-      <ModalSurface
-        visible={showScheduleHelp}
-        onClose={() => setShowScheduleHelp(false)}
-      >
-        <Heading variant="sectionHeading">Set your schedule</Heading>
-        <Label muted>
-          Choose working days, hours and the slot interval. Publishing creates
-          the next 30 days automatically. Auto-accept uses one shared daily
-          limit across all services. Clinic app bookings and reception walk-ins
-          use separate editable quotas within total clinic capacity.
-        </Label>
-        <Button
-          theme="doctor"
-          label="Got it"
-          onPress={() => setShowScheduleHelp(false)}
-        />
-      </ModalSurface>
-      <ModalSurface
-        visible={availabilityDuration !== null}
-        onClose={() => setAvailabilityDuration(null)}
-      >
-        <Heading variant="sectionHeading">Automatic availability</Heading>
-        <Label muted>
-          When you publish, slots are created every {availabilityDuration}{" "}
-          minutes on your selected working days. Unavailable time and existing
-          appointments are respected.
-        </Label>
-        <Button
-          theme="doctor"
-          label="Got it"
-          onPress={() => setAvailabilityDuration(null)}
-        />
-      </ModalSurface>
-      <ModalSurface
-        visible={suggestedDuration !== null}
-        onClose={() => setSuggestedDuration(null)}
-      >
-        <Heading variant="sectionHeading">
-          Suggested consultation duration
-        </Heading>
-        <Label variant="body">
-          {suggestedDuration} minutes per consultation
-        </Label>
-        <Label muted>
-          {suggestedTimes.length} appointment times within your hours, with up
-          to {dailyLimit} bookings per day.
-        </Label>
-        <Label muted>
-          {suggestedTimes.slice(0, 4).join(" · ")}
-          {suggestedTimes.length > 4 ? " …" : ""}
-        </Label>
-        <Label muted>
-          Review this duration before publishing. Later daily-limit changes will
-          not recalculate it.
-        </Label>
-        <Button
-          theme="doctor"
-          label="Use this duration"
-          onPress={() => {
-            if (suggestedDuration === null) return;
-            update(
-              mode === "online"
-                ? { onlineDuration: suggestedDuration }
-                : { duration: suggestedDuration }
-            );
-            setSuggestedDuration(null);
-          }}
-        />
-        <Button
-          theme="doctor"
-          variant="outline"
-          label="Keep current duration"
-          onPress={() => setSuggestedDuration(null)}
-        />
-      </ModalSurface>
     </DoctorScreen>
   );
 }
