@@ -3,9 +3,11 @@ import { filters } from "../utils/unavailableTimeConstants";
 
 export type { Scope } from "../types/unavailable-time-manager";
 
+import { useState } from "react";
 import { View } from "react-native";
+import { Plus } from "lucide-react-native";
 import { fontFamilies } from "@startup/design-tokens";
-import { Chip, FadedScrollView, Loader } from "@startup/mobile-ui";
+import { Button, Chip, FadedScrollView, Loader } from "@startup/mobile-ui";
 
 import {
   formatDisplayDateTime,
@@ -13,6 +15,7 @@ import {
 } from "@startup/contracts";
 
 import { Heading, Label, Panel } from "../../../components/DoctorScreen";
+import { palette, ui } from "../../../components/theme";
 import { UnavailableTimePanel } from "./UnavailableTimePanel";
 
 export function UnavailableTimeManager({
@@ -45,29 +48,62 @@ export function UnavailableTimeManager({
     timeOffRequests,
     facilityName,
   } = useUnavailableTimeManager(selectedPracticeId);
+  // The form stays folded away until the doctor adds time off.
+  const [adding, setAdding] = useState(false);
+  const active = (
+    (unavailable.data as ClinicUnavailability[] | undefined) ?? []
+  ).filter(
+    (item) =>
+      item.state === "active" && new Date(item.ends_at).getTime() > Date.now()
+  );
   return (
     <>
       <Panel>
-        <Heading>Unavailable time / Leave</Heading>
-        <FadedScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={{ gap: 8 }}
-        >
-          {filters.map(([value, label]) => (
-            <Chip
-              key={value}
+        <View style={ui.between}>
+          <View style={{ flex: 1, gap: 2 }}>
+            <Heading>Time off</Heading>
+            <Label variant="caption" muted>
+              {active.length ? `${active.length} upcoming` : "Nothing planned"}
+            </Label>
+          </View>
+          {practiceId ? (
+            <Button
               theme="doctor"
-              variant="radio"
-              label={label}
-              accessibilityRole="checkbox"
-              selected={scopes.includes(value)}
+              variant={adding ? "ghost" : "outline"}
+              label={adding ? "Cancel" : "Add time off"}
+              leftIcon={
+                adding ? undefined : <Plus size={16} color={palette.primary} />
+              }
               disabled={busy}
-              onPress={() => toggleScope(value)}
+              onPress={() => setAdding((open) => !open)}
             />
-          ))}
-        </FadedScrollView>
-        <Label muted>This block applies to {scopeLabel.toLowerCase()}.</Label>
+          ) : null}
+        </View>
+        {adding ? (
+          <>
+            <FadedScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ gap: 8 }}
+            >
+              {filters.map(([value, label]) => (
+                <Chip
+                  key={value}
+                  theme="doctor"
+                  variant="radio"
+                  label={label}
+                  accessibilityRole="checkbox"
+                  selected={scopes.includes(value)}
+                  disabled={busy}
+                  onPress={() => toggleScope(value)}
+                />
+              ))}
+            </FadedScrollView>
+            <Label muted>
+              This block applies to {scopeLabel.toLowerCase()}.
+            </Label>
+          </>
+        ) : null}
         {approvalRequired ? (
           <View accessibilityLiveRegion="polite" style={{ gap: 4 }}>
             <Label variant="caption" muted>
@@ -105,6 +141,7 @@ export function UnavailableTimeManager({
             onLeaveEndChange={setEnd}
             leaveReason={reason}
             onLeaveReasonChange={setReason}
+            formOpen={adding}
             busy={busy}
             pendingAction={pending}
             canAdd={Boolean(
@@ -120,6 +157,7 @@ export function UnavailableTimeManager({
               unavailable.data as ClinicUnavailability[] | undefined
             )?.filter(
               (item) =>
+                !adding ||
                 scopes.includes("all") ||
                 item.service_mode === "all" ||
                 scopes.includes(item.service_mode)

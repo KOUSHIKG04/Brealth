@@ -10,6 +10,8 @@ export type UnavailableTimePanelProps = {
   onLeaveEndChange: (val: string) => void;
   leaveReason: string;
   onLeaveReasonChange: (val: string) => void;
+  /** The add form shows only while the doctor is adding time off. */
+  formOpen: boolean;
   busy: boolean;
   pendingAction: string | null;
   canAdd: boolean;

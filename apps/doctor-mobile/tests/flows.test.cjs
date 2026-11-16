@@ -224,3 +224,57 @@ test("schedule review lists only what the doctor changed", () => {
     ["hours", "appointment length"]
   );
 });
+
+test("week chart lays out live services and appointment counts fit the hours", () => {
+  const {
+    appointmentsPerDay,
+    hourLabel,
+    weekChart,
+  } = require("../src/features/schedule/utils/scheduleOverview.ts");
+  assert.equal(weekChart(null), null);
+  const saved = {
+    practice_id: "00000000-0000-4000-8000-000000000001",
+    working_days: [1, 2, 3],
+    online_working_days: [4],
+    clinic_start: "09:00:00",
+    clinic_end: "13:00:00",
+    clinic_time_blocks: [{ start: "09:30", end: "13:00" }],
+    online_time_blocks: [{ start: "17:00", end: "19:15" }],
+    published_modes: ["clinic", "online", "home"],
+    slot_minutes: 15,
+    online_slot_minutes: 20,
+    home_slot_minutes: 30,
+    online_daily_limit: 10,
+    walkin_daily_limit: 20,
+    auto_accept: false,
+    auto_accept_limit: 0,
+    home_visits: false,
+    home_radius_km: null,
+    online_fee_minor: null,
+    clinic_fee_minor: 50000,
+    home_fee_minor: null,
+    row_version: "1",
+  };
+  const chart = weekChart(saved);
+  assert.deepEqual(
+    chart.services.map((service) => service.mode),
+    ["clinic", "online"],
+    "home visits turned off are not drawn"
+  );
+  assert.equal(chart.start, 9 * 60);
+  assert.equal(chart.end, 20 * 60);
+  assert.deepEqual(chart.services[1].days, [4]);
+  assert.equal(hourLabel(chart.start), "9 AM");
+  assert.equal(hourLabel(17 * 60 + 30), "5:30 PM");
+  assert.equal(hourLabel(24 * 60), "12 AM");
+  assert.equal(weekChart({ ...saved, published_modes: [] }), null);
+  const blocks = [
+    { start: "09:00", end: "13:00" },
+    { start: "17:00", end: "20:00" },
+  ];
+  assert.equal(appointmentsPerDay(blocks, 15), 28);
+  assert.equal(
+    appointmentsPerDay([{ start: "09:00", end: "12:00" }], 30, 15),
+    4
+  );
+});

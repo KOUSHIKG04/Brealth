@@ -244,7 +244,12 @@ function scheduleView({
       },
     },
     "react/jsx-runtime": { jsx, jsxs: jsx },
-    "react-native": { View: "View", Switch: "Switch", Pressable: "Pressable" },
+    "react-native": {
+      View: "View",
+      Switch: "Switch",
+      Pressable: "Pressable",
+      StyleSheet: { create: (styles) => styles, hairlineWidth: 1 },
+    },
     "expo-router": {
       useFocusEffect: () => {},
       useNavigation: () => ({ addListener: () => () => {}, dispatch() {} }),
@@ -252,6 +257,7 @@ function scheduleView({
     "lucide-react-native": {},
     "@startup/mobile-ui": {
       Button: "Button",
+      Chip: "Chip",
       ClockDurationPicker: "Duration",
       ModalSurface: "Modal",
       Accordion: "Accordion",
@@ -420,7 +426,7 @@ test("doctor publishes split clinic blocks with the same saved appointment durat
   const view = scheduleView({ published: true });
   let nodes = view.render();
   nodes
-    .find((node) => node.props.title === "Clinic Hours")
+    .find((node) => node.props.title === "Clinic hours")
     .props.onUpdate({
       start: "09:00",
       end: "17:00",
@@ -538,7 +544,12 @@ const base = {
     ScheduleConflictDialog: "ScheduleConflictDialog",
   },
   "react/jsx-runtime": { jsx, jsxs: jsx },
-  "react-native": { View: "View", Switch: "Switch", Pressable: "Pressable" },
+  "react-native": {
+    View: "View",
+    Switch: "Switch",
+    Pressable: "Pressable",
+    StyleSheet: { create: (styles) => styles, hairlineWidth: 1 },
+  },
   "@startup/mobile-ui": components,
   "../../../components/DoctorScreen": {
     Heading: "Heading",
@@ -558,6 +569,7 @@ for (const mode of ["clinic", "online", "home"]) {
       "../src/features/schedule/screens/ScheduleScreen.tsx",
       {
         ...base,
+        react: { useState: (value) => [value, () => {}] },
         "lucide-react-native": { Calendar: "Calendar", Check: "Check" },
         "../../../components/DatePicker": { DatePicker: "DatePicker" },
         "../components/NumberSetting": { NumberSetting: "NumberSetting" },

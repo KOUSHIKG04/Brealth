@@ -7,7 +7,7 @@ import { Heading, Label } from "../../../components/DoctorScreen";
 import { ui } from "../../../components/theme";
 
 export function ClinicHoursPanel({
-  title = "Clinic Hours",
+  title = "Clinic hours",
   start,
   end,
   blocks = [{ start, end }],

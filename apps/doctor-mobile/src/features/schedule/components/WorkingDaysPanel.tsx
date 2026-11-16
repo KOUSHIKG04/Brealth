@@ -12,10 +12,7 @@ export function WorkingDaysPanel({
   onToggleDay,
 }: WorkingDaysPanelProps) {
   return (
-    <ScheduleSection title="Working Days">
-      <Label variant="caption" muted>
-        Select your working days.
-      </Label>
+    <ScheduleSection title="Working days">
       <FadedScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -35,7 +32,7 @@ export function WorkingDaysPanel({
               borderWidth: 1,
               borderColor: selectedDays.includes(index)
                 ? palette.dark
-                : "#D2D2D2",
+                : palette.border,
               alignItems: "center",
               justifyContent: "center",
               backgroundColor: selectedDays.includes(index)

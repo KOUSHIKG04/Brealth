@@ -41,7 +41,18 @@ or "Submit for approval" then calls the unchanged `save`. Leaving with
 unpublished edits (header back, Android back, back gesture) opens a "Discard
 changes?" `AppDialog` through `useDiscardChangesPrompt` (`beforeRemove`).
 Edits submitted for approval count as saved, so leaving afterwards does not
-prompt. Local change; native-device verification pending, including the iOS
+prompt.
+
+Visual pass (brand teal only): both schedule screens use the pale
+`palette.subtle` page with white panels. The overview opens with
+`ScheduleWeekChart`, one column per day and one lane per live service, built
+by `weekChart` from the saved schedule. Clinic, online and home visits use
+steps of the brand teal. Services sit in one grouped list with icon tiles and
+`StatusBadge`s. Time off folds its form behind "Add time off" and lists
+upcoming entries as compact rows. The editor offers quick appointment
+lengths (`durationPresets`, plus Custom with the clock picker), the number of
+appointment times a day (`appointmentsPerDay`), and `ClinicCapacityBar` for
+app, walk-in and free places. Local change; native-device verification pending, including the iOS
 back gesture.
 
 ## Smooth schedule updates

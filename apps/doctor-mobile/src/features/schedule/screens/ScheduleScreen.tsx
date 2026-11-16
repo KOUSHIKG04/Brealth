@@ -1,10 +1,17 @@
-import { autoBookingHelpItems } from "../utils/scheduleConstants";
+import { useState } from "react";
+import {
+  autoBookingHelpItems,
+  durationPresets,
+} from "../utils/scheduleConstants";
+import { appointmentsPerDay } from "../utils/scheduleOverview";
+import { ClinicCapacityBar } from "../components/ClinicCapacityBar";
 import type { ScheduleScreenProps } from "../types/schedule-screen";
 import { Switch, View } from "react-native";
 import {
   Accordion,
   AppDialog,
   Button,
+  Chip,
   ClockDurationPicker,
   Input,
   Loader,
@@ -87,10 +94,26 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       : mode === "home"
         ? draft.homeDuration
         : draft.duration;
+  const setDuration = (value: number) =>
+    update(
+      mode === "online"
+        ? { onlineDuration: value }
+        : mode === "home"
+          ? { homeDuration: value }
+          : { duration: value }
+    );
+  const presets: readonly number[] = durationPresets[mode];
+  // Custom opens for a saved length that is not one of the quick choices.
+  const [customChosen, setCustomDuration] = useState(false);
+  const customDuration = customChosen || !presets.includes(duration);
+  const perDay = appointmentsPerDay(
+    draft.timeBlocks ?? [{ start: draft.start, end: draft.end }],
+    duration,
+    mode === "home" ? (draft.homeTravelBuffer ?? 0) : 0
+  );
   const capacity = draft.walkIn ?? 0;
   const appQuota = draft.clinicApp ?? capacity;
   const walkinQuota = draft.clinicWalkin ?? 0;
-  const quotaExcess = appQuota + walkinQuota - capacity;
   const publishLabel = approvalRequired
     ? "Submit for approval"
     : selectedPractice?.verified
@@ -135,6 +158,7 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
             ? "Online Schedule"
             : "Home Visit Schedule"
       }
+      background={palette.subtle}
       bottomNav={false}
       footer={publishBar}
     >
@@ -224,10 +248,10 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
       <ClinicHoursPanel
         title={
           mode === "clinic"
-            ? "Clinic Hours"
+            ? "Clinic hours"
             : mode === "online"
-              ? "Online Hours"
-              : "Home Visit Hours"
+              ? "Online hours"
+              : "Home-visit hours"
         }
         start={draft.start}
         end={draft.end}
@@ -244,30 +268,51 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
 
       {/* 2. Appointments */}
       <ScheduleSection title="Appointments">
-        <ClockDurationPicker
-          label={
-            mode === "home"
-              ? "Home-visit slot duration"
-              : "Consultation duration"
-          }
-          value={duration}
-          min={mode === "home" ? 30 : 5}
-          max={120}
-          theme="doctor"
-          disabled={busy}
-          onChange={(value) =>
-            update(
-              mode === "online"
-                ? { onlineDuration: value }
-                : mode === "home"
-                  ? { homeDuration: value }
-                  : { duration: value }
-            )
-          }
-        />
-        <Label variant="caption" muted>
-          Appointment times start every {duration} minutes within your hours.
-        </Label>
+        <View style={{ gap: 8 }}>
+          <Label variant="label">
+            {mode === "home" ? "Visit length" : "Appointment length"}
+          </Label>
+          <View style={ui.wrap}>
+            {presets.map((value) => (
+              <Chip
+                key={value}
+                theme="doctor"
+                variant="radio"
+                label={`${value} min`}
+                selected={!customDuration && duration === value}
+                disabled={busy}
+                onPress={() => {
+                  setCustomDuration(false);
+                  setDuration(value);
+                }}
+              />
+            ))}
+            <Chip
+              theme="doctor"
+              variant="radio"
+              label="Custom"
+              selected={customDuration}
+              disabled={busy}
+              onPress={() => setCustomDuration(true)}
+            />
+          </View>
+          {customDuration ? (
+            <ClockDurationPicker
+              label={mode === "home" ? "Visit length" : "Appointment length"}
+              value={duration}
+              min={mode === "home" ? 30 : 5}
+              max={120}
+              theme="doctor"
+              disabled={busy}
+              onChange={setDuration}
+            />
+          ) : null}
+          <Label variant="caption" muted>
+            {perDay} appointment {perDay === 1 ? "time" : "times"} a day, every{" "}
+            {duration + (mode === "home" ? (draft.homeTravelBuffer ?? 0) : 0)}{" "}
+            min
+          </Label>
+        </View>
         {offerSuggestion ? (
           <View style={[ui.between, { flexWrap: "wrap" }]}>
             <Label variant="caption" muted style={{ flex: 1, minWidth: 160 }}>
@@ -327,19 +372,14 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
               suffix="bookings"
               onChange={(clinicWalkin) => update({ clinicWalkin })}
             />
-            <View accessibilityLiveRegion="polite">
-              <Label
-                variant="caption"
-                muted={quotaExcess <= 0}
-                style={quotaExcess > 0 ? { color: palette.danger } : undefined}
-              >
-                {appQuota} app + {walkinQuota} walk-in of {capacity}
-                {quotaExcess > 0
-                  ? ` · exceeds capacity by ${quotaExcess}`
-                  : " · fits"}
-                . Set a walk-in quota to accept reception registrations.
-              </Label>
-            </View>
+            <ClinicCapacityBar
+              capacity={capacity}
+              app={appQuota}
+              walkin={walkinQuota}
+            />
+            <Label variant="caption" muted>
+              Set a walk-in quota to accept reception registrations.
+            </Label>
           </View>
         ) : null}
         {mode === "home" ? (

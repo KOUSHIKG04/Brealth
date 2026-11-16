@@ -9,7 +9,11 @@ import {
 } from "@startup/data-access";
 import { supabase } from "../../../services/supabase";
 import type { ServiceStatus } from "../types/schedule-overview";
-import { serviceStatus, serviceSummary } from "../utils/scheduleOverview";
+import {
+  serviceStatus,
+  serviceSummary,
+  weekChart,
+} from "../utils/scheduleOverview";
 import { useSchedulePractice } from "./useSchedulePractice";
 
 const modes = ["clinic", "online", "home"] as const;
@@ -80,5 +84,5 @@ export function useScheduleOverview() {
     (typeof modes)[number],
     { status: ServiceStatus; summary: string | null }
   >;
-  return { ...practice, saved, services };
+  return { ...practice, saved, services, week: weekChart(saved.data) };
 }

@@ -5,12 +5,70 @@ import {
   type ScheduleChangeRequest,
 } from "@startup/contracts";
 import type { Schedule } from "../../../types/doctor";
-import type { ServiceStatus } from "../types/schedule-overview";
+import type {
+  ScheduleMode as Mode,
+  ServiceStatus,
+  WeekChart,
+} from "../types/schedule-overview";
 import { draftChangeLabels } from "./scheduleConstants";
 import { workingDayLabels } from "./workingDaysPanelConstants";
 import { draftFromSettings, endMinutes, formatTime, minutes } from "./schedule";
 
-type Mode = "clinic" | "online" | "home";
+const chartModes: Mode[] = ["clinic", "online", "home"];
+
+/** Published services laid out for the week chart, or null when none is live. */
+export function weekChart(
+  saved: DoctorSchedulePreferences | null | undefined
+): WeekChart | null {
+  if (!saved) return null;
+  const settings = preferencesToScheduleSettings(saved);
+  const services = chartModes
+    .filter((mode) => saved.published_modes?.includes(mode))
+    .filter((mode) => mode !== "home" || saved.home_visits)
+    .map((mode) => {
+      const draft = draftFromSettings(settings, mode);
+      return {
+        mode,
+        days: draft.days.map((day) => day + 1),
+        blocks: (
+          draft.timeBlocks ?? [{ start: draft.start, end: draft.end }]
+        ).map((block) => ({
+          start: minutes(block.start),
+          end: endMinutes(block.end),
+        })),
+      };
+    });
+  const edges = services.flatMap((service) => service.blocks);
+  if (!edges.length) return null;
+  const first = Math.min(...edges.map((block) => block.start));
+  const last = Math.max(...edges.map((block) => block.end));
+  return {
+    start: Math.floor(first / 60) * 60,
+    end: Math.min(24 * 60, Math.ceil(last / 60) * 60),
+    services,
+  };
+}
+
+/** Appointment times that fit in the hours, with travel time between visits. */
+export function appointmentsPerDay(
+  blocks: { start: string; end: string }[],
+  duration: number,
+  buffer = 0
+) {
+  if (!duration) return 0;
+  return blocks.reduce((total, block) => {
+    const length = endMinutes(block.end) - minutes(block.start);
+    return (
+      total + Math.max(0, Math.floor((length + buffer) / (duration + buffer)))
+    );
+  }, 0);
+}
+
+/** "9 AM" or "5:30 PM", for chart axes. */
+export function hourLabel(value: number) {
+  if (value >= 24 * 60) return "12 AM";
+  return shortTime(value).replace(":00", "");
+}
 
 /** Where one service stands: live, waiting for something, or not set up. */
 export function serviceStatus(

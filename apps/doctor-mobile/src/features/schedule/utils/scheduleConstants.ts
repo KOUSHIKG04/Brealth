@@ -23,16 +23,19 @@ export const cutoffMinuteOptions = Array.from({ length: 60 }, (_, value) => ({
 export const scheduleServices = [
   {
     mode: "clinic",
+    short: "Clinic",
     title: "Clinic appointments",
     description: "Visits at your clinic or hospital",
   },
   {
     mode: "online",
+    short: "Online",
     title: "Online consultations",
     description: "Video consultation times",
   },
   {
     mode: "home",
+    short: "Home visits",
     title: "Home visits",
     description: "Home-visit times and travel radius",
   },
@@ -61,9 +64,8 @@ export const draftChangeLabels = {
   homeFee: "home-visit fee",
 } as const;
 
-// Status text carries the meaning; colour only reinforces it.
-export const serviceStatusColors = {
-  live: "#0A7A6E",
-  waiting: "#B45309",
-  off: "#5F6E7B",
+export const durationPresets = {
+  clinic: [10, 15, 20, 30],
+  online: [10, 15, 20, 30],
+  home: [30, 45, 60, 90],
 } as const;
