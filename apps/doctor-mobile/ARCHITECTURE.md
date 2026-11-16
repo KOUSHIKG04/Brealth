@@ -17,10 +17,32 @@ radius and travel buffer, and the start date sit under a "More options"
 `Accordion`. Publish stays visible in a fixed `DoctorScreen` footer that
 names the start date or the approving facility. The editor opens no pop-ups:
 the schedule tip shows inline until dismissed once (`services/scheduleHelp`),
-and the setup duration suggestion is an inline "Use N min" button. The
-recovery policy keeps its own save below the form. Save, preview, conflict,
-approval and merge logic in `useScheduleEditor` is unchanged. Local change;
-native-device verification pending.
+and the setup duration suggestion is an inline "Use N min" button. Save,
+preview, conflict, approval and merge logic in `useScheduleEditor` is
+unchanged. Local change; native-device verification pending.
+
+`ScheduleOptionsScreen` is the schedule overview. `useScheduleOverview` (built
+on `useSchedulePractice`) owns the one practice picker; the choice is
+remembered, so editors open on the same practice. Each service card shows its
+status (published, starting on a date, awaiting approval or verification, not
+published, or home visits turned off) and a days · hours · duration summary
+from `utils/scheduleOverview`, using the existing schedule, approval and
+change-request queries. Time off (`UnavailableTimeManager`, now given the
+practice) and the appointment recovery policy (a collapsed row with its own
+save) live on the overview, not in the editors. Local change; native-device
+verification pending.
+
+Publishing has a review step. `SchedulePublishBar` (the editor footer) runs the
+editor's `validate` and then expands in place, with no pop-up. It shows the
+draft's days · hours · duration, the changed settings (`draftChanges`
+compares the draft with the saved copy it started from), the start date or
+approving facility, and a note when home visits are off. "Publish Schedule"
+or "Submit for approval" then calls the unchanged `save`. Leaving with
+unpublished edits (header back, Android back, back gesture) opens a "Discard
+changes?" `AppDialog` through `useDiscardChangesPrompt` (`beforeRemove`).
+Edits submitted for approval count as saved, so leaving afterwards does not
+prompt. Local change; native-device verification pending, including the iOS
+back gesture.
 
 ## Smooth schedule updates
 

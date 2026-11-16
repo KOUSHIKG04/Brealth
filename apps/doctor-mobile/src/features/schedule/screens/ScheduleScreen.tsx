@@ -3,13 +3,14 @@ import type { ScheduleScreenProps } from "../types/schedule-screen";
 import { Switch, View } from "react-native";
 import {
   Accordion,
+  AppDialog,
   Button,
   ClockDurationPicker,
   Input,
   Loader,
   Skeleton,
 } from "@startup/mobile-ui";
-import { Calendar, Check } from "lucide-react-native";
+import { Check } from "lucide-react-native";
 import type { ClinicPractice } from "@startup/contracts";
 
 import {
@@ -27,7 +28,8 @@ import { WorkingDaysPanel } from "../components/WorkingDaysPanel";
 import { ClinicHoursPanel } from "../components/ClinicHoursPanel";
 import { NumberSetting } from "../components/NumberSetting";
 import { useScheduleEditor } from "../hooks/useScheduleEditor";
-import { AppointmentRecoveryPolicy } from "../components/AppointmentRecoveryPolicy";
+import { useDiscardChangesPrompt } from "../hooks/useDiscardChangesPrompt";
+import { SchedulePublishBar } from "../components/SchedulePublishBar";
 
 import { ScheduleConflictDialog } from "../components/ScheduleConflictDialog";
 import { ScheduleAdjustmentNotices } from "../components/ScheduleAdjustmentNotices";
@@ -57,6 +59,9 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     startsFrom,
     startsFromLabel,
     hasChanges,
+    validate,
+    changes,
+    summary,
     suggestion,
     suggestedTimes,
     offerSuggestion,
@@ -91,32 +96,35 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
     : selectedPractice?.verified
       ? "Publish Schedule"
       : "Save Schedule";
+  const leavePrompt = useDiscardChangesPrompt(hasChanges);
   const publishBar = (
-    <>
-      <Label variant="caption" muted>
-        {approvalRequired
-          ? `${selectedPractice?.facility_name ?? "Your facility"} reviews changes before they go live.`
-          : `New appointment times apply from ${startsFromLabel}.`}
-        {hasChanges ? " Unsaved changes." : ""}
-      </Label>
-      <Button
-        loading={pendingAction === "save"}
-        theme="doctor"
-        label={publishLabel}
-        leftIcon={<Calendar size={17} color="white" />}
-        disabled={
-          busy ||
-          approvalChecking ||
-          practices.isFetching ||
-          saved.isFetching ||
-          saved.isError ||
-          !zone ||
-          doctorProfile.isError ||
-          !selectedPracticeId
-        }
-        onPress={save}
-      />
-    </>
+    <SchedulePublishBar
+      key={`${selectedPracticeId}:${mode}`}
+      publishLabel={publishLabel}
+      approvalFacility={
+        approvalRequired
+          ? (selectedPractice?.facility_name ?? "Your facility")
+          : undefined
+      }
+      startsFromLabel={startsFromLabel}
+      hasChanges={hasChanges}
+      changes={changes}
+      summary={summary}
+      pausesService={mode === "home" && !draft.homeVisits}
+      loading={pendingAction === "save"}
+      disabled={
+        busy ||
+        approvalChecking ||
+        practices.isFetching ||
+        saved.isFetching ||
+        saved.isError ||
+        !zone ||
+        doctorProfile.isError ||
+        !selectedPracticeId
+      }
+      validate={validate}
+      onPublish={save}
+    />
   );
   return (
     <DoctorScreen
@@ -460,13 +468,16 @@ export function ScheduleScreen({ mode }: ScheduleScreenProps) {
                 : "An active clinic or hospital association is required before you can save a schedule."}
         </Label>
       ) : null}
-      {/* Saved separately from the schedule; it has its own save button. */}
-      {selectedPracticeId && saved.data ? (
-        <AppointmentRecoveryPolicy
-          key={selectedPracticeId}
-          practiceId={selectedPracticeId}
-        />
-      ) : null}
+      <AppDialog
+        theme="doctor"
+        visible={leavePrompt.visible}
+        title="Discard changes?"
+        description="Your schedule edits are not published. If you leave now, they are lost."
+        confirmLabel="Discard changes"
+        cancelLabel="Keep editing"
+        onConfirm={leavePrompt.discard}
+        onClose={leavePrompt.keepEditing}
+      />
     </DoctorScreen>
   );
 }

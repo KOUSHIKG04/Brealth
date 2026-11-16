@@ -6,11 +6,15 @@ import {
   setAppointmentRecoveryPolicy,
   submitScheduleChangeRequest,
 } from "@startup/data-access";
-import { Button, ClockDurationPicker, useToast } from "@startup/mobile-ui";
+import {
+  Accordion,
+  Button,
+  ClockDurationPicker,
+  useToast,
+} from "@startup/mobile-ui";
 import { Label } from "../../../components/DoctorScreen";
 import { supabase } from "../../../services/supabase";
 import { NumberSetting } from "./NumberSetting";
-import { ScheduleSection } from "./ScheduleSection";
 import { RescheduleCutoffPicker } from "./RescheduleCutoffPicker";
 
 type PolicyDraft = {
@@ -103,8 +107,17 @@ export function AppointmentRecoveryPolicy({
   });
   const update = (value: Partial<PolicyDraft>) =>
     setEdits({ ...draft, ...value });
+  const summary = saved.data
+    ? `Clinic grace ${saved.data.clinic_grace_minutes ?? 10} min · Online grace ${saved.data.online_grace_minutes ?? 15} min`
+    : "Late arrivals and patient reschedules";
   return (
-    <ScheduleSection title="Appointment recovery">
+    <Accordion
+      title="Appointment recovery"
+      subtitle={edits ? `${summary} · Unsaved changes` : summary}
+      theme="doctor"
+      variant="outlined"
+      contentStyle={{ gap: 12 }}
+    >
       <Label muted>
         Clinic grace applies after the booked start time. Later arrivals need
         reception review before returning to the queue. Video consultation grace
@@ -183,6 +196,6 @@ export function AppointmentRecoveryPolicy({
           approvalRequired ? request.mutate() : mutation.mutate()
         }
       />
-    </ScheduleSection>
+    </Accordion>
   );
 }

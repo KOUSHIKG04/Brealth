@@ -133,3 +133,94 @@ test("messages stay in their own conversation and reset clears session changes",
   assert.deepEqual(useDoctorStore.getState().messages, {});
   assert.equal(useDoctorStore.getState().schedule.homeVisits, false);
 });
+
+test("schedule overview summarises each service's status and hours", () => {
+  const {
+    serviceStatus,
+    serviceSummary,
+    workingDaysSummary,
+  } = require("../src/features/schedule/utils/scheduleOverview.ts");
+  assert.equal(workingDaysSummary([1, 2, 3, 4, 5, 6]), "Mon–Sat");
+  assert.equal(workingDaysSummary([5, 1, 3]), "Mon, Wed, Fri");
+  assert.equal(workingDaysSummary([1, 2, 3, 4, 5, 6, 7]), "Every day");
+  const saved = {
+    practice_id: "00000000-0000-4000-8000-000000000001",
+    working_days: [1, 2, 3, 4, 5, 6],
+    clinic_start: "09:00:00",
+    clinic_end: "13:00:00",
+    clinic_time_blocks: [
+      { start: "09:00", end: "13:00" },
+      { start: "17:00", end: "20:00" },
+    ],
+    published_modes: ["clinic", "home"],
+    published_from: { clinic: "2026-11-01", home: "2026-12-01" },
+    slot_minutes: 15,
+    online_slot_minutes: 20,
+    home_slot_minutes: 30,
+    online_daily_limit: 10,
+    walkin_daily_limit: 20,
+    auto_accept: false,
+    auto_accept_limit: 0,
+    home_visits: true,
+    home_radius_km: 5,
+    online_fee_minor: null,
+    clinic_fee_minor: 50000,
+    home_fee_minor: null,
+    row_version: "3",
+  };
+  assert.equal(
+    serviceSummary(saved, "clinic"),
+    "Mon–Sat · 9:00 AM–1:00 PM, 5:00 PM–8:00 PM · 15 min"
+  );
+  const options = { verified: true, today: "2026-11-16" };
+  assert.deepEqual(serviceStatus(saved, "clinic", options), {
+    tone: "live",
+    label: "Published",
+  });
+  assert.equal(
+    serviceStatus(saved, "home", options).label,
+    "Starts 01-12-2026"
+  );
+  assert.equal(serviceStatus(saved, "online", options).label, "Not published");
+  assert.equal(
+    serviceStatus(saved, "online", { ...options, verified: false }).label,
+    "Awaiting verification"
+  );
+  assert.equal(
+    serviceStatus(saved, "clinic", {
+      ...options,
+      pendingRequest: { status: "pending" },
+    }).label,
+    "Awaiting approval"
+  );
+  assert.equal(
+    serviceStatus({ ...saved, home_visits: false }, "home", options).label,
+    "Not accepting visits"
+  );
+});
+
+test("schedule review lists only what the doctor changed", () => {
+  const {
+    draftChanges,
+  } = require("../src/features/schedule/utils/scheduleOverview.ts");
+  const base = {
+    ...initialSchedule,
+    days: [0, 1, 2],
+    timeBlocks: [{ start: "09:00", end: "13:00" }],
+    autoAccept: false,
+    autoLimit: 5,
+  };
+  assert.deepEqual(draftChanges(base, { ...base, days: [2, 1, 0] }), []);
+  assert.deepEqual(draftChanges(base, { ...base, autoLimit: 0 }), []);
+  assert.deepEqual(
+    draftChanges(base, {
+      ...base,
+      timeBlocks: [
+        { start: "09:00", end: "13:00" },
+        { start: "17:00", end: "20:00" },
+      ],
+      duration: base.duration + 5,
+    }),
+    ["hours", "appointment length"]
+  );
+});

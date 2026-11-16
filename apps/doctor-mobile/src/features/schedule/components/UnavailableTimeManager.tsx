@@ -12,21 +12,17 @@ import {
   type ClinicUnavailability,
 } from "@startup/contracts";
 
-import {
-  Choice,
-  Heading,
-  Label,
-  Panel,
-} from "../../../components/DoctorScreen";
-import { ui } from "../../../components/theme";
+import { Heading, Label, Panel } from "../../../components/DoctorScreen";
 import { UnavailableTimePanel } from "./UnavailableTimePanel";
 
-export function UnavailableTimeManager() {
+export function UnavailableTimeManager({
+  practiceId: selectedPracticeId,
+}: {
+  practiceId: string | undefined;
+}) {
   const {
-    selectPractice,
     practices,
     doctor,
-    availablePractices,
     practiceId,
     unavailable,
     scopes,
@@ -48,24 +44,9 @@ export function UnavailableTimeManager() {
     approvalRequired,
     timeOffRequests,
     facilityName,
-  } = useUnavailableTimeManager();
+  } = useUnavailableTimeManager(selectedPracticeId);
   return (
     <>
-      {availablePractices && availablePractices.length > 1 ? (
-        <Panel>
-          <Heading>Your clinic</Heading>
-          <View style={ui.wrap}>
-            {availablePractices.map((p) => (
-              <Choice
-                key={p.practice_id}
-                label={p.facility_name}
-                selected={practiceId === p.practice_id}
-                onPress={() => selectPractice(p)}
-              />
-            ))}
-          </View>
-        </Panel>
-      ) : null}
       <Panel>
         <Heading>Unavailable time / Leave</Heading>
         <FadedScrollView

@@ -51,6 +51,7 @@ import {
   scheduleError,
   suggestConsultationDuration,
 } from "../utils/schedule";
+import { draftChanges, draftSummary } from "../utils/scheduleOverview";
 import type { Schedule } from "../../../types/doctor";
 import { initialSchedule } from "../utils/scheduleDefaults";
 
@@ -409,6 +410,15 @@ export function useScheduleEditor({
     return null;
   }
 
+  /** Local checks first, then the shared rules the backend applies. */
+  function validate() {
+    const problem =
+      scheduleError(draft, mode) ?? scheduleSettingsProblem(scheduleSettings());
+    if (!problem) return true;
+    showToast({ title: "Schedule error", message: problem, type: "error" });
+    return false;
+  }
+
   async function persist(
     options: {
       previewToken?: string;
@@ -416,13 +426,7 @@ export function useScheduleEditor({
       effectiveFrom?: string;
     } = {}
   ) {
-    // Local checks first, then the shared rules the backend applies.
-    const problem =
-      scheduleError(draft, mode) ?? scheduleSettingsProblem(scheduleSettings());
-    if (problem) {
-      showToast({ title: "Schedule error", message: problem, type: "error" });
-      return;
-    }
+    if (!validate()) return;
     if (!supabase || !selectedPracticeId || inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
@@ -509,6 +513,8 @@ export function useScheduleEditor({
         }
       }
       if (submitted) {
+        // The request holds these edits; leaving the editor loses nothing.
+        dirty.current = false;
         await queryClient.invalidateQueries({
           queryKey: ["schedule-change-requests"],
         });
@@ -623,6 +629,12 @@ export function useScheduleEditor({
     offerSuggestion,
     applySuggestion,
     hasChanges: dirty.current,
+    validate,
+    // Null for a first schedule, which has no saved copy to compare with.
+    changes: baseSettings.current
+      ? draftChanges(draftFromSettings(baseSettings.current, mode), draft)
+      : null,
+    summary: draftSummary(draft, mode),
     startsFromLabel:
       startsFrom === today ? "today" : formatDisplayDate(startsFrom),
     update,

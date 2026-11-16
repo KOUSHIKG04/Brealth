@@ -19,19 +19,13 @@ import {
   type ClinicUnavailability,
   type ClinicPractice,
 } from "@startup/contracts";
-import { supabase, useMobileSession } from "../../../services/supabase";
-import {
-  getSelectedPracticeId,
-  setSelectedPracticeId,
-} from "../../practices/services/selectedPractice";
-import { selectedPracticeQueryKey } from "../../practices/utils/practiceQueryKeys";
+import { supabase } from "../../../services/supabase";
 import { practiceTimeIso } from "../utils/unavailableTime";
 
-export function useUnavailableTimeManager() {
+/** Time off for the practice chosen on the schedule overview. */
+export function useUnavailableTimeManager(practiceId: string | undefined) {
   const client = useQueryClient();
   const { showToast } = useToast();
-  const { profile } = useMobileSession();
-  const doctorId = profile?.doctor?.id;
   const practices = useQuery({
     queryKey: ["my-practices"],
     queryFn: () => listMyPractices(supabase!),
@@ -42,18 +36,7 @@ export function useUnavailableTimeManager() {
     queryFn: () => getMyDoctorProfile(supabase!),
     enabled: Boolean(supabase),
   });
-  const preferred = useQuery({
-    queryKey: selectedPracticeQueryKey(doctorId),
-    queryFn: () => getSelectedPracticeId(doctorId!),
-    enabled: Boolean(doctorId),
-  });
   const availablePractices = practices.data as ClinicPractice[] | undefined;
-  const [practice, setPractice] = useState<string | null>(null);
-  const practiceId =
-    availablePractices?.find((p) => p.practice_id === practice)?.practice_id ??
-    availablePractices?.find((p) => p.practice_id === preferred.data)
-      ?.practice_id ??
-    availablePractices?.[0]?.practice_id;
   const unavailable = useQuery({
     queryKey: ["doctor-clinic-unavailability", practiceId],
     queryFn: () => listClinicUnavailability(supabase!, practiceId!),
@@ -215,29 +198,12 @@ export function useUnavailableTimeManager() {
     }
   }
 
-  function selectPractice(p: ClinicPractice) {
-    setPractice(p.practice_id);
-    if (doctorId)
-      void setSelectedPracticeId(doctorId, p.practice_id)
-        .then(() =>
-          client.setQueryData(selectedPracticeQueryKey(doctorId), p.practice_id)
-        )
-        .catch(() =>
-          showToast({
-            title: "Could not remember clinic",
-            type: "error",
-          })
-        );
-  }
   return {
-    selectPractice,
     client,
     showToast,
-    doctorId,
     practices,
     doctor,
     availablePractices,
-    setPractice,
     practiceId,
     unavailable,
     scopes,

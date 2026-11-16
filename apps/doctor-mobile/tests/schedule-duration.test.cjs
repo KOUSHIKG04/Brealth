@@ -245,7 +245,10 @@ function scheduleView({
     },
     "react/jsx-runtime": { jsx, jsxs: jsx },
     "react-native": { View: "View", Switch: "Switch", Pressable: "Pressable" },
-    "expo-router": { useFocusEffect: () => {} },
+    "expo-router": {
+      useFocusEffect: () => {},
+      useNavigation: () => ({ addListener: () => () => {}, dispatch() {} }),
+    },
     "lucide-react-native": {},
     "@startup/mobile-ui": {
       Button: "Button",
@@ -389,8 +392,8 @@ test("initial setup offers an inline suggestion, applies it only when chosen, an
   nodes.find((node) => node.type === "DatePicker").props.onChange(chosenDate);
   nodes = view.render();
   await nodes
-    .find((node) => node.props.label === "Publish Schedule")
-    .props.onPress();
+    .find((node) => node.props.publishLabel === "Publish Schedule")
+    .props.onPublish();
   assert.equal(view.publications.length, 1);
   assert.equal(view.publications[0][1], "practice");
   assert.equal(view.publications[0][2], "clinic");
@@ -428,8 +431,8 @@ test("doctor publishes split clinic blocks with the same saved appointment durat
     });
   nodes = view.render();
   await nodes
-    .find((node) => node.props.label === "Publish Schedule")
-    .props.onPress();
+    .find((node) => node.props.publishLabel === "Publish Schedule")
+    .props.onPublish();
   assert.equal(view.publications[0][3].clinicTimeBlocks.length, 2);
   assert.equal(view.publications[0][3].clinicTimeBlocks[1].start, "11:00");
   assert.equal(view.publications[0][3].slotMinutes, 60);
@@ -452,8 +455,8 @@ test("a schedule saved elsewhere is merged and published once without losing edi
     .props.onChange(30);
   nodes = view.render();
   await nodes
-    .find((node) => node.props.label === "Publish Schedule")
-    .props.onPress();
+    .find((node) => node.props.publishLabel === "Publish Schedule")
+    .props.onPublish();
   assert.equal(view.publications.length, 1);
   const [, , , settings, version] = view.publications[0];
   assert.equal(settings.walkinDailyLimit, 30, "doctor edit kept");
@@ -479,8 +482,8 @@ test("the same setting changed in both apps keeps the doctor's value and does no
     .props.onChange(30);
   nodes = view.render();
   await nodes
-    .find((node) => node.props.label === "Publish Schedule")
-    .props.onPress();
+    .find((node) => node.props.publishLabel === "Publish Schedule")
+    .props.onPublish();
   assert.equal(view.publications.length, 0);
   nodes = view.render();
   assert.equal(
@@ -494,8 +497,8 @@ test("an overlap that appears after the preview re-previews instead of failing",
   const view = scheduleView({ published: true, publishFailures: ["PT410"] });
   await view
     .render()
-    .find((node) => node.props.label === "Publish Schedule")
-    .props.onPress();
+    .find((node) => node.props.publishLabel === "Publish Schedule")
+    .props.onPublish();
   assert.equal(view.previews.length, 2);
   assert.equal(view.publications.length, 1);
 });
@@ -555,12 +558,12 @@ for (const mode of ["clinic", "online", "home"]) {
       "../src/features/schedule/screens/ScheduleScreen.tsx",
       {
         ...base,
-        "../components/AppointmentRecoveryPolicy": {
-          AppointmentRecoveryPolicy: "AppointmentRecoveryPolicy",
-        },
         "lucide-react-native": { Calendar: "Calendar", Check: "Check" },
         "../../../components/DatePicker": { DatePicker: "DatePicker" },
         "../components/NumberSetting": { NumberSetting: "NumberSetting" },
+        "../hooks/useDiscardChangesPrompt": {
+          useDiscardChangesPrompt: () => ({ visible: false }),
+        },
         "../hooks/useScheduleEditor": {
           useScheduleEditor({ mode }) {
             receivedMode = mode;
@@ -587,16 +590,14 @@ for (const mode of ["clinic", "online", "home"]) {
         },
       }
     );
-    const buttons = nodes(ScheduleScreen({ mode })).filter(
-      (node) =>
-        node.type === "Button" &&
-        /^(Publish|Save) Schedule$/.test(node.props.label)
+    const bars = nodes(ScheduleScreen({ mode })).filter(
+      (node) => node.props?.publishLabel
     );
     assert.equal(receivedMode, mode);
-    assert.equal(buttons.length, 1);
-    assert.equal(buttons[0].props.label, "Publish Schedule");
-    assert.equal(buttons[0].props.disabled, false);
-    buttons[0].props.onPress();
+    assert.equal(bars.length, 1);
+    assert.equal(bars[0].props.publishLabel, "Publish Schedule");
+    assert.equal(bars[0].props.disabled, false);
+    bars[0].props.onPublish();
     assert.equal(saves, 1);
   });
   test(`${mode} charges editor hides other service fees`, () => {
@@ -623,8 +624,8 @@ test("schedule overlap waits for confirmation and sends the reviewed token", asy
   const view = scheduleView({ published: true, conflictPreview: preview });
   await view
     .render()
-    .find((node) => node.props.label === "Publish Schedule")
-    .props.onPress();
+    .find((node) => node.props.publishLabel === "Publish Schedule")
+    .props.onPublish();
   assert.equal(view.publications.length, 0);
   const dialog = view
     .render()
@@ -641,8 +642,8 @@ test("blocked overlap and cancel never publish or discard the draft", async () =
   });
   await view
     .render()
-    .find((node) => node.props.label === "Publish Schedule")
-    .props.onPress();
+    .find((node) => node.props.publishLabel === "Publish Schedule")
+    .props.onPublish();
   let dialog = view
     .render()
     .find((node) => node.props.preview?.token === "blocked");
@@ -781,4 +782,128 @@ test("Doctor pause uses the keyboard-safe dialog and requires a reason before se
       .filter((n) => n.type === "Button")
       .every((n) => n.props.disabled)
   );
+});
+
+function hookHarness() {
+  const state = [];
+  let cursor = 0;
+  const effects = [];
+  return {
+    react: {
+      useState(initial) {
+        const i = cursor++;
+        if (!(i in state)) state[i] = initial;
+        return [
+          state[i],
+          (value) => {
+            state[i] = typeof value === "function" ? value(state[i]) : value;
+          },
+        ];
+      },
+      useRef(initial) {
+        const i = cursor++;
+        if (!(i in state)) state[i] = { current: initial };
+        return state[i];
+      },
+      useEffect(fn) {
+        cursor++;
+        effects.push(fn);
+      },
+    },
+    run(fn) {
+      cursor = 0;
+      effects.length = 0;
+      const result = fn();
+      effects.forEach((effect) => effect());
+      return result;
+    },
+  };
+}
+
+test("publishing goes through an inline review that lists the changes", () => {
+  const harness = hookHarness();
+  const { SchedulePublishBar } = load(
+    "../src/features/schedule/components/SchedulePublishBar.tsx",
+    {
+      ...base,
+      react: harness.react,
+      "lucide-react-native": { Calendar: "Calendar" },
+    }
+  );
+  let valid = false,
+    published = 0;
+  const props = {
+    publishLabel: "Publish Schedule",
+    startsFromLabel: "today",
+    hasChanges: true,
+    changes: ["hours", "appointment length"],
+    summary: "Mon–Sat · 9:00 AM–1:00 PM · 15 min",
+    pausesService: false,
+    disabled: false,
+    loading: false,
+    validate: () => valid,
+    onPublish: () => {
+      published++;
+    },
+  };
+  const render = () => nodes(harness.run(() => SchedulePublishBar(props)));
+  const button = (tree, label) =>
+    tree.find((node) => node.type === "Button" && node.props.label === label);
+  // An invalid draft stays in the editor; the problem is shown as a toast.
+  button(render(), "Review & publish").props.onPress();
+  assert.ok(button(render(), "Review & publish"));
+  valid = true;
+  button(render(), "Review & publish").props.onPress();
+  const review = render();
+  assert.ok(
+    review.some(
+      (node) => node.props?.children === "Changed: hours, appointment length."
+    )
+  );
+  assert.equal(published, 0, "nothing is sent before confirming");
+  button(review, "Keep editing").props.onPress();
+  assert.ok(button(render(), "Review & publish"));
+  button(render(), "Review & publish").props.onPress();
+  button(render(), "Publish Schedule").props.onPress();
+  assert.equal(published, 1);
+});
+
+test("leaving with unpublished edits asks before discarding them", () => {
+  const harness = hookHarness();
+  const listeners = [];
+  const dispatched = [];
+  const navigation = {
+    addListener: (name, fn) => {
+      listeners.push({ name, fn });
+      return () => {};
+    },
+    dispatch: (action) => dispatched.push(action),
+  };
+  const { useDiscardChangesPrompt } = load(
+    "../src/features/schedule/hooks/useDiscardChangesPrompt.ts",
+    { react: harness.react, "expo-router": { useNavigation: () => navigation } }
+  );
+  assert.equal(
+    harness.run(() => useDiscardChangesPrompt(false)).visible,
+    false
+  );
+  assert.equal(listeners.length, 0, "no prompt without changes");
+  harness.run(() => useDiscardChangesPrompt(true));
+  let prevented = false;
+  listeners[0].fn({
+    preventDefault: () => (prevented = true),
+    data: { action: { type: "GO_BACK" } },
+  });
+  assert.equal(prevented, true);
+  const prompt = harness.run(() => useDiscardChangesPrompt(true));
+  assert.equal(prompt.visible, true);
+  prompt.keepEditing();
+  assert.equal(harness.run(() => useDiscardChangesPrompt(true)).visible, false);
+  assert.equal(dispatched.length, 0);
+  listeners[0].fn({
+    preventDefault() {},
+    data: { action: { type: "GO_BACK" } },
+  });
+  harness.run(() => useDiscardChangesPrompt(true)).discard();
+  assert.deepEqual(dispatched, [{ type: "GO_BACK" }]);
 });
