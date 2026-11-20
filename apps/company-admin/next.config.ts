@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  experimental: { agentUpgrade: "security" },
   allowedDevOrigins: ["localhost:3001"],
   // Refuse to be framed by other sites (clickjacking protection).
   async headers() {
