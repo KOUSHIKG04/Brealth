@@ -8,6 +8,18 @@ import {
   type AppSupabaseClient,
 } from "@startup/data-access";
 
+/**
+ * True when checkout ended without any payment (failed, cancelled or closed)
+ * and the reservation was kept, so paying again is safe.
+ */
+export function isRetryablePaymentFailure(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { retryablePayment?: unknown }).retryablePayment === true
+  );
+}
+
 export async function payForAppointment(
   client: AppSupabaseClient,
   input: {
@@ -15,6 +27,11 @@ export async function payForAppointment(
     policyVersion: string;
     patientName: string;
     reservation?: boolean;
+    /**
+     * Release an unpaid reservation when checkout fails (default). Pass false
+     * to keep it so the patient can retry or cancel.
+     */
+    releaseUnpaid?: boolean;
     openCheckout?: Awaited<ReturnType<typeof loadPaymentCheckout>>;
     onStageChange?: (
       stage: "preparing" | "checkout" | "verifying" | "reconciling"
@@ -52,7 +69,9 @@ export async function payForAppointment(
       reportError(reconcileError, { source: "payment-reconcile" });
       return null;
     });
-    if (
+    // Known unpaid: checkout never returned, nothing was captured and no
+    // payment is still in flight.
+    const unpaid = Boolean(
       !checkoutReturned &&
       input.reservation &&
       refreshed &&
@@ -61,15 +80,21 @@ export async function payForAppointment(
       !refreshed.attempts.some((attempt) =>
         ["authorized", "creating", "uncertain"].includes(attempt.status)
       )
-    ) {
+    );
+    if (unpaid && input.releaseUnpaid !== false) {
       await releaseAppointmentBooking(client, input.appointmentId).catch(
         () => undefined
       );
     }
-    if (error instanceof Error) throw error;
-    throw new Error(
-      "Payment was not completed. Check the booking's payment status before retrying."
-    );
+    const failure =
+      error instanceof Error
+        ? error
+        : new Error(
+            "Payment was not completed. Check the booking's payment status before retrying."
+          );
+    if (unpaid && input.releaseUnpaid === false)
+      Object.assign(failure, { retryablePayment: true });
+    throw failure;
   }
 }
 

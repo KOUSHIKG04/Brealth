@@ -94,7 +94,11 @@ function wrapper(
             useQueryClient: () => cacheClient,
             useQuery: (options) => {
               queries.push(options);
-              return { data, isLoading: false, isError: false };
+              return {
+                data: options.queryKey[0] === "my-notifications" ? data : [],
+                isLoading: false,
+                isError: false,
+              };
             },
             useMutation: (options) => {
               const mutation = {
@@ -223,7 +227,7 @@ test("Patient rescheduling notification shows the doctor reason and opens the af
   };
   const h = wrapper("patient", [item]);
   const view = h.render();
-  assert.match(view.props.notifications[0].title, /new appointment time/);
+  assert.match(view.props.notifications[0].title, /requested a new time/);
   assert.match(view.props.notifications[0].message, /Clinic hours changed/);
   assert.match(view.props.notifications[0].message, /booking and payment stay/);
   view.props.onNotificationPress("reschedule");

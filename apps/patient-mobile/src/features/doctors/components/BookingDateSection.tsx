@@ -87,7 +87,7 @@ export function BookingDateSection({
               ]}
             >
               <Text
-                variant="caption"
+                variant="cardHeading"
                 style={[
                   styles.dateNumber,
                   selected ? styles.selectedDateNumber : undefined,

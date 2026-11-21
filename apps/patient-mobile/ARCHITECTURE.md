@@ -134,6 +134,16 @@ arguments, capture/reconciliation rules and destination routes remain unchanged.
 Host tests cover delayed responses and cancellation cleanup; native activity
 presentation and transition appearance still require device verification.
 
+When checkout fails or is closed and nothing was captured (no attempt is
+authorized, creating or uncertain), booking no longer releases the reservation.
+`payForAppointment` is called with `releaseUnpaid: false` and marks the error
+(`isRetryablePaymentFailure`); `useDoctorBooking` shows a "Payment failed" toast
+and `PaymentFailedDialog` with **Retry payment** (pays the same reservation, then
+the usual confirmation) and **Cancel booking** (`releaseAppointmentBooking`).
+Closing the prompt keeps the reservation and opens Appointment Details. Payments
+that may be in flight are never offered as a retry. Appointment Details still
+releases a failed unpaid reservation as before. Device verification pending.
+
 Home visits select an existing saved location through `/select-location`. A map
 pin, building and city are required. `prepareAppointmentBooking` forwards its ID
 to `prepare_home_visit_booking`; the shared backend booking owner checks access
@@ -322,8 +332,8 @@ and consultation owners remain the integration points.
 The shared view distinguishes expired requests, time passed, checked-in patients
 waiting for the doctor, patient no-show, doctor unavailability and replacements.
 The list and detail clocks update every 30 seconds without writing attendance.
-Clinic review follows the session end; other visits use the booked end plus the
-configured grace. Confirmed online visits cannot first join after that deadline;
+Clinic review follows the session end; other visits use the booked end (grace
+periods are retired). Confirmed online visits cannot first join after that deadline;
 an active consultation can still be rejoined. Time passing never completes a visit.
 Checked-in patients retain visible queue access until staff resolve attendance.
 
@@ -340,8 +350,7 @@ Recovery requests/decisions update the appointment version and explicitly invoke
 the existing `emit_appointment_change` private emitter. The existing live-update
 bridge refreshes `patient-clinic-appointments`; no recovery-table subscription is
 added. Failed mutations refresh the booking before retry. Operational defaults are
-15 minutes of grace, a zero-minute cutoff and one patient move per replacement
-chain; authorized Doctor/Facility schedule editors can change them.
+a zero-minute cutoff and one patient move per replacement chain; authorized Doctor/Facility schedule editors can change them.
 
 Recovery migration
 `20261023075921_appointment_recovery_and_rescheduling.sql` was deployed to the

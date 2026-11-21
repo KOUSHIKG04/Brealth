@@ -48,16 +48,16 @@ export function AboutDoctor({
               strokeWidth={1.9}
             />
             <View style={styles.hospitalCopy}>
-              <Text variant="body" style={styles.hospitalLine}>
-                <Text variant="cardHeading" style={styles.hospitalName}>
+              <Text variant="bodySmall" style={styles.hospitalLine}>
+                <Text variant="label" style={styles.hospitalName}>
                   {facilityName},{" "}
                 </Text>
-                <Text variant="body" style={styles.hospitalAddress}>
+                <Text variant="bodySmall" style={styles.hospitalAddress}>
                   {facilityAddress}
                 </Text>
               </Text>
               {distanceMeters !== null ? (
-                <Text variant="body" style={styles.secondaryText}>
+                <Text variant="caption" style={styles.secondaryText}>
                   {(distanceMeters / 1000).toFixed(1)} km from you
                 </Text>
               ) : null}
@@ -120,16 +120,9 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 19,
   },
   bodyText: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 12,
-    lineHeight: 19,
   },
   hospitalRow: {
     flexDirection: "row",
@@ -147,22 +140,12 @@ const styles = StyleSheet.create({
   },
   hospitalName: {
     color: colors.patient.text,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 16,
   },
   hospitalAddress: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 12,
-    lineHeight: 16,
   },
   secondaryText: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    lineHeight: 15,
   },
   languageRow: {
     flexDirection: "row",

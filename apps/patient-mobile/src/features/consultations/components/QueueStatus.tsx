@@ -112,7 +112,7 @@ export function QueueStatus({ appointment }: QueueStatusProps) {
             </Text>
             <Text variant="inherit" style={styles.notifyBannerText}>
               {appointment.clinic_queue.late_review_required
-                ? "You arrived after the grace period. Reception will help you find the next available opening."
+                ? "Reception will help you find the next available opening."
                 : appointment.clinic_queue.estimated_start &&
                     appointment.clinic_queue.estimated_end
                   ? `Estimated consultation: ${new Date(appointment.clinic_queue.estimated_start).toLocaleTimeString("en-IN", { timeZone: appointment.timezone, hour: "numeric", minute: "2-digit" })}–${new Date(appointment.clinic_queue.estimated_end).toLocaleTimeString("en-IN", { timeZone: appointment.timezone, hour: "numeric", minute: "2-digit" })}`

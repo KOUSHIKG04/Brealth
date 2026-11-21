@@ -4,10 +4,15 @@ import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   dismissMyNotification,
+  listClinicAppointments,
   listMyNotifications,
   markMyNotificationsRead,
 } from "@startup/data-access";
-import { type InAppNotification, notificationTime } from "@startup/contracts";
+import {
+  type ClinicAppointment,
+  type InAppNotification,
+  notificationTime,
+} from "@startup/contracts";
 import { supabase } from "../../../services/supabase";
 
 import type { NotificationDrawerProps } from "../types/notifications";
@@ -15,6 +20,19 @@ import {
   notificationCopy,
   notificationPrefixCopy,
 } from "../utils/notificationsConstants";
+
+function appointmentWhen(appointment: ClinicAppointment) {
+  const date = new Date(appointment.starts_at);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-IN", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: appointment.timezone,
+  }).format(date);
+}
 
 export function useNotificationDrawer({
   visible,
@@ -25,6 +43,13 @@ export function useNotificationDrawer({
   const notificationsQuery = useQuery({
     queryKey: ["my-notifications"],
     queryFn: () => listMyNotifications(supabase!),
+    enabled: Boolean(supabase && showModal),
+  });
+  // Same query (and cache) as Home and My Bookings, used to name the doctor
+  // and time an appointment notification is about.
+  const appointmentsQuery = useQuery({
+    queryKey: ["patient-clinic-appointments"],
+    queryFn: () => listClinicAppointments(supabase!),
     enabled: Boolean(supabase && showModal),
   });
   const markRead = useMutation({
@@ -73,12 +98,24 @@ export function useNotificationDrawer({
             reason ||
             status ||
             "Open your bookings for details";
-      const bookingCode =
-        typeof params.booking_code === "string" ? params.booking_code : null;
+      const appointment = appointmentsQuery.data?.find(
+        (entry) =>
+          entry.id === params.appointment_id ||
+          entry.public_code === params.booking_code
+      );
+      const when = appointment ? appointmentWhen(appointment) : null;
+      const who = appointment
+        ? [appointment.doctor_name, when].filter(Boolean).join(" · ")
+        : null;
       return {
         id: item.id,
         title: copy.title,
-        message: bookingCode ? `${detail} · Booking ${bookingCode}` : detail,
+        // Doctor and time when the booking is known; the event detail otherwise.
+        // A reschedule request keeps its reason and next steps.
+        message:
+          who && item.template_key === "appointment.reschedule_requested"
+            ? `${who}. ${detail}`
+            : who || detail,
         time: notificationTime(item.created_at),
         createdAt: item.created_at,
         type: copy.kind,

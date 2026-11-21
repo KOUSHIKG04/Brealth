@@ -1,6 +1,6 @@
 import { AppText as Text } from "@startup/mobile-ui";
 import { Pressable, StyleSheet, View } from "react-native";
-import { colors, fontFamilies, radius, surfaces } from "@startup/design-tokens";
+import { colors, radius, surfaces } from "@startup/design-tokens";
 import { profileTabs } from "../utils/doctorProfileConstants";
 import type { ProfileTabsProps } from "../types/doctor-profile";
 
@@ -55,14 +55,9 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.medium,
-    fontSize: 14,
-    fontWeight: "500",
   },
   activeTabLabel: {
     color: colors.white,
-    fontFamily: fontFamilies.bold,
-    fontWeight: "700",
   },
   pressed: {
     opacity: 0.76,

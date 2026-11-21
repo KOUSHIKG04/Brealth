@@ -1,7 +1,7 @@
 import { AppText as Text } from "@startup/mobile-ui";
 import { StyleSheet, View } from "react-native";
 import { Navigation } from "lucide-react-native";
-import { colors, fontFamilies, radius, surfaces } from "@startup/design-tokens";
+import { colors, radius, surfaces } from "@startup/design-tokens";
 import { Button, Card } from "@startup/mobile-ui";
 import type { HomeVisitAddressProps } from "../types/doctor-profile";
 
@@ -29,7 +29,7 @@ export function HomeVisitAddress({
             Home visit address
           </Text>
           <Text
-            variant="body"
+            variant="bodySmall"
             numberOfLines={2}
             style={styles.pinnedLocationAddress}
           >
@@ -73,16 +73,9 @@ const styles = StyleSheet.create({
   },
   pinnedLocationTitle: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 16,
   },
   pinnedLocationAddress: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
     fontStyle: "italic",
-    lineHeight: 15,
   },
 });

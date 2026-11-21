@@ -16,10 +16,6 @@ export const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 19,
   },
   monthsStrip: {
     flexDirection: "row",
@@ -72,19 +68,12 @@ export const styles = StyleSheet.create({
   },
   dateNumber: {
     color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
-    fontSize: 17,
-    fontWeight: "700",
-    lineHeight: 22,
   },
   selectedDateNumber: {
     color: colors.white,
   },
   dateDay: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    lineHeight: 14,
   },
   selectedDateDay: {
     color: colors.white,
@@ -101,9 +90,6 @@ export const styles = StyleSheet.create({
   },
   availability: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.medium,
-    fontSize: 12,
-    lineHeight: 16,
   },
   slotGrid: {
     flexDirection: "row",

@@ -2,7 +2,7 @@ import type { DoctorCardProps } from "../components/DoctorCard";
 import type { ConsultationType } from "../../appointments/types/appointment";
 import type { PatientScreenProps } from "../../../types/screen";
 import type { ProfileTab } from "./booking-calendar";
-import type { ClinicSlot } from "@startup/contracts";
+import type { ClinicSlot, ClinicTimeBoardEntry } from "@startup/contracts";
 
 export type BookingSelection = {
   date: string;
@@ -60,6 +60,11 @@ export type BookSlotsProps = {
     | "fee_minor"
     | "currency"
     | "daily_bookings_remaining"
+  >[];
+  /** In-person times the app cannot book, shown with a label. */
+  unavailableTimes?: Pick<
+    ClinicTimeBoardEntry,
+    "window_id" | "starts_at" | "status"
   >[];
   patientOptions: { id: string; label: string; verified: boolean }[];
   loading?: boolean;

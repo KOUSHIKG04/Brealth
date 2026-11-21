@@ -7,7 +7,8 @@ type NotificationCopy = {
 };
 
 // Patient-facing wording per backend template key. The backend sends only
-// booking codes, statuses and reasons, so messages describe the event itself.
+// booking codes, statuses and reasons. Each title reads on one line, e.g.
+// "Appointment confirmed"; the message names the doctor and time when known.
 export const notificationCopy: Record<string, NotificationCopy> = {
   "appointment.requested": {
     kind: "appointment",
@@ -51,7 +52,7 @@ export const notificationCopy: Record<string, NotificationCopy> = {
   },
   "appointment.reschedule_requested": {
     kind: "appointment",
-    title: "Doctor requested a new appointment time",
+    title: "Doctor requested a new time",
     message: "Your doctor asked to move this appointment",
   },
   "appointment.no_show": {

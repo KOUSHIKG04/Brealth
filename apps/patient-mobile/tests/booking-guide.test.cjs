@@ -52,10 +52,14 @@ function guide({ canGoBack = true } = {}) {
     "expo-status-bar": { StatusBar: "StatusBar" },
     "lucide-react-native": { ChevronLeft: "ChevronLeft" },
     "@startup/design-tokens": {
-      colors: { white: "#FFF", patient: {} },
+      colors: { white: "#FFF", patient: {}, ui: {} },
       fontFamilies: {},
     },
-    "@startup/mobile-ui": { Button: "Button", SafeAreaView: "SafeAreaView" },
+    "@startup/mobile-ui": {
+      AppText: "Text",
+      Button: "Button",
+      SafeAreaView: "SafeAreaView",
+    },
     "../../appointments/utils/consultation": {
       parseConsultationType: (type) => type,
     },

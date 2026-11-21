@@ -51,3 +51,9 @@ export const timeSlots: readonly BookingTimeSlot[] = [
 export const languages = ["English", "Hindi", "Kannada"] as const;
 
 export const patientOptions = ["Self", "Family 1"] as const;
+
+/** Labels for in-person times the app cannot book. */
+export const slotStatusLabels = {
+  booked: "Booked",
+  closed: "Closed",
+} as const;

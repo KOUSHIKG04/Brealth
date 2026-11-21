@@ -17,6 +17,7 @@ export function BookSlots({
   onBookAppointment,
   onGoToAbout,
   slots,
+  unavailableTimes,
   patientOptions,
   loading,
   error,
@@ -39,6 +40,7 @@ export function BookSlots({
     monthOptions,
     monthDates,
     dateSlots,
+    dateUnavailable,
     selectedSlot,
     datesScrollRef,
     monthsScrollRef,
@@ -50,6 +52,7 @@ export function BookSlots({
     onBookAppointment,
     onGoToAbout,
     slots,
+    unavailableTimes,
     patientOptions,
     loading,
     error,
@@ -84,6 +87,7 @@ export function BookSlots({
           setSelectedTime={setSelectedTime}
           selectedDate={selectedDate}
           dateSlots={dateSlots}
+          dateUnavailable={dateUnavailable}
           loading={loading}
           error={error}
           timeZone={timeZone}

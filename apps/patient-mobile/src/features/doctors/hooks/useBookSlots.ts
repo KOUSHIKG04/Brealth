@@ -11,6 +11,7 @@ export function useBookSlots({
   onBookAppointment,
   onGoToAbout,
   slots,
+  unavailableTimes = [],
   patientOptions,
   loading,
   error,
@@ -53,6 +54,19 @@ export function useBookSlots({
     [slots, timeZone]
   );
 
+  // Dates with only taken or walk-in times stay visible with labels, but the
+  // default choice is a date the app can still book.
+  const shownDates = useMemo(
+    () =>
+      new Set([
+        ...availableDates,
+        ...unavailableTimes.map((slot) =>
+          localDateKey(new Date(slot.starts_at), timeZone)
+        ),
+      ]),
+    [availableDates, unavailableTimes, timeZone]
+  );
+
   const sortedDates = [...availableDates].sort();
 
   const [firstYear, firstMonth] = (sortedDates[0] ?? localDateKey(today))
@@ -71,7 +85,7 @@ export function useBookSlots({
   const selectedDate =
     requestedDate &&
     requestedDate.startsWith(monthPrefix) &&
-    availableDates.has(requestedDate)
+    shownDates.has(requestedDate)
       ? requestedDate
       : (sortedDates.find((date) => date.startsWith(monthPrefix)) ?? null);
 
@@ -115,13 +129,19 @@ export function useBookSlots({
           dayNumber: date.getDate(),
           day: date.toLocaleDateString("en-US", { weekday: "short" }),
           closed:
-            key < todayKey || (!loading && !error && !availableDates.has(key)),
+            key < todayKey || (!loading && !error && !shownDates.has(key)),
         };
       }
     );
-  }, [today, selectedMonthOffset, loading, error, availableDates]);
+  }, [today, selectedMonthOffset, loading, error, shownDates]);
   const dateSlots = slots.filter(
     (slot) => localDateKey(new Date(slot.starts_at), timeZone) === selectedDate
+  );
+  const bookable = new Set(dateSlots.map((slot) => slot.window_id));
+  const dateUnavailable = unavailableTimes.filter(
+    (slot) =>
+      !bookable.has(slot.window_id) &&
+      localDateKey(new Date(slot.starts_at), timeZone) === selectedDate
   );
   const selectedSlot = dateSlots.find(
     (slot) => slot.window_id === selectedTime
@@ -173,13 +193,7 @@ export function useBookSlots({
   const handleSelectDate = (key: string, idx: number) => {
     setSelectedDate(key);
     setSelectedTime(null);
-    if (
-      !loading &&
-      !error &&
-      !slots.some(
-        (slot) => localDateKey(new Date(slot.starts_at), timeZone) === key
-      )
-    ) {
+    if (!loading && !error && !shownDates.has(key)) {
       showToast({
         title: "No times on this date",
         message: "Choose another date to see available slots.",
@@ -205,6 +219,7 @@ export function useBookSlots({
     monthOptions,
     monthDates,
     dateSlots,
+    dateUnavailable,
     selectedSlot,
     datesScrollRef,
     monthsScrollRef,

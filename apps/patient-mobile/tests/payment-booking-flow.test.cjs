@@ -54,6 +54,9 @@ function bookingView({
   reserveGate,
   paymentGate,
   refreshGate,
+  // Outcomes for successive payments: "paid", "failed" (retryable, no money
+  // taken) or "uncertain"; when empty, `fail` decides as before.
+  payOutcomes = [],
 } = {}) {
   const state = [],
     refs = [],
@@ -87,6 +90,7 @@ function bookingView({
     },
     useEffect() {},
     useCallback: (fn) => fn,
+    useTransition: () => [false, (fn) => fn()],
   };
   const { useDoctorBooking } = load(
     "features/doctors/hooks/useDoctorBooking.ts",
@@ -99,7 +103,7 @@ function bookingView({
       "expo-crypto": { randomUUID: () => "request-key" },
       "expo-haptics": {
         notificationAsync: async () => {},
-        NotificationFeedbackType: { Success: "success" },
+        NotificationFeedbackType: { Success: "success", Error: "error" },
       },
       "expo-location": {},
       "@tanstack/react-query": {
@@ -163,6 +167,8 @@ function bookingView({
         },
       },
       "@startup/data-access": {
+        releaseAppointmentBooking: async (_, id) =>
+          events.push(["release", id]),
         prepareAppointmentBooking: async (_, input) => {
           events.push(["reserve", input.paymentMethod]);
           if (home) events.push(["destination", input.locationId]);
@@ -176,6 +182,7 @@ function bookingView({
                   ? "confirmed"
                   : "pending",
             requires_payment: automatic && input.paymentMethod === "online",
+            reservation_expires_at: "2026-11-01T10:10:00Z",
           };
         },
         listClinicAppointments: async () => {
@@ -203,16 +210,29 @@ function bookingView({
         formatSavedLocation: () => "",
       },
       "../../../services/paymentCheckout": {
+        isRetryablePaymentFailure: (error) => error?.retryablePayment === true,
         loadPaymentCheckout: async () => {
           events.push(["native"]);
           if (!native) throw new Error("Missing native module");
           return async () => {};
         },
         payForAppointment: async (_, input) => {
-          events.push(["pay"]);
+          events.push(["pay", input.releaseUnpaid]);
           input.onStageChange?.("checkout");
           await paymentGate;
-          if (fail) throw new Error("Checkout cancelled");
+          const outcome = payOutcomes.length ? payOutcomes.shift() : null;
+          if (outcome === "failed") {
+            captured = false;
+            throw Object.assign(new Error("Payment failed"), {
+              retryablePayment: true,
+            });
+          }
+          if (outcome === "uncertain") {
+            captured = false;
+            throw new Error("Verification connection lost");
+          }
+          if (outcome === "paid") captured = true;
+          if (!outcome && fail) throw new Error("Checkout cancelled");
           input.onStageChange?.("verifying");
         },
       },
@@ -461,7 +481,11 @@ test("clinic app bookings always use online checkout even if an older backend ad
   controller.setAcceptedPolicy("policy-v1");
   controller = view.render();
   await controller.book.mutateAsync(request);
-  assert.deepEqual(view.events, [["native"], ["reserve", "online"], ["pay"]]);
+  assert.deepEqual(view.events, [
+    ["native"],
+    ["reserve", "online"],
+    ["pay", false],
+  ]);
 });
 
 test("failed checkout and unverified capture never show confirmed feedback", async () => {
@@ -600,7 +624,7 @@ test("home visits pass the confirmed saved destination through Pay & Book", asyn
     ["native"],
     ["reserve", "online"],
     ["destination", "location"],
-    ["pay"],
+    ["pay", false],
   ]);
 });
 
@@ -620,4 +644,121 @@ test("home manual requests wait for approval; missing map pins never open checko
   controller = missing.render();
   await assert.rejects(controller.book.mutateAsync(request), /map pin/);
   assert.equal(missing.events.length, 0);
+});
+
+test("a failed payment keeps the reservation and offers retry or cancel instead of leaving", async () => {
+  const view = bookingView({ payOutcomes: ["failed", "paid"] });
+  let controller = view.render();
+  controller.setAcceptedPolicy("policy-v1");
+  controller = view.render();
+  await assert.rejects(controller.book.mutateAsync(request), /Payment failed/);
+  controller = view.render();
+  assert.equal(controller.paymentFailure.appointmentId, "appointment");
+  assert.equal(controller.paymentFailure.holdUntil, "2026-11-01T10:10:00Z");
+  assert.ok(view.toasts.some((toast) => toast.title === "Payment failed"));
+  assert.ok(!view.events.some((event) => event[0] === "release"));
+  assert.deepEqual(view.routes, [], "stays on the doctor page");
+  assert.equal(controller.bookingStage, null);
+  // Retry pays the same reservation and confirms it.
+  await controller.retryPayment();
+  controller = view.render();
+  assert.equal(controller.paymentFailure, null);
+  assert.deepEqual(
+    view.events.filter((event) => event[0] === "pay"),
+    [
+      ["pay", false],
+      ["pay", false],
+    ]
+  );
+  assert.ok(
+    view.toasts.some((toast) => toast.title === "Appointment confirmed")
+  );
+  assert.equal(view.routes.at(-1), "/appointments");
+});
+
+test("a retry that fails again asks again; cancel releases the reservation", async () => {
+  const view = bookingView({ payOutcomes: ["failed", "failed"] });
+  let controller = view.render();
+  controller.setAcceptedPolicy("policy-v1");
+  controller = view.render();
+  await assert.rejects(controller.book.mutateAsync(request));
+  await view.render().retryPayment();
+  controller = view.render();
+  assert.equal(controller.paymentFailure.appointmentId, "appointment");
+  assert.equal(
+    view.toasts.filter((toast) => toast.title === "Payment failed").length,
+    2
+  );
+  await controller.cancelFailedBooking();
+  controller = view.render();
+  assert.equal(controller.paymentFailure, null);
+  assert.deepEqual(
+    view.events.filter((event) => event[0] === "release"),
+    [["release", "appointment"]]
+  );
+  assert.ok(view.toasts.some((toast) => toast.title === "Booking cancelled"));
+  assert.ok(
+    !view.toasts.some((toast) => toast.title === "Appointment confirmed")
+  );
+});
+
+test("an uncertain payment is not offered as a retry; closing the prompt keeps the reservation", async () => {
+  const uncertain = bookingView({ payOutcomes: ["uncertain"] });
+  let controller = uncertain.render();
+  controller.setAcceptedPolicy("policy-v1");
+  controller = uncertain.render();
+  await assert.rejects(controller.book.mutateAsync(request));
+  assert.equal(uncertain.render().paymentFailure, null);
+  assert.equal(
+    uncertain.routes.at(-1).pathname,
+    "/appointment-details/[id]",
+    "money may be in flight: check status instead"
+  );
+  const closed = bookingView({ payOutcomes: ["failed"] });
+  controller = closed.render();
+  controller.setAcceptedPolicy("policy-v1");
+  controller = closed.render();
+  await assert.rejects(controller.book.mutateAsync(request));
+  closed.render().dismissPaymentFailure();
+  assert.equal(closed.render().paymentFailure, null);
+  assert.ok(!closed.events.some((event) => event[0] === "release"));
+  assert.equal(closed.routes.at(-1).pathname, "/appointment-details/[id]");
+});
+
+test("checkout can keep an unpaid reservation and marks only known-unpaid failures as retryable", async () => {
+  for (const attemptStatus of ["created", "uncertain"]) {
+    const events = [];
+    const { payForAppointment, isRetryablePaymentFailure } = load(
+      "services/paymentCheckout.ts",
+      {
+        "react-native": {},
+        "@startup/design-tokens": { colors: {} },
+        "@startup/contracts": {
+          appointmentCheckoutSchema: { parse: (value) => value },
+        },
+        "@startup/data-access": {
+          processAppointmentPayment: async (_, input) =>
+            input.action === "checkout"
+              ? { attemptId: "attempt" }
+              : { captured_minor: 0, attempts: [{ status: attemptStatus }] },
+          releaseAppointmentBooking: async () => events.push("release"),
+        },
+      }
+    );
+    const error = await payForAppointment(
+      {},
+      {
+        appointmentId: "appointment",
+        policyVersion: "policy",
+        patientName: "Patient",
+        reservation: true,
+        releaseUnpaid: false,
+        openCheckout: async () => {
+          throw new Error("Payment failed");
+        },
+      }
+    ).catch((cause) => cause);
+    assert.deepEqual(events, [], "the reservation is kept");
+    assert.equal(isRetryablePaymentFailure(error), attemptStatus === "created");
+  }
 });

@@ -91,6 +91,7 @@ export function DoctorResultsScreen({
               containerStyle={styles.filterContainer}
               triggerStyle={styles.filterTrigger}
               valueStyle={styles.filterValue}
+              compact
               menuWidth={176}
             />
             <Pressable
@@ -266,21 +267,17 @@ const styles = StyleSheet.create({
     minHeight: 32,
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 11,
-    paddingVertical: 5,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: colors.patient.surfaceBorder,
-    borderRadius: 999,
+    borderRadius: 16,
     backgroundColor: colors.patient.surface,
   },
   filterValue: {
     flexShrink: 0,
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-    fontWeight: "600",
-    lineHeight: 16,
   },
   sortOrderButton: {
     width: 32,

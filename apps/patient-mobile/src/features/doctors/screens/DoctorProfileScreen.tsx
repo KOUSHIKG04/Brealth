@@ -3,7 +3,7 @@ import { AppText as Text } from "@startup/mobile-ui";
 import { Pressable, View } from "react-native";
 import { router, type Href } from "expo-router";
 import * as Crypto from "expo-crypto";
-import { FadedScrollView, Header, Skeleton } from "@startup/mobile-ui";
+import { FadedScrollView, Header, Loader, Skeleton } from "@startup/mobile-ui";
 import DoctorCard from "../components/DoctorCard";
 import {
   AboutDoctor,
@@ -16,14 +16,12 @@ import {
   consultationFlows,
   inPersonVisitLabels,
 } from "../../appointments/utils/consultationConstants";
-import {
-  formatConsultationFee,
-  practiceAvailabilityLabel,
-} from "../utils/doctorDisplay";
+import { formatConsultationFee } from "../utils/doctorDisplay";
 import { useDoctorBooking } from "../hooks/useDoctorBooking";
 import { styles } from "../components/DoctorProfile.styles";
 import { BookingConfirmationDialog } from "../components/BookingConfirmationDialog";
 import { BookingProgress } from "../components/BookingProgress";
+import { PaymentFailedDialog } from "../components/PaymentFailedDialog";
 
 export function DoctorProfileScreen({
   practiceId: initialPracticeId,
@@ -32,6 +30,11 @@ export function DoctorProfileScreen({
 }: DoctorProfileScreenProps) {
   const {
     bookingStage,
+    paymentFailure,
+    recoveringPayment,
+    retryPayment,
+    cancelFailedBooking,
+    dismissPaymentFailure,
     bookingOptions,
     acceptedPolicy,
     setAcceptedPolicy,
@@ -39,6 +42,8 @@ export function DoctorProfileScreen({
     setSelectedPracticeId,
     profile,
     activeTab,
+    requestedTab,
+    switchingTab,
     setActiveTab,
     setOverrideConsultationType,
     selectedConsultationType,
@@ -58,6 +63,7 @@ export function DoctorProfileScreen({
     slotsQuery,
     familyQuery,
     slots,
+    unavailableTimes,
     practice,
     bioQuery,
     book,
@@ -115,9 +121,16 @@ export function DoctorProfileScreen({
                 practice.specialties.map((item) => item.name).join(", ") ||
                 practice.service_name
               }
+              rating={
+                practice.rating === null
+                  ? "No ratings yet"
+                  : `${practice.rating} (${practice.review_count} reviews)`
+              }
+              showRating
               experience={`${practice.experience_years} Years Experience`}
-              fee={formatConsultationFee(practice.fee_minor, practice.currency)}
-              distanceMeters={null}
+              hideExperience
+              hideFee
+              distanceMeters={isOnline ? null : practice.distance_meters}
               contextLabel={
                 selectedConsultationType === "Online"
                   ? undefined
@@ -156,24 +169,43 @@ export function DoctorProfileScreen({
                         styles.selectedLocation,
                     ]}
                   >
-                    <Text variant="bodyEmphasis">
-                      {location.facility_name}
-                      {location.practice_id === practiceId ? " · Selected" : ""}
-                    </Text>
-                    {!isOnline ? (
-                      <Text variant="label" style={styles.message}>
-                        {location.address}
+                    <View
+                      style={[
+                        styles.radio,
+                        location.practice_id === practiceId &&
+                          styles.radioSelected,
+                      ]}
+                    >
+                      {location.practice_id === practiceId ? (
+                        <View style={styles.radioDot} />
+                      ) : null}
+                    </View>
+                    <View style={styles.locationCopy}>
+                      <Text
+                        variant="label"
+                        numberOfLines={1}
+                        style={[
+                          styles.locationName,
+                          location.practice_id === practiceId &&
+                            styles.selectedLocationText,
+                        ]}
+                      >
+                        {location.facility_name}
                       </Text>
-                    ) : null}
-                    <Text variant="label">
-                      {formatConsultationFee(
-                        location.fee_minor,
-                        location.currency
-                      )}
-                    </Text>
-                    <Text variant="label" style={styles.message}>
-                      {practiceAvailabilityLabel(location, false)}
-                    </Text>
+                      {!isOnline ? (
+                        <Text
+                          variant="caption"
+                          numberOfLines={1}
+                          style={[
+                            styles.message,
+                            location.practice_id === practiceId &&
+                              styles.selectedLocationMeta,
+                          ]}
+                        >
+                          {location.address}
+                        </Text>
+                      ) : null}
+                    </View>
                   </Pressable>
                 ))}
               </View>
@@ -202,9 +234,14 @@ export function DoctorProfileScreen({
               />
             ) : null}
             <View style={styles.tabSection}>
-              <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+              <ProfileTabs
+                activeTab={requestedTab}
+                onTabChange={setActiveTab}
+              />
               <View style={styles.page}>
-                {activeTab === "about" ? (
+                {switchingTab ? (
+                  <Loader theme="patient" style={styles.tabLoader} />
+                ) : activeTab === "about" ? (
                   <AboutDoctor
                     doctorName={practice.doctor_name}
                     bio={bioQuery.data ?? practice.bio ?? null}
@@ -236,6 +273,7 @@ export function DoctorProfileScreen({
                       }
                       consultationType={selectedConsultationType}
                       slots={slots}
+                      unavailableTimes={unavailableTimes}
                       patientOptions={[
                         ...(profile?.patient_id
                           ? [
@@ -315,6 +353,14 @@ export function DoctorProfileScreen({
         slots={slots}
       />
       <BookingProgress stage={bookingStage} />
+      <PaymentFailedDialog
+        failure={paymentFailure}
+        recovering={recoveringPayment}
+        timeZone={practice?.timezone}
+        onRetry={() => void retryPayment()}
+        onCancel={() => void cancelFailedBooking()}
+        onClose={dismissPaymentFailure}
+      />
     </View>
   );
 }

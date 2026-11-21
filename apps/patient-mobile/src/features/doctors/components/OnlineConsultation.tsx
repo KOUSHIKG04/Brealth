@@ -13,32 +13,40 @@ export function OnlineConsultation({
     <Card
       backgroundColor={colors.white}
       borderRadius={radius.md}
-      gap={14}
-      orientation="horizontal"
+      gap={12}
       padding={14}
       variant="outlined"
       style={styles.consultationCard}
     >
-      <View style={styles.consultationIconContainer}>
-        <Video color={colors.patient.primary} size={22} strokeWidth={2.2} />
-      </View>
-
-      <View style={styles.consultationCopy}>
-        <Text variant="cardHeading" style={styles.consultationTitle}>
+      <View style={styles.titleRow}>
+        <View style={styles.consultationIconContainer}>
+          <Video color={colors.patient.primary} size={18} strokeWidth={2.2} />
+        </View>
+        <Text
+          variant="cardHeading"
+          numberOfLines={1}
+          style={styles.consultationTitle}
+        >
           Online Consultation Available
         </Text>
-        <Text variant="cardHeading" style={styles.consultationSubtitle}>
-          {`Video call from home · ${fee}`}
-        </Text>
       </View>
 
-      <Button
-        label="Book"
-        theme="patient"
-        onPress={onBookPress}
-        style={styles.consultationButton}
-        labelStyle={styles.consultationButtonLabel}
-      />
+      <View style={styles.actionRow}>
+        <Text
+          variant="bodySmall"
+          numberOfLines={1}
+          style={styles.consultationSubtitle}
+        >
+          {`Video call from home · ${fee}`}
+        </Text>
+        <Button
+          label="Book"
+          theme="patient"
+          onPress={onBookPress}
+          style={styles.consultationButton}
+          labelStyle={styles.consultationButtonLabel}
+        />
+      </View>
     </Card>
   );
 }
@@ -46,34 +54,33 @@ export function OnlineConsultation({
 const styles = StyleSheet.create({
   consultationCard: {
     ...surfaces.card,
+  },
+  titleRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    gap: 10,
   },
   consultationIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
+    width: 32,
+    height: 32,
+    borderRadius: 10,
     backgroundColor: "#E6F7F5",
     alignItems: "center",
     justifyContent: "center",
   },
-  consultationCopy: {
-    flex: 1,
-    gap: 3,
-  },
   consultationTitle: {
+    flex: 1,
     color: "#0C2434",
-    fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    fontWeight: "500",
-    lineHeight: 20,
+  },
+  actionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
   },
   consultationSubtitle: {
+    flex: 1,
     color: "#5B6B79",
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    fontWeight: "500",
-    lineHeight: 18,
   },
   consultationButton: {
     minHeight: 40,

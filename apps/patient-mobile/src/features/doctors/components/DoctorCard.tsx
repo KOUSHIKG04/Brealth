@@ -6,7 +6,7 @@ import { AppText as Text } from "@startup/mobile-ui";
 import { useRef, type ReactNode } from "react";
 import { type GestureResponderEvent, StyleSheet, View } from "react-native";
 import { Briefcase, Star, UserRound } from "lucide-react-native";
-import { colors, fontFamilies, radius, surfaces } from "@startup/design-tokens";
+import { colors, radius, surfaces } from "@startup/design-tokens";
 import { Card } from "@startup/mobile-ui";
 
 function splitQualification(q: string): {
@@ -347,45 +347,24 @@ const styles = StyleSheet.create({
   },
   nameText: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.bold,
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 20,
   },
   degreeText: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 11,
-    fontWeight: "400",
-    lineHeight: 20,
   },
   departmentText: {
     color: "#677e87",
-    fontFamily: fontFamilies.medium,
-    fontSize: 14,
-    lineHeight: 16,
   },
   specialtyRatingRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   specialtyInRow: { flexShrink: 1, minWidth: 0 },
   ratingText: {
     color: "#677e87",
-    fontFamily: fontFamilies.medium,
-    fontSize: 11,
-    lineHeight: 16,
     flexShrink: 0,
   },
   specialtyText: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    fontWeight: "500",
-    lineHeight: 17,
   },
   distanceText: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.medium,
-    fontSize: 12,
-    lineHeight: 16,
   },
   contextDistanceRow: {
     flexDirection: "row",
@@ -395,16 +374,10 @@ const styles = StyleSheet.create({
   },
   contextInline: {
     color: colors.patient.accent,
-    fontFamily: fontFamilies.regular,
-    fontSize: 10,
   },
   profileName: {
     flex: 1,
     color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
-    fontSize: 15,
-    fontWeight: "700",
-    lineHeight: 21,
   },
   nameRow: {
     flexDirection: "row",
@@ -419,15 +392,9 @@ const styles = StyleSheet.create({
   },
   contextBadgeText: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 10,
-    fontWeight: "600",
   },
   secondaryText: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    lineHeight: 15,
   },
   pillRow: {
     flexDirection: "row",
@@ -454,10 +421,6 @@ const styles = StyleSheet.create({
   },
   pillText: {
     color: colors.patient.primary,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    fontWeight: "500",
-    lineHeight: 16,
     flexShrink: 1,
     textAlign: "center",
   },
@@ -492,16 +455,11 @@ const styles = StyleSheet.create({
   },
   profileCellLabel: {
     color: colors.patient.textSecondary,
-    fontFamily: fontFamilies.medium,
-    fontSize: 9,
     textTransform: "uppercase",
     letterSpacing: 0.3,
   },
   profileCellValue: {
     color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
-    fontSize: 12,
-    fontWeight: "700",
   },
   starWrap: {
     alignItems: "center",

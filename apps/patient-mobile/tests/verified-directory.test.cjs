@@ -104,6 +104,85 @@ function load(file, mocks = {}) {
   return exports;
 }
 
+test("taken in-person times are labelled and the day shows app booking closed", () => {
+  const jsx = (type, props) => ({ type, props });
+  const { BookingTimeSection } = load(
+    "../src/features/doctors/components/BookingTimeSection.tsx",
+    {
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "react-native": { View: "View" },
+      "@startup/mobile-ui": { AppText: "Text", TimeSlot: "TimeSlot" },
+      "./BookSlots.styles": { styles: {} },
+    }
+  );
+  function all(node, result = []) {
+    if (Array.isArray(node)) node.forEach((item) => all(item, result));
+    else if (node && typeof node === "object") {
+      result.push(node);
+      all(node.props?.children, result);
+    }
+    return result;
+  }
+  let chosen = null;
+  const render = (dateSlots, dateUnavailable) =>
+    all(
+      BookingTimeSection({
+        dateSlots,
+        dateUnavailable,
+        selectedDate: "2026-10-23",
+        timeZone: "Asia/Kolkata",
+        setSelectedTime: (id) => (chosen = id),
+      })
+    );
+  let nodes = render(
+    [{ window_id: "open", starts_at: "2026-10-23T04:30:00Z" }],
+    [
+      {
+        window_id: "taken",
+        starts_at: "2026-10-23T03:30:00Z",
+        status: "booked",
+      },
+    ]
+  );
+  const slots = nodes.filter((node) => node.type === "TimeSlot");
+  assert.deepEqual(
+    slots.map((node) => node.props.caption ?? null),
+    ["Booked", null],
+    "times stay in order with the taken one labelled"
+  );
+  assert.equal(slots[0].props.disabled, true);
+  assert.equal(slots[0].props.onPress, undefined);
+  slots[1].props.onPress();
+  assert.equal(chosen, "open");
+  // Once the day's app limit is reached the day says so; free times are hidden.
+  nodes = render(
+    [],
+    [
+      {
+        window_id: "taken",
+        starts_at: "2026-10-23T04:30:00Z",
+        status: "booked",
+      },
+      {
+        window_id: "free",
+        starts_at: "2026-10-23T05:30:00Z",
+        status: "closed",
+      },
+    ]
+  );
+  assert.ok(
+    nodes.some((node) =>
+      String(node.props?.children).startsWith("App booking closed")
+    )
+  );
+  assert.deepEqual(
+    nodes
+      .filter((node) => node.type === "TimeSlot")
+      .map((node) => node.props.caption),
+    ["Booked"]
+  );
+});
+
 test("missing fee is not displayed as free", () => {
   const { formatConsultationFee } = load(
     "../src/features/doctors/utils/doctorDisplay.ts",
@@ -321,6 +400,7 @@ test("switching locations resets slot state and confirms the selected location a
       useEffect: () => {},
       useCallback: (fn) => fn,
       useRef: (value) => ({ current: value }),
+      useTransition: () => [false, (fn) => fn()],
     },
     "react/jsx-runtime": { jsx, jsxs: jsx, Fragment: "Fragment" },
     "react-native": {
