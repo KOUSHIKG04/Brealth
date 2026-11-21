@@ -8,10 +8,11 @@ export type { TimeSlotProps } from "../types/timeSlot";
 
 export function TimeSlot({
   time,
+  caption,
   disabled = false,
   style,
   textStyle,
-  accessibilityLabel = time,
+  accessibilityLabel = caption ? `${time}, ${caption}` : time,
   accessibilityRole,
   accessibilityState,
   onPress,
@@ -46,6 +47,19 @@ export function TimeSlot({
       >
         {time}
       </Text>
+      {caption ? (
+        <Text
+          variant="caption"
+          numberOfLines={1}
+          style={[
+            styles.caption,
+            { color: theme.textMuted },
+            disabled ? styles.disabledText : undefined,
+          ]}
+        >
+          {caption}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -68,6 +82,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "400",
     lineHeight: 16,
+    textAlign: "center",
+  },
+  caption: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 10,
+    lineHeight: 14,
     textAlign: "center",
   },
   pressed: {

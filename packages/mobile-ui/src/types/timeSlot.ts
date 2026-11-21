@@ -5,6 +5,8 @@ export type TimeSlotProps = Omit<
   "children" | "style" | "disabled"
 > & {
   time: string;
+  /** Short status under the time, such as "Booked". */
+  caption?: string;
   disabled?: boolean;
   style?: PressableProps["style"];
   textStyle?: StyleProp<TextStyle>;

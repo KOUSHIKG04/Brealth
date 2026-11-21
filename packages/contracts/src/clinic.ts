@@ -55,6 +55,15 @@ export type PortalPaidWalkInBookingInput = z.infer<
   typeof portalPaidWalkInBookingSchema
 >;
 
+/** Reception walk-in for today: the server assigns the next free time. */
+export const portalNextWalkInBookingSchema = portalPaidWalkInBookingSchema.omit(
+  { windowId: true }
+);
+
+export type PortalNextWalkInBookingInput = z.infer<
+  typeof portalNextWalkInBookingSchema
+>;
+
 export const clinicCheckinTokenSchema = z.string().regex(/^[0-9a-f-]{72}$/);
 
 export const publishClinicSessionSchema = z
@@ -131,6 +140,19 @@ export const clinicSlotSchema = z.object({
   fee_minor: z.string(),
   currency: z.string(),
 });
+
+/**
+ * An upcoming in-person time the app cannot book: taken, or closed because the
+ * day's app booking limit is reached.
+ */
+export const clinicTimeBoardEntrySchema = z.object({
+  window_id: uuidSchema,
+  starts_at: z.string(),
+  ends_at: z.string(),
+  status: z.enum(["booked", "closed"]),
+});
+
+export type ClinicTimeBoardEntry = z.infer<typeof clinicTimeBoardEntrySchema>;
 
 export const portalClinicDaySchema = z.object({
   local_day: z.iso.date(),

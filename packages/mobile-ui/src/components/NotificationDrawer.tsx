@@ -25,7 +25,6 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Filter } from "lucide-react-native";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
@@ -225,42 +224,41 @@ export function NotificationDrawer({
                   }`
                 : "All caught up"}
             </Text>
-            <Dropdown
-              theme={app}
-              accessibilityLabel="Filter notifications"
-              value={filter}
-              onValueChange={setFilter}
-              options={[
-                { label: "All", value: "all" },
-                { label: "Unread", value: "unread" },
-                { label: "Read", value: "read" },
-                { label: "Important", value: "important" },
-                { label: "Emergency", value: "emergency" },
-              ]}
-              leftIcon={<Filter size={17} color={palette.primary} />}
-              containerStyle={styles.filterContainer}
-              triggerStyle={styles.filterTrigger}
-              valueStyle={styles.filterText}
-              chevronSize={16}
-              menuWidth={180}
-            />
-          </View>
-          <View style={styles.hintRow}>
-            {notifications.some((n) => !n.read) ? (
-              <Pressable
-                accessibilityLabel="Mark all as read"
-                accessibilityRole="button"
-                onPress={onMarkAllRead}
-                hitSlop={8}
-              >
-                <Text variant="body" style={styles.markReadText}>
-                  Mark all read
-                </Text>
-              </Pressable>
-            ) : null}
-            <Text variant="caption" style={styles.swipeHint}>
-              Swipe left, then tap trash to delete.
-            </Text>
+            <View style={styles.subheaderActions}>
+              {notifications.some((n) => !n.read) ? (
+                <Pressable
+                  accessibilityLabel="Mark all as read"
+                  accessibilityRole="button"
+                  onPress={onMarkAllRead}
+                  hitSlop={8}
+                  style={styles.markReadButton}
+                >
+                  <Text variant="label" style={styles.markReadText}>
+                    Mark all read
+                  </Text>
+                </Pressable>
+              ) : null}
+              <Dropdown
+                theme={app}
+                accessibilityLabel="Filter notifications"
+                value={filter}
+                onValueChange={setFilter}
+                options={[
+                  { label: "All", value: "all" },
+                  { label: "Unread", value: "unread" },
+                  { label: "Read", value: "read" },
+                  { label: "Important", value: "important" },
+                  { label: "Emergency", value: "emergency" },
+                ]}
+                compact
+                chevronSize={12}
+                chevronColor={palette.dark}
+                containerStyle={styles.filterContainer}
+                triggerStyle={styles.filterTrigger}
+                valueStyle={styles.filterText}
+                menuWidth={176}
+              />
+            </View>
           </View>
 
           <FlatList

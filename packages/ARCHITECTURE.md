@@ -211,9 +211,10 @@ lineage with one replacement per source. Staff/doctor-unavailable moves do not c
 the patient's self-service count; other patient moves carry an incremented count down
 the chain. Appointment/request/settings versions and move idempotency protect retries.
 
-Practice-wide defaults are 15 minutes of attendance grace, a zero-minute notice
-cutoff and one patient move, editable through a separate versioned policy RPC.
-Clinic attendance uses session end; other modes use booked end plus grace. No-show
+Practice-wide defaults are a zero-minute notice cutoff and one patient move,
+editable through a separate versioned policy RPC. Grace periods are retired: the
+policy still accepts grace fields (default 0) but they have no effect. Clinic
+attendance uses session end; other modes use booked end. No-show
 and doctor-unavailable outcomes require explicit authorized decisions. Timers never
 complete consultations. An active online consultation remains rejoinable after its
 deadline. Final backend/deployment and native verification remain separate from

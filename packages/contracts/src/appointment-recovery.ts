@@ -38,8 +38,10 @@ export const recoveryPolicySchema = z
   .object({
     practiceId: uuidSchema,
     expectedVersion: z.number().int().positive().safe(),
-    onlineGraceMinutes: z.number().int().min(0).max(180),
-    clinicGraceMinutes: z.number().int().min(0).max(180).default(10),
+    // Grace periods are retired; the fields are still accepted from older
+    // clients but no longer affect queues or attendance.
+    onlineGraceMinutes: z.number().int().min(0).max(180).default(0),
+    clinicGraceMinutes: z.number().int().min(0).max(180).default(0),
     rescheduleCutoffMinutes: z.number().int().min(0).max(10080),
     maxSelfReschedules: z.number().int().min(0).max(10),
   })
@@ -87,7 +89,7 @@ export const recoveryResultSchema = z.object({
   id: uuidSchema,
 });
 
-export type RecoveryPolicyInput = z.infer<typeof recoveryPolicySchema>;
+export type RecoveryPolicyInput = z.input<typeof recoveryPolicySchema>;
 
 export type RescheduleAppointmentInput = z.infer<
   typeof rescheduleAppointmentSchema

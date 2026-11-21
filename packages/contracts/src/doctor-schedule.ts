@@ -148,6 +148,100 @@ export function scheduleBlocksError(
   }
 }
 
+/**
+ * Largest travel buffer (multiple of 5, at most 180) that keeps every block's
+ * buffers inside the same day and clear of neighbouring blocks, matching
+ * scheduleBlocksError.
+ */
+export function maxTravelBufferMinutes(blocks: DoctorTimeBlock[]): number {
+  const minutes = (clock: string) =>
+    Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
+  const ordered = [...blocks].sort((a, b) => a.start.localeCompare(b.start));
+  if (!ordered.length) return 180;
+  let limit = Math.min(
+    180,
+    minutes(ordered[0].start),
+    1440 - minutes(ordered[ordered.length - 1].end)
+  );
+  for (let index = 1; index < ordered.length; index++)
+    limit = Math.min(
+      limit,
+      Math.floor(
+        (minutes(ordered[index].start) - minutes(ordered[index - 1].end)) / 2
+      )
+    );
+  return Math.max(0, Math.floor(limit / 5) * 5);
+}
+
+/** Largest in-person capacity a day (app bookings + walk-ins). */
+export const maxClinicDailyCapacity = 100;
+
+/** In-person time slots a day for app bookings, within the daily maximum. */
+export function clinicTimeSlotCount(
+  blocks: DoctorTimeBlock[],
+  duration: number
+): number {
+  if (!duration) return 0;
+  const minutes = (clock: string) =>
+    Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
+  const slots = blocks.reduce(
+    (total, block) =>
+      total +
+      Math.max(
+        0,
+        Math.floor((minutes(block.end) - minutes(block.start)) / duration)
+      ),
+    0
+  );
+  return Math.min(maxClinicDailyCapacity, Number.isFinite(slots) ? slots : 0);
+}
+
+/**
+ * In-person limits: app bookings and walk-ins share the day's time slots
+ * (walk-ins are given the next free time in order), so app + walk-ins never
+ * exceed the slots. Capacity is their sum, and the shared auto-accept limit
+ * stays within the app limit.
+ */
+export function clinicCapacityLimits(input: {
+  timeSlots: number;
+  app: number;
+  walkin: number;
+  autoAcceptLimit: number;
+}) {
+  const app = Math.max(0, Math.min(input.app, input.timeSlots));
+  const walkin = Math.max(0, Math.min(input.walkin, input.timeSlots - app));
+  return {
+    app,
+    walkin,
+    total: app + walkin,
+    autoAcceptLimit: Math.max(1, Math.min(input.autoAcceptLimit, app)),
+  };
+}
+
+/** Schedule settings with consistent in-person limits (see above). */
+export function withClinicCapacity(
+  settings: DoctorScheduleSettings
+): DoctorScheduleSettings {
+  const limits = clinicCapacityLimits({
+    timeSlots: clinicTimeSlotCount(
+      settings.clinicTimeBlocks ?? [
+        { start: settings.clinicStart, end: settings.clinicEnd },
+      ],
+      settings.slotMinutes
+    ),
+    app: settings.clinicAppDailyLimit ?? settings.walkinDailyLimit,
+    walkin: settings.clinicWalkinDailyLimit ?? 0,
+    autoAcceptLimit: settings.autoAcceptLimit,
+  });
+  return {
+    ...settings,
+    walkinDailyLimit: limits.total,
+    clinicAppDailyLimit: limits.app,
+    clinicWalkinDailyLimit: limits.walkin,
+    autoAcceptLimit: settings.autoAccept ? limits.autoAcceptLimit : 0,
+  };
+}
+
 export const doctorScheduleSettingsSchema = z
   .object({
     workingDays: z.array(z.number().int().min(1).max(7)).min(1).max(7),

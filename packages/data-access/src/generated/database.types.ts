@@ -34,6 +34,7 @@ type NullableRpcArguments = {
     | "p_practice_id";
   submit_my_doctor_review: "p_comment";
   decide_my_facility_doctor_request: "p_reason";
+  decide_shift_plan: "p_reason";
   mark_my_notifications_read: "p_ids";
   set_my_profile_photo: "p_facility_id";
   review_company_verification_document: "p_reason";

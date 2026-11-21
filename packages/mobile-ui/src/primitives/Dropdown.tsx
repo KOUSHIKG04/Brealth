@@ -91,6 +91,7 @@ export function Dropdown({
   containerStyle,
   triggerStyle,
   valueStyle,
+  compact = false,
   accessibilityLabel,
   leftIcon,
   rightIcon,
@@ -182,6 +183,7 @@ export function Dropdown({
         accessibilityRole="button"
         accessibilityState={{ disabled, expanded: isOpen }}
         disabled={disabled}
+        hitSlop={compact ? 6 : undefined}
         onPress={openMenu}
         style={({ pressed }) => [
           styles.trigger,
@@ -194,12 +196,12 @@ export function Dropdown({
           disabled ? styles.triggerDisabled : undefined,
           pressed && !disabled ? styles.triggerPressed : undefined,
           triggerStyle,
-          readable && { minHeight: 52 },
+          readable && !compact && { minHeight: 52 },
         ]}
       >
         {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
         <Text
-          variant="body"
+          variant={compact ? "label" : "body"}
           numberOfLines={1}
           style={[
             styles.value,

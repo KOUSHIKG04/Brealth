@@ -18,7 +18,6 @@ import type {
   NotificationItem,
   NotificationCardProps,
 } from "../types/notification";
-import { notificationKindLabels } from "../utils/notificationConstants";
 import {
   createNotificationStyles,
   notificationPalette,
@@ -98,7 +97,7 @@ export function NotificationCard({
         style={styles.deleteAction}
       >
         {deleting ? (
-          <Loader theme={theme} />
+          <Loader theme={theme} color={colors.white} />
         ) : (
           <Trash2 size={22} color={colors.white} />
         )}
@@ -123,6 +122,16 @@ export function NotificationCard({
           ]}
           onPress={handlePress}
         >
+          {!item.read ? (
+            <View
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+              style={[
+                styles.unreadStripe,
+                item.emergency ? styles.emergencyStripe : undefined,
+              ]}
+            />
+          ) : null}
           <View
             style={[
               styles.iconContainer,
@@ -139,45 +148,29 @@ export function NotificationCard({
           <View style={styles.textContainer}>
             <View style={styles.cardHeaderRow}>
               <Text
-                variant="labelSmall"
+                variant="cardHeading"
                 numberOfLines={1}
                 style={[
-                  styles.itemKind,
-                  item.emergency ? styles.emergencyKind : undefined,
+                  styles.itemTitle,
+                  item.read ? styles.readItemTitle : undefined,
+                  item.emergency ? styles.emergencyTitle : undefined,
                 ]}
               >
-                {item.emergency
-                  ? "Emergency"
-                  : notificationKindLabels[item.type]}
+                {item.title}
               </Text>
               <Text variant="caption" style={styles.itemTime}>
                 {item.time}
               </Text>
-              {!item.read ? (
-                <View
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                  style={styles.unreadDot}
-                />
-              ) : null}
             </View>
-            <Text
-              variant="cardHeading"
-              numberOfLines={2}
-              style={[
-                styles.itemTitle,
-                item.read ? styles.readItemTitle : undefined,
-              ]}
-            >
-              {item.title}
-            </Text>
-            <Text
-              variant="bodySmall"
-              numberOfLines={3}
-              style={styles.itemMessage}
-            >
-              {item.message}
-            </Text>
+            {item.message ? (
+              <Text
+                variant="bodySmall"
+                numberOfLines={3}
+                style={styles.itemMessage}
+              >
+                {item.message}
+              </Text>
+            ) : null}
           </View>
         </Pressable>
       </Animated.View>

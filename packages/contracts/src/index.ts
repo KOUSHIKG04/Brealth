@@ -18,6 +18,8 @@ export * from "./doctor-profile";
 
 export * from "./doctor-schedule";
 
+export * from "./shift-plan";
+
 export * from "./errors";
 
 export * from "./facility-team";

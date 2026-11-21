@@ -8,6 +8,10 @@ import {
   scheduleChangeRequestSchema,
   scheduleConflictDecisionSchema,
   uuidSchema,
+  shiftPlanInputSchema,
+  shiftPlanSchema,
+  shiftPlanSubmitResultSchema,
+  type ShiftPlanInput,
 } from "@startup/contracts";
 import type {
   DoctorScheduleSettings,
@@ -412,4 +416,82 @@ export async function rejectScheduleChangeRequest(
     p_reason: reason.trim(),
   });
   if (error) throw rpcError(error);
+}
+
+/** Active, pending and the latest declined shift plan of each service. */
+export async function getShiftPlans(
+  client: AppSupabaseClient,
+  practiceId: string
+) {
+  const { data, error } = await client.rpc("get_shift_plans", {
+    p_practice_id: uuidSchema.parse(practiceId),
+  });
+  if (error) throw error;
+  return shiftPlanSchema.array().parse(data);
+}
+
+/** Saves a shift plan: active at once, or pending facility approval. */
+export async function submitShiftPlan(
+  client: AppSupabaseClient,
+  input: {
+    practiceId: string;
+    mode: "clinic" | "online" | "home";
+    plan: ShiftPlanInput;
+    effectiveFrom: string;
+  }
+) {
+  const { data, error } = await client.rpc("submit_shift_plan", {
+    p_practice_id: uuidSchema.parse(input.practiceId),
+    p_mode: input.mode,
+    p_plan: shiftPlanInputSchema.parse(input.plan),
+    p_effective_from: input.effectiveFrom,
+  });
+  if (error) throw error;
+  return shiftPlanSubmitResultSchema.parse(data);
+}
+
+export async function withdrawShiftPlan(
+  client: AppSupabaseClient,
+  planId: string
+) {
+  const { error } = await client.rpc("withdraw_shift_plan", {
+    p_plan_id: uuidSchema.parse(planId),
+  });
+  if (error) throw error;
+}
+
+export async function endShiftPlan(
+  client: AppSupabaseClient,
+  input: {
+    practiceId: string;
+    mode: "clinic" | "online" | "home";
+    from: string;
+  }
+) {
+  const { error } = await client.rpc("end_shift_plan", {
+    p_practice_id: uuidSchema.parse(input.practiceId),
+    p_mode: input.mode,
+    p_from: input.from,
+  });
+  if (error) throw error;
+}
+
+/** Pending shift plans at the facilities this staff member manages. */
+export async function listFacilityShiftPlanRequests(client: AppSupabaseClient) {
+  const { data, error } = await client.rpc("list_facility_shift_plan_requests");
+  if (error) throw error;
+  return shiftPlanSchema.array().parse(data);
+}
+
+export async function decideShiftPlan(
+  client: AppSupabaseClient,
+  input: { planId: string; approve: boolean; reason?: string }
+) {
+  const { data, error } = await client.rpc("decide_shift_plan", {
+    p_plan_id: uuidSchema.parse(input.planId),
+    p_approve: input.approve,
+    p_reason: input.reason ?? null,
+  });
+  if (error) throw error;
+  return data;
 }

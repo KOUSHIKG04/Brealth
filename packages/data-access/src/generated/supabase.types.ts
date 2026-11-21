@@ -100,6 +100,39 @@ export type Database = {
         Args: { p_practice_id: string };
         Returns: Json;
       };
+      prepare_portal_next_walk_in_booking: {
+        Args: { p_input: Json };
+        Returns: Json;
+      };
+      get_shift_plans: {
+        Args: { p_practice_id: string };
+        Returns: Json;
+      };
+      submit_shift_plan: {
+        Args: {
+          p_effective_from: string;
+          p_mode: string;
+          p_plan: Json;
+          p_practice_id: string;
+        };
+        Returns: Json;
+      };
+      withdraw_shift_plan: {
+        Args: { p_plan_id: string };
+        Returns: undefined;
+      };
+      end_shift_plan: {
+        Args: { p_from: string; p_mode: string; p_practice_id: string };
+        Returns: undefined;
+      };
+      list_facility_shift_plan_requests: {
+        Args: never;
+        Returns: Json;
+      };
+      decide_shift_plan: {
+        Args: { p_approve: boolean; p_plan_id: string; p_reason?: string };
+        Returns: Json;
+      };
       prepare_portal_walk_in_booking: {
         Args: { p_input: Json };
         Returns: Json;
@@ -353,6 +386,10 @@ export type Database = {
       };
       list_payout_entries: {
         Args: { p_appointment_id?: string; p_before_id?: string };
+        Returns: Json;
+      };
+      list_practice_clinic_time_board: {
+        Args: { p_practice_id: string };
         Returns: Json;
       };
       list_practice_clinic_slots: {

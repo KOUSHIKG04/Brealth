@@ -26,6 +26,8 @@ export const preparedAppointmentBookingSchema = z.object({
   ]),
   requires_payment: z.boolean(),
   reservation_expires_at: z.string().nullable(),
+  /** The time a walk-in was given, when the server chose it. */
+  starts_at: z.string().optional(),
 });
 
 export const portalWalkInPaymentPolicySchema = z.object({

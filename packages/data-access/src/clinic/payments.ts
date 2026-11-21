@@ -8,10 +8,12 @@ import {
   portalTransactionsSchema,
   portalWalkInPaymentPolicySchema,
   portalPaidWalkInBookingSchema,
+  portalNextWalkInBookingSchema,
   preparedAppointmentBookingSchema,
   type ClinicAppointment,
   type PortalTransactionCursor,
   type PortalPaidWalkInBookingInput,
+  type PortalNextWalkInBookingInput,
 } from "@startup/contracts";
 import type { AppSupabaseClient } from "../client/createSupabaseClient";
 
@@ -35,6 +37,20 @@ export async function preparePortalWalkInAppointment(
   const { data, error } = await client.rpc("prepare_portal_walk_in_booking", {
     p_input: request,
   });
+  if (error) throw error;
+  return preparedAppointmentBookingSchema.parse(data);
+}
+
+/** Books a walk-in into the next free in-person time today. */
+export async function preparePortalNextWalkInAppointment(
+  client: AppSupabaseClient,
+  input: PortalNextWalkInBookingInput
+) {
+  const request = portalNextWalkInBookingSchema.parse(input);
+  const { data, error } = await client.rpc(
+    "prepare_portal_next_walk_in_booking",
+    { p_input: request }
+  );
   if (error) throw error;
   return preparedAppointmentBookingSchema.parse(data);
 }

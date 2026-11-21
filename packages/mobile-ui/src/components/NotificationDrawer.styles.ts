@@ -1,5 +1,5 @@
 import { StyleSheet } from "react-native";
-import { colors, fontFamilies, radius, surfaces } from "@startup/design-tokens";
+import { colors, fontFamilies, radius } from "@startup/design-tokens";
 import type { AppTheme } from "../utils/appTheme";
 
 export function notificationPalette(app: AppTheme) {
@@ -35,39 +35,34 @@ export function createNotificationStyles(app: AppTheme) {
       gap: 8,
       backgroundColor: "#F8FCFB",
     },
-    hintRow: {
+    subheaderActions: {
       flexDirection: "row",
       alignItems: "center",
-      justifyContent: "space-between",
       gap: 12,
-      paddingHorizontal: 16,
-      paddingTop: 10,
-      paddingBottom: 4,
+      flexShrink: 0,
     },
-    swipeHint: {
-      flex: 1,
-      textAlign: "right",
-      fontFamily: fontFamilies.regular,
-      fontSize: 12,
-      lineHeight: 18,
-      color: colors.textSecondary,
+    markReadButton: {
+      minHeight: 32,
+      justifyContent: "center",
     },
-    filterContainer: { width: 160, flexShrink: 0 },
+    // Same pill as the Filter on the patient doctor results screen.
+    filterContainer: { flexShrink: 0 },
     filterTrigger: {
-      width: "100%",
-      minHeight: 40,
-      height: 40,
-      paddingHorizontal: 12,
+      minHeight: 32,
       flexDirection: "row",
       alignItems: "center",
-      gap: 8,
-      borderRadius: 10,
+      gap: 4,
+      paddingHorizontal: 12,
+      paddingVertical: 4,
+      borderWidth: 1,
+      borderColor:
+        "surfaceBorder" in palette ? palette.surfaceBorder : colors.border,
+      borderRadius: 16,
+      backgroundColor: palette.surface,
     },
     filterText: {
-      flex: 1,
-      fontSize: 14,
-      lineHeight: 20,
-      includeFontPadding: false,
+      flexShrink: 0,
+      color: palette.dark,
     },
     swipeRow: { borderRadius: radius.md, overflow: "hidden" },
     deleteAction: {
@@ -87,9 +82,7 @@ export function createNotificationStyles(app: AppTheme) {
       fontSize: 14,
     },
     markReadText: {
-      color: palette.primary,
-      fontFamily: fontFamilies.semibold,
-      fontSize: 12,
+      color: palette.dark,
     },
     list: { flex: 1 },
     emptyList: { justifyContent: "center", alignItems: "center" },
@@ -102,9 +95,12 @@ export function createNotificationStyles(app: AppTheme) {
     },
     notificationCard: {
       flexDirection: "row",
-      alignItems: "flex-start",
+      alignItems: "center",
       gap: 12,
-      padding: 16,
+      paddingVertical: 14,
+      paddingLeft: 16,
+      paddingRight: 14,
+      overflow: "hidden",
       borderRadius: radius.md,
       borderWidth: StyleSheet.hairlineWidth,
       borderColor: colors.border,
@@ -113,10 +109,21 @@ export function createNotificationStyles(app: AppTheme) {
     cardPressed: {
       backgroundColor: colors.disabledBackground,
     },
+    unreadStripe: {
+      position: "absolute",
+      top: 0,
+      bottom: 0,
+      left: 0,
+      width: 3,
+      backgroundColor: palette.primary,
+    },
+    emergencyStripe: {
+      backgroundColor: colors.patient.sos.primary,
+    },
     iconContainer: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       alignItems: "center",
       justifyContent: "center",
       flexShrink: 0,
@@ -128,35 +135,27 @@ export function createNotificationStyles(app: AppTheme) {
     textContainer: {
       flex: 1,
       minWidth: 0,
-      gap: 4,
+      gap: 2,
     },
     cardHeaderRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
     },
-    itemKind: {
-      flex: 1,
-      color: palette.dark,
-    },
-    emergencyKind: {
-      color: colors.patient.sos.dark,
-    },
-    itemTime: {
-      color: colors.textSecondary,
-      fontVariant: ["tabular-nums"],
-    },
-    unreadDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: palette.primary,
-    },
     itemTitle: {
+      flex: 1,
       color: palette.text,
     },
     readItemTitle: {
       color: colors.textSecondary,
+    },
+    emergencyTitle: {
+      color: colors.patient.sos.dark,
+    },
+    itemTime: {
+      flexShrink: 0,
+      color: colors.textSecondary,
+      fontVariant: ["tabular-nums"],
     },
     itemMessage: {
       color: colors.textSecondary,

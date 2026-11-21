@@ -11,9 +11,12 @@ import type { AppTheme } from "../utils/appTheme";
 export function Loader({
   theme,
   size = "small",
+  color,
   style,
 }: {
   theme?: AppTheme;
+  /** Overrides the theme colour, e.g. white on a coloured action. */
+  color?: string;
   size?: "small" | "large";
   style?: StyleProp<ViewStyle>;
 }) {
@@ -24,7 +27,7 @@ export function Loader({
       accessibilityLabel="Loading"
       style={[styles.container, style]}
     >
-      <ActivityIndicator color={palette.primary} size={size} />
+      <ActivityIndicator color={color ?? palette.primary} size={size} />
     </View>
   );
 }

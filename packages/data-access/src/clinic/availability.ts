@@ -1,5 +1,6 @@
 import {
   clinicSlotSchema,
+  clinicTimeBoardEntrySchema,
   uuidSchema,
   doctorDailySlotUsageSchema,
   portalClinicDaySchema,
@@ -79,4 +80,16 @@ export async function listPracticeClinicSlots(
     : await client.rpc("list_practice_clinic_slots", args);
   if (error) throw error;
   return clinicSlotSchema.array().parse(data);
+}
+
+/** Upcoming in-person times the app cannot book, for labelling the slot list. */
+export async function listPracticeClinicTimeBoard(
+  client: AppSupabaseClient,
+  practiceId: string
+) {
+  const { data, error } = await client.rpc("list_practice_clinic_time_board", {
+    p_practice_id: uuidSchema.parse(practiceId),
+  });
+  if (error) throw error;
+  return clinicTimeBoardEntrySchema.array().parse(data);
 }

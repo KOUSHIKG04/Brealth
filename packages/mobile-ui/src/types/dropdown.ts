@@ -23,6 +23,8 @@ export type DropdownProps = {
   containerStyle?: StyleProp<ViewStyle>;
   triggerStyle?: StyleProp<ViewStyle>;
   valueStyle?: StyleProp<TextStyle>;
+  /** Small pill trigger (e.g. a sort chip): 14px label text, no 52px form height. */
+  compact?: boolean;
   accessibilityLabel?: string;
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
