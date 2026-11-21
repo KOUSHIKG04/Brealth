@@ -184,9 +184,10 @@ ownership; named contracts, static configuration, pure helpers and platform serv
 stay with their feature. Server query loaders and Server Actions retain their
 authorization boundaries and remain outside client module graphs.
 
-Web regression tests live in each app's `tests/unit` directory. Facility Portal's
-`scripts` contains the architecture inspector and small shared test tools, also
-used by Company Admin; this is tooling reuse, with no runtime app dependency.
+Web unit tests live in each app's `tests/unit` directory. Facility Portal's
+Playwright browser tests live in `apps/facility-portal/tests/e2e` and run separately
+with `pnpm test:e2e`. Facility Portal's `scripts` contains the architecture inspector
+and small shared test tools, also used by Company Admin.
 Empty web dispatch/staff and server scaffolds have been removed. Their future work
 is documented rather than represented by empty source files.
 

@@ -52,6 +52,64 @@ The error-handling work (13 November 2026) runs fully without these steps; see t
 3. **Device and browser checks.** On a phone with the current dev build, turn on airplane mode: the offline banner should appear, actions should pause, and they should resume when you reconnect. Force a render error to see the recovery screen. On the web apps, check `error.tsx`, `global-error.tsx` and the reference code. Typechecks and unit tests do not cover these.
 4. **Schedule update migration (not applied).** Apply `supabase/migrations/20261113103000_schedule_update_smoothness.sql` to the confirmed test project (`pnpm db:check`, then `pnpm db:migrate`). Then run `supabase/tests/smoke/schedule-update-smoothness.cli-smoke.sql` in its SQL editor; it rolls back. Until it is applied, the apps fall back to the previous publish path and show no busy-time hints.
 
+## Status update (21 November 2026): scheduling, walk-ins, shift rotations, push
+
+Everything below was checked against the linked **test** project `enjafragbcrrgaclwopd` on 21 November 2026. Feature detail is in `apps/doctor-mobile/ARCHITECTURE.md`, `apps/facility-portal/ARCHITECTURE.md` and `apps/patient-mobile/ARCHITECTURE.md`.
+
+### Push notifications do not reach phones yet (open, not caused by recent work)
+
+In-app notifications work. Pushes to phones have **never been delivered on this project, for any notification type**. Findings, read-only:
+
+- Notifications are created: 18 `clinzo.notification_intent` rows in the 30 days to 20 November.
+- `clinzo.notification_endpoint` is empty: no phone has ever registered a push token.
+- `clinzo.notification_delivery` is empty: nothing has ever been sent.
+- Nothing calls the sender. The only `cron.job` is `refresh-automatic-doctor-schedules`, no database code calls `send-notification`, and no GitHub workflow does.
+- The sender itself is fine. `send-notification` version 22 was deployed on 21 November 2026 (08:12 UTC); the downloaded live code matches `supabase/functions/send-notification/index.ts`, with `verify_jwt = false` as in `supabase/config.toml`.
+
+To make pushes work:
+
+1. **Schedule the sender.** Call `send-notification` every minute with the project's secret key. The function uses `withSupabase({ auth: "secret" })`, so the request needs `Authorization: Bearer <secret key>`. Either:
+   - Dashboard: Integrations → Cron → new job, HTTP POST to `https://enjafragbcrrgaclwopd.supabase.co/functions/v1/send-notification`, schedule `* * * * *`, with that header; or
+   - Migration: `pg_cron` + `pg_net` reading the key from Supabase Vault. The owner stores the key in Vault first; never put it in the repo, docs or chat.
+
+   Once it runs, it sends everything still pending (unexpired intents, 30-day expiry), so expect a burst of older notifications.
+
+2. **Register a phone.** Sign in to the doctor (or patient) app on a **real device** running a **development or store build** and allow notifications. `register()` in `features/notifications/services/deviceNotifications.ts` skips simulators and needs the EAS `projectId` (doctor app: `app.config.js`). Expo Go cannot receive remote pushes on recent Android versions. Confirm a row appears in `notification_endpoint`.
+3. **Check end to end.** Approve or decline a test shift rotation in the Facility Portal for a doctor signed in on that phone. Expect a push within a minute; tapping it opens Manage Schedule on that service. Then check `notification_delivery` for `sent`/`delivered` rows and their receipts.
+
+### Applied to the test project in this period
+
+| Migration                                             | What it does                                                                                                                                                                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `20261120100000_clinic_open_times_and_time_board.sql` | Patients see every open in-person time while app slots remain; adds `list_practice_clinic_time_board` (Booked / app-booking-closed labels).                                                                         |
+| `20261120110000_retire_appointment_grace_periods.sql` | Grace periods retired: late check-ins join the queue at arrival time with no hold; online attendance deadline is the booked end.                                                                                    |
+| `20261120120000_walk_in_next_free_time.sql`           | `prepare_portal_next_walk_in_booking`: reception walk-ins (today only) get the next free time in order, skipping app-booked times.                                                                                  |
+| `20261121100000_shift_rotations.sql`                  | `clinzo.shift_plan`: named shifts up to 28 h, 1-8 week rotations, date changes; one session per shift (overnight and 24-26 h); per-shift limits; facility approval for hospital doctors; nightly job extends plans. |
+| `20261121110000_shift_plan_notifications.sql`         | Doctor is notified when a rotation is approved, declined, or published for them by facility staff (`shift.plan_*`).                                                                                                 |
+
+The shift and notification migrations were first run together with their smoke tests (`supabase/tests/smoke/shift-rotations.cli-smoke.sql`, `shift-plan-notifications.cli-smoke.sql`) inside a transaction that rolled back, and only applied after they passed. `walk-in-next-free-time.cli-smoke.sql` and the updated `clinic-channel-capacity.cli-smoke.sql` exist but have not been run.
+
+### Do not push the stray Drizzle migration
+
+`supabase/migrations/20261120114706_dark_golden_guardian.sql` (and the `meta/_journal.json` / `meta/20261120114706_snapshot.json` changes) came from a Drizzle `db:generate` run. It re-creates about 30 tables that already exist (for example `doctor_schedule_preferences` and the payment tables), so `pnpm db:migrate` would fail on it or apply unreviewed schema changes. It is still pending on the test project. Remove or regenerate it properly before the next `pnpm db:migrate`. Don't run `pnpm db:generate` casually; it is the Drizzle command that produced this file.
+
+The migrations above were applied while leaving it out: copy `supabase/config.toml`, `supabase/.temp` and the migrations (minus the stray file) into a temporary folder, then run `supabase db push --linked --dry-run --workdir <folder>` followed by the real push.
+
+### Working with the test database safely
+
+- **Read-only queries without a password:** `pnpm dlx supabase@latest db query --remote --read-only "<sql>"` uses the existing CLI login. The read-only role cannot call internal `clinzo.*` functions; inline their logic instead.
+- **Live function definitions:** query `pg_get_functiondef(...)` read-only. Many schedule and booking functions exist only as chains of text patches across migrations, so read the live version before patching. Stored bodies can use CRLF line endings, so make patch markers single-line.
+- **Test before applying:** wrap the migration and its smoke test in `BEGIN; ... ROLLBACK;` and run it with `db query --remote --yes -f <file>`; then confirm nothing persisted before the real push.
+- `psql`/`pg_dump` are installed (`/opt/homebrew/opt/libpq/bin`) but need the database password; `supabase db dump` needs Docker, which is not installed.
+
+### Not yet verified
+
+- **Device checks** for: Manage Schedule (multi-select services, weekly or shift rotation per service, Approved / Pending request footer), the shift rotation editor, the patient payment-failed retry/cancel dialog, the patient Booked / app-booking-closed labels, and reception's next walk-in time.
+- **Push delivery end to end** (blocked by the steps above).
+- **Clinic grace leftovers:** patients held for late review before 20 November still use the staff "admit" path; no new holds are created.
+- **Known test failures, unrelated to this work:** doctor-mobile `feature-structure.test.cjs` (`RecoveryIntent` should move to feature types); patient-mobile 17 `map-picker` tests (missing `../hooks/useMapPicker`); patient-mobile typecheck error in `features/ambulance/hooks/useAmbulanceBooking.ts:396`.
+- **`pnpm spacing:check`** points at `scripts/declaration-spacing.mjs`, which is missing because `.gitignore` hides root `scripts/` (see Repository hygiene below).
+
 ## Next to implement and verify (as of 14 November 2026)
 
 The owner asked that tests and checks run only with their approval. The work below is written but **not yet typechecked, tested or formatted**.

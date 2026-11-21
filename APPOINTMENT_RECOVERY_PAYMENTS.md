@@ -124,8 +124,9 @@ unused credit using the verified current charge balance.
 
 Attendance recovery still distinguishes expired requests, passed time, checked-in
 waiting, patient no-show and doctor unavailability. Timers never complete visits.
-Practice policy is separately editable: initial attendance grace is 15 minutes,
-reschedule notice zero minutes and patient move allowance one. Late moves need
+Practice policy is separately editable: reschedule notice defaults to zero
+minutes and patient move allowance to one. Attendance grace periods were retired
+on 20 November 2026 (`20261120110000_retire_appointment_grace_periods.sql`). Late moves need
 review; requested times are not held until approval. Capacity, source quotas,
 lineage and fresh clinic arrival state retain transactional ownership.
 
