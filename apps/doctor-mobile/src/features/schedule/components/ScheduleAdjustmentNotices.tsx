@@ -14,8 +14,11 @@ import { Heading, Label } from "../../../components/DoctorScreen";
 
 export function ScheduleAdjustmentNotices({
   onSelectPractice,
+  onSelectMode,
 }: {
   onSelectPractice?: (practiceId: string) => void;
+  /** On the combined screen, switch service in place instead of navigating. */
+  onSelectMode?: (mode: "clinic" | "online" | "home") => void;
 }) {
   const { profile } = useMobileSession();
   const { showToast } = useToast();
@@ -61,7 +64,12 @@ export function ScheduleAdjustmentNotices({
                   notice.practice_id
                 );
                 onSelectPractice?.(notice.practice_id);
-                router.push(`/manage-schedule/${notice.mode}`);
+                if (onSelectMode) onSelectMode(notice.mode);
+                else
+                  router.navigate({
+                    pathname: "/schedule",
+                    params: { mode: notice.mode },
+                  });
               } catch {
                 showToast({
                   title: "Could not open schedule",

@@ -146,6 +146,130 @@ test("split-block duration suggestions exclude gaps and shared validation reject
   );
 });
 
+test("travel buffer limit keeps buffers inside the day and between blocks", () => {
+  const { maxTravelBufferMinutes, scheduleBlocksError } = scheduleContracts;
+  assert.equal(maxTravelBufferMinutes([{ start: "16:00", end: "17:00" }]), 180);
+  // Late hours: only 60 minutes remain before midnight.
+  const late = [{ start: "21:00", end: "23:00" }];
+  assert.equal(maxTravelBufferMinutes(late), 60);
+  assert.equal(scheduleBlocksError(late, 60, 60), undefined);
+  assert.equal(
+    scheduleBlocksError(late, 60, 65),
+    "Travel buffers must fit within the same day."
+  );
+  // A 45-minute gap between blocks allows 20 minutes on each side.
+  assert.equal(
+    maxTravelBufferMinutes([
+      { start: "10:00", end: "11:00" },
+      { start: "11:45", end: "13:00" },
+    ]),
+    20
+  );
+  assert.equal(maxTravelBufferMinutes([{ start: "00:00", end: "02:00" }]), 0);
+});
+
+test("in-person app slots and walk-ins share the day's time slots", () => {
+  const { clinicCapacityLimits, clinicTimeSlotCount, withClinicCapacity } =
+    scheduleContracts;
+  assert.equal(clinicTimeSlotCount([{ start: "09:00", end: "17:00" }], 40), 12);
+  assert.equal(clinicTimeSlotCount([{ start: "00:00", end: "24:00" }], 5), 100);
+  assert.deepEqual(
+    {
+      ...clinicCapacityLimits({
+        timeSlots: 12,
+        app: 15,
+        walkin: 20,
+        autoAcceptLimit: 30,
+      }),
+    },
+    { app: 12, walkin: 0, total: 12, autoAcceptLimit: 12 }
+  );
+  // Walk-ins fill only the time slots the app slots leave.
+  assert.equal(
+    clinicCapacityLimits({
+      timeSlots: 100,
+      app: 90,
+      walkin: 40,
+      autoAcceptLimit: 1,
+    }).walkin,
+    10
+  );
+  const settings = withClinicCapacity({
+    clinicStart: "09:00",
+    clinicEnd: "13:00",
+    slotMinutes: 30,
+    walkinDailyLimit: 12,
+    clinicAppDailyLimit: 5,
+    clinicWalkinDailyLimit: 6,
+    autoAccept: false,
+    autoAcceptLimit: 5,
+  });
+  assert.equal(settings.clinicAppDailyLimit, 5);
+  // Four hours of 30-minute slots leave 3 for walk-ins after the app slots.
+  assert.equal(settings.clinicWalkinDailyLimit, 3);
+  assert.equal(settings.walkinDailyLimit, 8);
+  assert.equal(settings.autoAcceptLimit, 0, "auto-accept off stays off");
+});
+
+test("shift rotations cycle by week, apply date changes and skip overlapping shifts", () => {
+  const { shiftForDay, shiftPreview, shiftPlanInputSchema } = load(
+    "../../../packages/contracts/src/shift-plan.ts",
+    { zod: { z: require("zod") } }
+  );
+  const shift = (key, start, duration) => ({
+    key,
+    name: key,
+    start,
+    duration_minutes: duration,
+    slot_minutes: 30,
+    fee_minor: 0,
+    app_limit: 1,
+    walkin_limit: 1,
+  });
+  const plan = {
+    templates: [
+      shift("day", "09:00", 480),
+      shift("night", "21:00", 600),
+      shift("long", "08:00", 1560),
+    ],
+    // Monday 2026-11-23 starts a 4-week cycle.
+    cycle_start: "2026-11-23",
+    cycle_weeks: 4,
+    rotation: [
+      ["day", "day", "day", "day", "day", null, null],
+      ["night", "night", "night", "night", "night", null, null],
+      ["day", null, "day", null, "day", null, null],
+      [null, null, null, null, null, "long", null],
+    ],
+    overrides: [{ date: "2026-11-25", key: null }],
+  };
+  assert.equal(shiftPlanInputSchema.safeParse(plan).success, true);
+  assert.equal(shiftForDay(plan, "2026-11-23").key, "day");
+  assert.equal(shiftForDay(plan, "2026-11-25"), null, "date change wins");
+  assert.equal(shiftForDay(plan, "2026-11-30").key, "night", "week 2");
+  assert.equal(shiftForDay(plan, "2026-12-08"), null, "week 3 Tuesday off");
+  assert.equal(shiftForDay(plan, "2026-12-19").key, "long", "week 4");
+  assert.equal(shiftForDay(plan, "2026-12-21").key, "day", "cycle repeats");
+  assert.equal(shiftForDay(plan, "2026-11-21").key, "long", "before start");
+  // A 26-hour Saturday shift overlaps a Sunday shift starting at 09:00.
+  const preview = shiftPreview(
+    { ...plan, overrides: [{ date: "2026-12-20", key: "day" }] },
+    "2026-12-19",
+    2
+  );
+  assert.deepEqual(
+    JSON.parse(
+      JSON.stringify(
+        preview.map((day) => [day.shift?.key ?? null, day.skipped])
+      )
+    ),
+    [
+      ["long", false],
+      ["day", true],
+    ]
+  );
+});
+
 test("saved sixty-minute consultations remain valid when increasing the booking limit", () => {
   const draft = {
     days: [0],
@@ -381,17 +505,16 @@ test("initial setup offers an inline suggestion, applies it only when chosen, an
   suggestionButton(nodes).props.onPress();
   nodes = view.render();
   assert.equal(nodes.find((node) => node.type === "Duration").props.value, 40);
+  // App bookings fit the 40-minute times in 09:00–17:00; walk-ins are a separate limit.
+  assert.equal(
+    nodes.find((node) => node.props.title === "App booking slots").props.max,
+    12
+  );
   nodes
-    .find((node) => node.props.title === "Total clinic capacity")
-    .props.onChange(20);
-  nodes = view.render();
-  nodes
-    .find((node) => node.props.title === "App booking quota")
-    .props.onChange(12);
-  nodes = view.render();
-  nodes
-    .find((node) => node.props.title === "Reception walk-in quota")
+    .find((node) => node.props.title === "App booking slots")
     .props.onChange(8);
+  nodes = view.render();
+  nodes.find((node) => node.props.title === "Walk-in limit").props.onChange(4);
   nodes = view.render();
   assert.equal(nodes.find((node) => node.type === "Duration").props.value, 40);
   const initialDate = nodes.find((node) => node.type === "DatePicker").props
@@ -410,9 +533,9 @@ test("initial setup offers an inline suggestion, applies it only when chosen, an
   assert.equal(view.publications[0][1], "practice");
   assert.equal(view.publications[0][2], "clinic");
   assert.equal(view.publications[0][3].slotMinutes, 40);
-  assert.equal(view.publications[0][3].walkinDailyLimit, 20);
-  assert.equal(view.publications[0][3].clinicAppDailyLimit, 12);
-  assert.equal(view.publications[0][3].clinicWalkinDailyLimit, 8);
+  assert.equal(view.publications[0][3].walkinDailyLimit, 12);
+  assert.equal(view.publications[0][3].clinicAppDailyLimit, 8);
+  assert.equal(view.publications[0][3].clinicWalkinDailyLimit, 4);
   assert.equal(view.publications[0][3].onlineSlotMinutes, 30);
   assert.equal(view.publications[0][5], chosenDate);
 });
@@ -422,8 +545,8 @@ test("published schedule keeps its saved duration and does not offer setup recal
   let nodes = view.render();
   assert.equal(suggestionButton(nodes), undefined);
   nodes
-    .find((node) => node.props.title === "Total clinic capacity")
-    .props.onChange(30);
+    .find((node) => node.props.title === "App booking slots")
+    .props.onChange(5);
   nodes = view.render();
   assert.equal(nodes.find((node) => node.type === "Duration").props.value, 60);
 });
@@ -463,15 +586,17 @@ test("a schedule saved elsewhere is merged and published once without losing edi
   });
   let nodes = view.render();
   nodes
-    .find((node) => node.props.title === "Total clinic capacity")
-    .props.onChange(30);
+    .find((node) => node.props.title === "App booking slots")
+    .props.onChange(5);
   nodes = view.render();
   await nodes
     .find((node) => node.props.publishLabel === "Publish Schedule")
     .props.onPublish();
   assert.equal(view.publications.length, 1);
   const [, , , settings, version] = view.publications[0];
-  assert.equal(settings.walkinDailyLimit, 30, "doctor edit kept");
+  assert.equal(settings.clinicAppDailyLimit, 5, "doctor edit kept");
+  assert.equal(settings.clinicWalkinDailyLimit, 0, "walk-in limit unchanged");
+  assert.equal(settings.walkinDailyLimit, 5, "capacity is app plus walk-ins");
   assert.equal(settings.onlineFeeMinor, 45000, "other app edit adopted");
   assert.equal(version, 2, "retried against the latest version");
   assert.equal(view.previews.length, 2, "re-previewed after the merge");
@@ -481,7 +606,7 @@ test("the same setting changed in both apps keeps the doctor's value and does no
   const latest = {
     ...scheduleViewPrefs(),
     row_version: "2",
-    walkin_daily_limit: 40,
+    clinic_app_daily_limit: 3,
   };
   const view = scheduleView({
     published: true,
@@ -490,8 +615,8 @@ test("the same setting changed in both apps keeps the doctor's value and does no
   });
   let nodes = view.render();
   nodes
-    .find((node) => node.props.title === "Total clinic capacity")
-    .props.onChange(30);
+    .find((node) => node.props.title === "App booking slots")
+    .props.onChange(5);
   nodes = view.render();
   await nodes
     .find((node) => node.props.publishLabel === "Publish Schedule")
@@ -499,9 +624,8 @@ test("the same setting changed in both apps keeps the doctor's value and does no
   assert.equal(view.publications.length, 0);
   nodes = view.render();
   assert.equal(
-    nodes.find((node) => node.props.title === "Total clinic capacity").props
-      .value,
-    30
+    nodes.find((node) => node.props.title === "App booking slots").props.value,
+    5
   );
 });
 
@@ -539,6 +663,7 @@ const components = Object.fromEntries(
     "ClockDurationPicker",
     "ModalSurface",
     "Accordion",
+    "AppDialog",
   ].map((name) => [name, name])
 );
 
@@ -557,6 +682,7 @@ const base = {
     StyleSheet: { create: (styles) => styles, hairlineWidth: 1 },
   },
   "@startup/mobile-ui": components,
+  "@startup/contracts": scheduleContracts,
   "../../../components/DoctorScreen": {
     Heading: "Heading",
     Label: "Label",
@@ -575,7 +701,7 @@ for (const mode of ["clinic", "online", "home"]) {
       "../src/features/schedule/screens/ScheduleScreen.tsx",
       {
         ...base,
-        react: { useState: (value) => [value, () => {}] },
+        react: { useState: (value) => [value, () => {}], useEffect() {} },
         "lucide-react-native": { Calendar: "Calendar", Check: "Check" },
         "../../../components/DatePicker": { DatePicker: "DatePicker" },
         "../components/NumberSetting": { NumberSetting: "NumberSetting" },
@@ -592,7 +718,16 @@ for (const mode of ["clinic", "online", "home"]) {
               saved: {},
               selectedPracticeId: "practice",
               selectedPractice: { verified: true },
-              draft: { days: [0], autoAccept: false, homeVisits: false },
+              draft: {
+                days: [0],
+                start: "16:00",
+                end: "17:00",
+                duration: 15,
+                walkIn: 4,
+                autoLimit: 1,
+                autoAccept: false,
+                homeVisits: false,
+              },
               zone: "Asia/Kolkata",
               busy: false,
               suggestion: null,
@@ -636,6 +771,86 @@ for (const mode of ["clinic", "online", "home"]) {
     );
   });
 }
+
+test("an embedded service editor is a page section with its own publish bar and reports edits", () => {
+  for (const hasChanges of [false, true]) {
+    const state = [];
+    let cursor = 0;
+    const effects = [];
+    const { ScheduleScreen } = load(
+      "../src/features/schedule/screens/ScheduleScreen.tsx",
+      {
+        ...base,
+        react: {
+          useState(initial) {
+            const i = cursor++;
+            if (!(i in state)) state[i] = initial;
+            return [state[i], (next) => (state[i] = next)];
+          },
+          useEffect: (effect) => effects.push(effect),
+        },
+        "lucide-react-native": { Calendar: "Calendar", Check: "Check" },
+        "../../../components/DatePicker": { DatePicker: "DatePicker" },
+        "../components/NumberSetting": { NumberSetting: "NumberSetting" },
+        "../components/ScheduleModeSelector": {
+          ScheduleModeSelector: "ModeSelector",
+        },
+        "../hooks/useDiscardChangesPrompt": {
+          useDiscardChangesPrompt: () => ({ visible: false }),
+        },
+        "../hooks/useScheduleEditor": {
+          useScheduleEditor: () => ({
+            practices: { data: [], isLoading: false, isFetching: false },
+            doctorProfile: {},
+            associationRequests: {},
+            saved: {},
+            selectedPracticeId: "practice",
+            selectedPractice: { verified: true },
+            draft: {
+              days: [0],
+              start: "09:00",
+              end: "17:00",
+              duration: 15,
+              walkIn: 4,
+              autoLimit: 1,
+              autoAccept: false,
+              homeVisits: false,
+            },
+            zone: "Asia/Kolkata",
+            busy: false,
+            hasChanges,
+            suggestion: null,
+            suggestedTimes: [],
+            batchingHints: [],
+            save() {},
+          }),
+        },
+      }
+    );
+    const reported = [];
+    const tree = nodes(
+      ScheduleScreen({
+        mode: "online",
+        embedded: true,
+        onChangesChange: (value) => reported.push(value),
+      })
+    );
+    // A section of the Manage Schedule page: no screen, its own publish bar.
+    assert.equal(
+      tree.some((node) => node.type === "DoctorScreen"),
+      false
+    );
+    assert.ok(
+      tree.some(
+        (node) =>
+          node.type === "Heading" && node.props.children === "Online Schedule"
+      )
+    );
+    assert.equal(tree.filter((node) => node.props?.publishLabel).length, 1);
+    effects.forEach((effect) => effect());
+    assert.deepEqual(reported, [hasChanges]);
+  }
+});
 
 test("schedule overlap waits for confirmation and sends the reviewed token", async () => {
   const preview = { token: "reviewed", conflicts: [{}], can_replace: true };
@@ -838,14 +1053,18 @@ function hookHarness() {
   };
 }
 
-test("publishing goes through an inline review that lists the changes", () => {
+test("publishing goes through a review pop-up that lists the changes", () => {
   const harness = hookHarness();
   const { SchedulePublishBar } = load(
     "../src/features/schedule/components/SchedulePublishBar.tsx",
     {
       ...base,
       react: harness.react,
-      "lucide-react-native": { Calendar: "Calendar" },
+      "lucide-react-native": {
+        Calendar: "Calendar",
+        Check: "Check",
+        Pencil: "Pencil",
+      },
     }
   );
   let valid = false,
@@ -864,26 +1083,51 @@ test("publishing goes through an inline review that lists the changes", () => {
       published++;
     },
   };
-  const render = () => nodes(harness.run(() => SchedulePublishBar(props)));
+  const render = (extra = {}) =>
+    nodes(harness.run(() => SchedulePublishBar({ ...props, ...extra })));
   const button = (tree, label) =>
     tree.find((node) => node.type === "Button" && node.props.label === label);
+  const dialog = (tree) => tree.find((node) => node.type === "AppDialog");
   // An invalid draft stays in the editor; the problem is shown as a toast.
   button(render(), "Review & publish").props.onPress();
-  assert.ok(button(render(), "Review & publish"));
+  assert.equal(dialog(render()).props.visible, false);
   valid = true;
   button(render(), "Review & publish").props.onPress();
   const review = render();
+  assert.equal(dialog(review).props.visible, true);
+  assert.equal(dialog(review).props.confirmLabel, "Publish Schedule");
   assert.ok(
     review.some(
       (node) => node.props?.children === "Changed: hours, appointment length."
     )
   );
   assert.equal(published, 0, "nothing is sent before confirming");
-  button(review, "Keep editing").props.onPress();
-  assert.ok(button(render(), "Review & publish"));
+  dialog(review).props.onClose();
+  assert.equal(dialog(render()).props.visible, false);
   button(render(), "Review & publish").props.onPress();
-  button(render(), "Publish Schedule").props.onPress();
+  dialog(render()).props.onConfirm();
   assert.equal(published, 1);
+  assert.equal(dialog(render()).props.visible, false);
+  // A request awaiting the facility shows only Pending request and Edit.
+  let shown = 0,
+    edited = 0;
+  const pending = render({
+    pending: true,
+    onShowRequest: () => shown++,
+    onEdit: () => edited++,
+  });
+  assert.equal(button(pending, "Review & publish"), undefined);
+  button(pending, "Pending request").props.onPress();
+  button(pending, "Edit").props.onPress();
+  assert.deepEqual([shown, edited], [1, 1]);
+  // After approval the footer says Approved until the doctor changes something.
+  const approvedLabel = "City Hospital approved this schedule on 20 Nov 2026.";
+  const approved = render({ approvedLabel, hasChanges: false });
+  assert.equal(button(approved, "Approved").props.disabled, true);
+  assert.equal(button(approved, "Review & publish"), undefined);
+  const edited_ = render({ approvedLabel, hasChanges: true });
+  assert.equal(button(edited_, "Approved"), undefined);
+  assert.ok(button(edited_, "Review & publish"));
 });
 
 test("leaving with unpublished edits asks before discarding them", () => {
@@ -924,4 +1168,34 @@ test("leaving with unpublished edits asks before discarding them", () => {
   });
   harness.run(() => useDiscardChangesPrompt(true)).discard();
   assert.deepEqual(dispatched, [{ type: "GO_BACK" }]);
+});
+
+test("shift rotation decisions get readable in-app titles and messages", () => {
+  const { scheduleNotificationCopy } = load(
+    "../src/features/notifications/utils/scheduleNotificationCopy.ts",
+    {}
+  );
+  const params = {
+    facility_name: "City Hospital",
+    service_mode: "online",
+    effective_from: "2026-11-23",
+    reason: "Cover nights first",
+  };
+  assert.deepEqual(
+    { ...scheduleNotificationCopy("shift.plan_approved", params) },
+    {
+      title: "Shift rotation approved",
+      message:
+        "City Hospital approved your online shift rotation. It starts on 2026-11-23.",
+    }
+  );
+  assert.equal(
+    scheduleNotificationCopy("shift.plan_rejected", params).message,
+    "City Hospital declined your online shift rotation. Reason: Cover nights first"
+  );
+  assert.equal(
+    scheduleNotificationCopy("shift.plan_published", params).title,
+    "Shift rotation updated"
+  );
+  assert.equal(scheduleNotificationCopy("appointment.requested", params), null);
 });

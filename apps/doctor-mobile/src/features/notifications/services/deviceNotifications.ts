@@ -72,8 +72,13 @@ export function openNotification(response: NotificationResponse) {
   if (route === "/appointments") router.push("/appointments");
   else if (route === "/home-visit") router.push("/home-visit");
   else if (route === "/chat") router.push("/chat");
-  // Schedule request decisions open the doctor's schedule.
-  else if (route === "/schedule") router.push("/schedule");
+  // Schedule and shift rotation decisions open that service's schedule.
+  else if (route === "/schedule") {
+    const mode = data?.mode;
+    if (mode === "clinic" || mode === "online" || mode === "home")
+      router.push({ pathname: "/schedule", params: { mode } });
+    else router.push("/schedule");
+  }
 }
 
 export async function signOutWithPushCleanup() {

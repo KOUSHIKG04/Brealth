@@ -10,6 +10,7 @@ import { type InAppNotification, notificationTime } from "@startup/contracts";
 import { supabase } from "../../../services/supabase";
 import { router } from "expo-router";
 import { appointmentDetailsRoute } from "../../appointments/utils/appointmentNavigation";
+import { scheduleNotificationCopy } from "../utils/scheduleNotificationCopy";
 
 import type { NotificationDrawerProps } from "../types/notifications";
 
@@ -53,6 +54,10 @@ export function useNotificationDrawer({
       const status = item.safe_parameters.status;
       const isAppointment = item.template_key.startsWith("appointment.");
       const isAmbulance = item.template_key.startsWith("ambulance.");
+      const schedule = scheduleNotificationCopy(
+        item.template_key,
+        item.safe_parameters
+      );
       return {
         id: item.id,
         title:
@@ -69,16 +74,18 @@ export function useNotificationDrawer({
                     ? "Ambulance trip update"
                     : item.template_key.startsWith("verification.")
                       ? "Verification update"
-                      : "Notification",
+                      : (schedule?.title ?? "Notification"),
         message:
           item.template_key === "appointment.requested"
             ? "Open this request to review the patient and accept or reject the appointment."
             : item.template_key === "appointment.check_in" &&
                 typeof item.safe_parameters.booking_code === "string"
               ? `Booking ${item.safe_parameters.booking_code} - Patient checked in`
-              : typeof status === "string"
-                ? `Status: ${status.replaceAll("_", " ")}`
-                : "You have a new update.",
+              : schedule
+                ? schedule.message
+                : typeof status === "string"
+                  ? `Status: ${status.replaceAll("_", " ")}`
+                  : "You have a new update.",
         time: notificationTime(item.created_at),
         type: isAppointment ? ("appointment" as const) : ("general" as const),
         read: item.is_read,
@@ -106,6 +113,21 @@ export function useNotificationDrawer({
       if (route) {
         onClose();
         router.push(route);
+      } else if (
+        notification &&
+        scheduleNotificationCopy(
+          notification.template_key,
+          notification.safe_parameters
+        )
+      ) {
+        // Rotation and schedule decisions open that service's schedule.
+        const mode = notification.safe_parameters.service_mode;
+        onClose();
+        router.push(
+          mode === "clinic" || mode === "online" || mode === "home"
+            ? { pathname: "/schedule", params: { mode } }
+            : "/schedule"
+        );
       }
     },
     [notifications, notificationsQuery.data, markRead, onClose]

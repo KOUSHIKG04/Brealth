@@ -2,43 +2,27 @@ import { StyleSheet, View } from "react-native";
 import { Label } from "../../../components/DoctorScreen";
 import { palette, ui } from "../../../components/theme";
 
-/**
- * Clinic capacity split into app bookings, walk-ins and free places. The bar
- * and its line turn red when the quotas exceed the capacity.
- */
+/** The day's in-person capacity: app booking slots plus the walk-in limit. */
 export function ClinicCapacityBar({
-  capacity,
   app,
   walkin,
 }: {
-  capacity: number;
   app: number;
   walkin: number;
 }) {
-  const used = app + walkin;
-  const excess = used - capacity;
-  const total = Math.max(capacity, used, 1);
-  const free = Math.max(0, capacity - used);
+  const total = Math.max(app + walkin, 1);
   const segments = [
     { key: "app", value: app, color: palette.primary, label: "App" },
     { key: "walkin", value: walkin, color: palette.header, label: "Walk-in" },
-    { key: "free", value: free, color: palette.chart, label: "Free" },
   ];
   return (
     <View
       style={{ gap: 8 }}
       accessible
       accessibilityLiveRegion="polite"
-      accessibilityLabel={`${app} app and ${walkin} walk-in of ${capacity}${
-        excess > 0 ? `, exceeds capacity by ${excess}` : ""
-      }`}
+      accessibilityLabel={`${app} app bookings and ${walkin} walk-ins a day`}
     >
-      <View
-        style={[
-          styles.bar,
-          excess > 0 && { borderColor: palette.danger, borderWidth: 1.5 },
-        ]}
-      >
+      <View style={styles.bar}>
         {segments
           .filter((segment) => segment.value > 0)
           .map((segment) => (
@@ -61,11 +45,6 @@ export function ClinicCapacityBar({
           </View>
         ))}
       </View>
-      {excess > 0 ? (
-        <Label variant="caption" style={{ color: palette.danger }}>
-          Quotas exceed capacity by {excess}
-        </Label>
-      ) : null}
     </View>
   );
 }

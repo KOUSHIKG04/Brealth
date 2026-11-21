@@ -6,20 +6,13 @@ import {
   setAppointmentRecoveryPolicy,
   submitScheduleChangeRequest,
 } from "@startup/data-access";
-import {
-  Accordion,
-  Button,
-  ClockDurationPicker,
-  useToast,
-} from "@startup/mobile-ui";
+import { Accordion, Button, useToast } from "@startup/mobile-ui";
 import { Label } from "../../../components/DoctorScreen";
 import { supabase } from "../../../services/supabase";
 import { NumberSetting } from "./NumberSetting";
 import { RescheduleCutoffPicker } from "./RescheduleCutoffPicker";
 
 type PolicyDraft = {
-  onlineGraceMinutes: number;
-  clinicGraceMinutes: number;
   rescheduleCutoffMinutes: number;
   maxSelfReschedules: number;
   expectedVersion: number;
@@ -38,8 +31,6 @@ export function AppointmentRecoveryPolicy({
   });
   const [edits, setEdits] = useState<PolicyDraft | null>(null);
   const draft = edits ?? {
-    onlineGraceMinutes: saved.data?.online_grace_minutes ?? 15,
-    clinicGraceMinutes: saved.data?.clinic_grace_minutes ?? 10,
     rescheduleCutoffMinutes: saved.data?.reschedule_cutoff_minutes ?? 0,
     maxSelfReschedules: saved.data?.max_self_reschedules ?? 1,
     expectedVersion: Number(saved.data?.row_version ?? 0),
@@ -56,9 +47,10 @@ export function AppointmentRecoveryPolicy({
         practiceId,
         kind: "recovery_policy",
         expectedVersion: draft.expectedVersion,
+        // Grace periods are retired; the request format still carries them.
         payload: {
-          online_grace_minutes: draft.onlineGraceMinutes,
-          clinic_grace_minutes: draft.clinicGraceMinutes,
+          online_grace_minutes: 0,
+          clinic_grace_minutes: 0,
           reschedule_cutoff_minutes: draft.rescheduleCutoffMinutes,
           max_self_reschedules: draft.maxSelfReschedules,
         },
@@ -108,8 +100,12 @@ export function AppointmentRecoveryPolicy({
   const update = (value: Partial<PolicyDraft>) =>
     setEdits({ ...draft, ...value });
   const summary = saved.data
-    ? `Clinic grace ${saved.data.clinic_grace_minutes ?? 10} min · Online grace ${saved.data.online_grace_minutes ?? 15} min`
-    : "Late arrivals and patient reschedules";
+    ? `${saved.data.max_self_reschedules ?? 1} self-service ${
+        (saved.data.max_self_reschedules ?? 1) === 1
+          ? "reschedule"
+          : "reschedules"
+      }`
+    : "Patient reschedules";
   return (
     <Accordion
       title="Appointment recovery"
@@ -119,9 +115,8 @@ export function AppointmentRecoveryPolicy({
       contentStyle={{ gap: 12 }}
     >
       <Label muted>
-        Clinic grace applies after the booked start time. Later arrivals need
-        reception review before returning to the queue. Video consultation grace
-        applies after the booked end time.
+        Choose how close to the start patients can reschedule, and how many
+        times.
       </Label>
       {saved.isError ? (
         <Button
@@ -131,24 +126,6 @@ export function AppointmentRecoveryPolicy({
           onPress={() => void saved.refetch()}
         />
       ) : null}
-      <ClockDurationPicker
-        theme="doctor"
-        label="In-person (OPD) arrival grace"
-        value={draft.clinicGraceMinutes}
-        min={0}
-        max={180}
-        disabled={!saved.data || mutation.isPending}
-        onChange={(clinicGraceMinutes) => update({ clinicGraceMinutes })}
-      />
-      <ClockDurationPicker
-        theme="doctor"
-        label="Online attendance grace"
-        value={draft.onlineGraceMinutes}
-        min={0}
-        max={180}
-        disabled={!saved.data || mutation.isPending}
-        onChange={(onlineGraceMinutes) => update({ onlineGraceMinutes })}
-      />
       <RescheduleCutoffPicker
         value={draft.rescheduleCutoffMinutes}
         disabled={!saved.data || mutation.isPending}

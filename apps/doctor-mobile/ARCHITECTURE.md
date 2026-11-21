@@ -21,19 +21,29 @@ and the setup duration suggestion is an inline "Use N min" button. Save,
 preview, conflict, approval and merge logic in `useScheduleEditor` is
 unchanged. Local change; native-device verification pending.
 
-`ScheduleOptionsScreen` is the schedule overview. `useScheduleOverview` (built
-on `useSchedulePractice`) owns the one practice picker; the choice is
-remembered, so editors open on the same practice. Each service card shows its
-status (published, starting on a date, awaiting approval or verification, not
-published, or home visits turned off) and a days · hours · duration summary
-from `utils/scheduleOverview`, using the existing schedule, approval and
-change-request queries. Time off (`UnavailableTimeManager`, now given the
-practice) and the appointment recovery policy (a collapsed row with its own
-save) live on the overview, not in the editors. Local change; native-device
-verification pending.
+Manage Schedule is one screen (`ManageScheduleScreen`, the Schedules tab). It
+holds the workplace picker, schedule notices and a multi-select
+`ScheduleModeSelector` (In-person, Online, Home visits) listing every service's
+status and hours. Each chosen service opens its own editor section below, in
+the order chosen: `ScheduleScreen` with `embedded`, keyed by service so each
+draft stays separate, with its own inline publish bar (Review & submit, Pending
+request / Edit, Approved). Closing a service with unpublished edits asks before
+discarding them (`onChangesChange`). The week chart, time off
+(`UnavailableTimeManager`) and the appointment recovery policy follow, from
+`useScheduleOverview`. `/schedule?mode=` opens a service; the old
+`/manage-schedule/[mode]` route redirects there, and schedule notices open the
+service in place. The separate overview screen (`ScheduleOptionsScreen`) was
+removed. Local change; native-device verification pending. Below the editor come the
+week chart, time off (`UnavailableTimeManager`) and the appointment recovery
+policy, all from `useScheduleOverview` (status, summaries and week chart from
+the existing schedule, approval and change-request queries). `/schedule?mode=`
+opens a service; the old `/manage-schedule/[mode]` route redirects there, and
+schedule notices switch service in place. The separate overview screen
+(`ScheduleOptionsScreen`) was removed. Local change; native-device verification
+pending.
 
 Publishing has a review step. `SchedulePublishBar` (the editor footer) runs the
-editor's `validate` and then expands in place, with no pop-up. It shows the
+editor's `validate` and then opens an `AppDialog` pop-up. It shows the
 draft's days · hours · duration, the changed settings (`draftChanges`
 compares the draft with the saved copy it started from), the start date or
 approving facility, and a note when home visits are off. "Publish Schedule"
@@ -52,7 +62,7 @@ steps of the brand teal. Services sit in one grouped list with icon tiles and
 upcoming entries as compact rows. The editor offers quick appointment
 lengths (`durationPresets`, plus Custom with the clock picker), the number of
 appointment times a day (`appointmentsPerDay`), and `ClinicCapacityBar` for
-app, walk-in and free places. Local change; native-device verification pending, including the iOS
+the app and walk-in split. Local change; native-device verification pending, including the iOS
 back gesture.
 
 ## Smooth schedule updates
@@ -90,8 +100,8 @@ in the conflict preview and may differ by weekday. Both schedule-conflict and hy
 project on 30 October 2026, with hosted rollback workflow checks passing. Native
 interaction checks remain separate.
 
-Manage Schedule uses clock selectors for working times, consultation durations,
-travel buffer and attendance grace. The feature-owned `RescheduleCutoffPicker`
+Manage Schedule uses clock selectors for working times and consultation
+durations; the travel buffer is a 5-minute stepper. The feature-owned `RescheduleCutoffPicker`
 selects days, hours and minutes while retaining the full 0–10080 minute range.
 Booking counts and fees remain numeric controls. Native picker verification is
 separate from focused component checks.
@@ -104,8 +114,13 @@ duration/date handling, service-specific publishing and fees with one loader.
 At hospitals and at clinics the doctor does not run,
 `schedule_change_requires_approval` is true: the schedule editor's Publish
 becomes **Submit for approval**, time off add/remove and the recovery policy
-send requests, and `ScheduleRequestNotice` shows the pending request (with
-withdraw) or the latest decision. The doctor's own clinic still publishes
+send requests. While a request is pending the editor is locked and the footer
+shows **Pending request** (opens `ScheduleRequestDialog`, with edit and
+withdraw) and **Edit** (unlocks the form; submitting again supersedes the
+request). Once the facility approves it, the footer shows a disabled
+**Approved** button with the approval date until the doctor changes a setting,
+which brings back **Review & submit**. Declined and stale requests show an
+inline line. The doctor's own clinic still publishes
 directly. Decisions arrive as push notifications that open `/schedule`; the
 backend rejects direct changes regardless of the app. Local changes only.
 
@@ -130,8 +145,9 @@ Appointment review consumes the shared `clinic_queue` projection for ready-patie
 counts, estimates and whether this patient can be called. Existing call/start
 coordination retains optimistic versions; the backend remains authoritative.
 Doctors can hold a waiting/called patient with a reason and explicitly admit a
-late arrival to the next available opening. Schedule recovery settings include
-clinic arrival grace separately from video attendance grace. Appointment list and
+late arrival to the next available opening. Grace periods are retired: the
+recovery settings hold only the reschedule cutoff and self-service moves, and a
+late check-in joins the queue at its arrival time without a hold. Appointment list and
 review polling runs only while focused. Test-database migration and rollback checks passed on 30 October 2026; device
 checks remain pending. Issued tokens in existing sessions are retained.
 
@@ -416,3 +432,58 @@ schedule hook forwards the reviewed token, strategy and reason. Persistent waiti
 notices open Appointments; paused-service notices open the service's schedule.
 Appointment recovery displays the sent reason and uses the shared backend safety
 rules. Test migrations are deployed; native UI/keyboard acceptance remains unverified.
+
+## In-person capacity and travel buffer
+
+In-person capacity has two limits that share the day's time slots
+(`clinicTimeSlots`, at most 100): **App booking slots** and the **walk-in
+limit**, with app + walk-ins never above the slots. `normalizeDraft`
+(`utils/scheduleOverview.ts`) applies the shared `clinicCapacityLimits` rule from
+`@startup/contracts`, saves total capacity as app + walk-ins, and keeps the shared
+auto-accept limit within the app slots. Auto-accept sits in the in-person
+Appointments card; online and home keep it under More options. The home travel
+buffer is a 5-minute stepper capped by `maxTravelBufferMinutes`, and
+`normalizeDraft` shrinks a buffer that no longer fits the hours.
+
+Backend: app bookings stop at the app limit and walk-ins at the walk-in limit.
+`20261120100000_clinic_open_times_and_time_board.sql` shows patients every open
+time while app slots remain; `list_practice_clinic_time_board` lets the patient
+doctor page label taken times (Booked) and show "App booking closed".
+`20261120120000_walk_in_next_free_time.sql` adds
+`prepare_portal_next_walk_in_booking`: reception no longer picks a time, and
+each walk-in (today only) gets the next free time in order from the start of
+clinic hours, skipping app-booked and finished times. It books through the
+existing `prepare_portal_walk_in_booking`, so payment, limits, queue numbers and
+check-in are unchanged. The facility portal's schedule editor uses the same
+shared limits.
+
+Status: local change. The migration has not been applied or smoke-tested, and
+the device flows (pop-ups, form lock, slot labels) are not verified.
+
+## Shift rotations
+
+Each service on Manage Schedule can be **Same every week** (the weekly editor)
+or **Shift rotation** (`ShiftRotationEditor`, data through `useShiftPlan`). A
+rotation holds up to 8 named shifts (start, length up to 28 hours so overnight
+and 24-26 h shifts work, appointment length, app/walk-in or per-shift booking
+limits, fee), a rotation of 1-8 weeks, single-date changes, a start date and a
+28-day preview (`shiftPreview` in `@startup/contracts` marks a shift that would
+overlap the previous one as skipped, as the server does). Doctors at a facility
+they do not run submit for approval (withdrawable); facility admins and doctors
+running their own clinic publish directly and can end a rotation.
+
+Backend (`20261121100000_shift_rotations.sql`, applied 21 November 2026 after a
+rolled-back run of the migration plus `tests/smoke/shift-rotations.cli-smoke.sql`
+against the project): `clinzo.shift_plan`, one session per shift instance
+(`session.shift_plan_id`, booked against the start date) so limits and the
+queue cover the whole shift, per-shift limits in the capacity functions, the
+nightly job extends plans, and activation stops the weekly schedule from the
+start date (refused while bookings exist after it). Device verification
+pending.
+
+Notifications (`20261121110000_shift_plan_notifications.sql`): the doctor gets a
+push and in-app notification when a facility approves or declines their
+rotation, or publishes one for them (`shift.plan_approved` / `_rejected` /
+`_published`). `send-notification` words the push and opens `/schedule` on that
+service; the in-app list uses `features/notifications/utils/scheduleNotificationCopy`
+(which also titles schedule request decisions) and opens the same screen.

@@ -1,5 +1,9 @@
 import {
   formatDisplayDate,
+  clinicCapacityLimits,
+  clinicTimeSlotCount,
+  maxClinicDailyCapacity,
+  maxTravelBufferMinutes,
   preferencesToScheduleSettings,
   type DoctorSchedulePreferences,
   type ScheduleChangeRequest,
@@ -62,6 +66,49 @@ export function appointmentsPerDay(
       total + Math.max(0, Math.floor((length + buffer) / (duration + buffer)))
     );
   }, 0);
+}
+
+/** Largest daily clinic capacity (app + walk-ins) the backend accepts. */
+export const maxClinicSlots = maxClinicDailyCapacity;
+
+/** In-person time slots a day for app bookings, within the daily maximum. */
+export function clinicTimeSlots(schedule: Schedule) {
+  return clinicTimeSlotCount(
+    schedule.timeBlocks ?? [{ start: schedule.start, end: schedule.end }],
+    schedule.duration
+  );
+}
+
+/**
+ * Keeps derived editor values consistent. In-person capacity is the app
+ * booking limit (at most the day's time slots) plus a separate walk-in limit;
+ * the shared auto-accept limit stays within the app limit. A home travel
+ * buffer shrinks to the largest one that fits the hours.
+ */
+export function normalizeDraft(schedule: Schedule, mode: Mode): Schedule {
+  const blocks = schedule.timeBlocks ?? [
+    { start: schedule.start, end: schedule.end },
+  ];
+  if (mode === "home") {
+    const fit = maxTravelBufferMinutes(blocks);
+    return (schedule.homeTravelBuffer ?? 0) > fit
+      ? { ...schedule, homeTravelBuffer: fit }
+      : schedule;
+  }
+  if (mode !== "clinic") return schedule;
+  const limits = clinicCapacityLimits({
+    timeSlots: clinicTimeSlots(schedule),
+    app: schedule.clinicApp ?? schedule.walkIn,
+    walkin: schedule.clinicWalkin ?? 0,
+    autoAcceptLimit: schedule.autoLimit,
+  });
+  return {
+    ...schedule,
+    walkIn: limits.total,
+    clinicApp: limits.app,
+    clinicWalkin: limits.walkin,
+    autoLimit: limits.autoAcceptLimit,
+  };
 }
 
 /** "9 AM" or "5:30 PM", for chart axes. */

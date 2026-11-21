@@ -51,7 +51,11 @@ import {
   scheduleError,
   suggestConsultationDuration,
 } from "../utils/schedule";
-import { draftChanges, draftSummary } from "../utils/scheduleOverview";
+import {
+  draftChanges,
+  draftSummary,
+  normalizeDraft,
+} from "../utils/scheduleOverview";
 import type { Schedule } from "../../../types/doctor";
 import { initialSchedule } from "../utils/scheduleDefaults";
 
@@ -313,8 +317,10 @@ export function useScheduleEditor({
   const update = (changes: Partial<Schedule>) => {
     setConflict(null);
     dirty.current = true;
-    setDraft((current) => ({ ...current, ...changes }));
+    setDraft((current) => normalizeDraft({ ...current, ...changes }, mode));
   };
+  // Older schedules may predate the derived clinic split; publish it normalized.
+  const editorDraft = normalizeDraft(draft, mode);
   const scheduleSettings = () => ({
     clinicTimeBlocks:
       mode === "clinic"
@@ -370,11 +376,11 @@ export function useScheduleEditor({
     onlineSlotMinutes: draft.onlineDuration,
     homeSlotMinutes: draft.homeDuration,
     onlineDailyLimit: draft.online,
-    walkinDailyLimit: draft.walkIn,
-    clinicAppDailyLimit: draft.clinicApp ?? draft.walkIn,
-    clinicWalkinDailyLimit: draft.clinicWalkin ?? 0,
+    walkinDailyLimit: editorDraft.walkIn,
+    clinicAppDailyLimit: editorDraft.clinicApp ?? editorDraft.walkIn,
+    clinicWalkinDailyLimit: editorDraft.clinicWalkin ?? 0,
     autoAccept: draft.autoAccept,
-    autoAcceptLimit: draft.autoAccept ? draft.autoLimit : 0,
+    autoAcceptLimit: draft.autoAccept ? editorDraft.autoLimit : 0,
     homeVisits: draft.homeVisits,
     homeRadiusKm: draft.homeRadius ? Number(draft.homeRadius) : null,
     onlineFeeMinor: Math.round(Number(draft.onlineFee) * 100),
@@ -413,7 +419,8 @@ export function useScheduleEditor({
   /** Local checks first, then the shared rules the backend applies. */
   function validate() {
     const problem =
-      scheduleError(draft, mode) ?? scheduleSettingsProblem(scheduleSettings());
+      scheduleError(editorDraft, mode) ??
+      scheduleSettingsProblem(scheduleSettings());
     if (!problem) return true;
     showToast({ title: "Schedule error", message: problem, type: "error" });
     return false;
@@ -632,9 +639,9 @@ export function useScheduleEditor({
     validate,
     // Null for a first schedule, which has no saved copy to compare with.
     changes: baseSettings.current
-      ? draftChanges(draftFromSettings(baseSettings.current, mode), draft)
+      ? draftChanges(draftFromSettings(baseSettings.current, mode), editorDraft)
       : null,
-    summary: draftSummary(draft, mode),
+    summary: draftSummary(editorDraft, mode),
     startsFromLabel:
       startsFrom === today ? "today" : formatDisplayDate(startsFrom),
     update,

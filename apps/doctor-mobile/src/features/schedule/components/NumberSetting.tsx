@@ -14,6 +14,8 @@ export function NumberSetting({
   suffix,
   onChange,
   stepper = false,
+  step = 1,
+  hint,
   disabled = false,
 }: NumberSettingProps) {
   const [draft, setText] = useState<string | null>(null);
@@ -54,7 +56,7 @@ export function NumberSetting({
             accessibilityLabel={`Decrease ${title}`}
             accessibilityState={{ disabled: disabled || current <= min }}
             disabled={disabled || current <= min}
-            onPress={() => commit(current - 1)}
+            onPress={() => commit(current - step)}
             style={({ pressed }) => ({
               width: 44,
               height: 46,
@@ -100,7 +102,7 @@ export function NumberSetting({
             accessibilityLabel={`Increase ${title}`}
             accessibilityState={{ disabled: disabled || current >= max }}
             disabled={disabled || current >= max}
-            onPress={() => commit(current + 1)}
+            onPress={() => commit(current + step)}
             style={({ pressed }) => ({
               width: 44,
               height: 46,
@@ -130,6 +132,11 @@ export function NumberSetting({
           keyboardType="number-pad"
         />
       )}
+      {hint ? (
+        <Label variant="caption" muted>
+          {hint}
+        </Label>
+      ) : null}
     </View>
   );
 }
