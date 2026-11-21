@@ -4,7 +4,16 @@ import { scheduleServices } from "../utils/facilityDoctorScheduleConstants";
 
 import { FacilityDoctorScheduleEditor } from "../components/FacilityDoctorScheduleEditor";
 
-import type { FacilityDoctorScheduleScreenProps } from "../types/facilityDoctorScheduleScreen";
+import { FacilityShiftRotationEditor } from "../components/FacilityShiftRotationEditor";
+
+import { useFacilityShiftPlan } from "../hooks/useFacilityShiftPlan";
+
+import { useState } from "react";
+
+import type {
+  FacilityDoctorScheduleScreenProps,
+  Mode,
+} from "../types/facilityDoctorScheduleScreen";
 
 import Link from "next/link";
 
@@ -22,7 +31,7 @@ export function FacilityDoctorScheduleScreen({
 }: FacilityDoctorScheduleScreenProps) {
   if (mode)
     return (
-      <FacilityDoctorScheduleEditor
+      <ServiceSchedule
         key={`${practiceId}:${mode}`}
         practiceId={practiceId}
         mode={mode}
@@ -81,6 +90,59 @@ export function FacilityDoctorScheduleScreen({
           transition={transition}
         />
       </div>
+    </div>
+  );
+}
+
+/** A service follows the same hours every week or a shift rotation. */
+function ServiceSchedule({
+  practiceId,
+  mode,
+  onSelectMode,
+  transition,
+}: FacilityDoctorScheduleScreenProps & { mode: Mode }) {
+  const { active, pending } = useFacilityShiftPlan(practiceId, mode);
+  const [chosen, setChosen] = useState<"weekly" | "rotation" | null>(null);
+  const kind = chosen ?? (active || pending ? "rotation" : "weekly");
+  return (
+    <div className="w-full max-w-full min-w-0 space-y-6">
+      <div
+        role="radiogroup"
+        aria-label="Schedule type"
+        className="flex flex-wrap gap-2"
+      >
+        {(
+          [
+            ["weekly", "Same every week"],
+            ["rotation", "Shift rotation"],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            type="button"
+            role="radio"
+            aria-checked={kind === value}
+            onClick={() => setChosen(value)}
+            className={`min-h-10 rounded-full border px-4 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#008577] ${
+              kind === value
+                ? "border-[#008577] bg-[#008577] text-white"
+                : "border-[#cbd5e1] bg-white text-[#0f172a]"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {kind === "rotation" ? (
+        <FacilityShiftRotationEditor practiceId={practiceId} mode={mode} />
+      ) : (
+        <FacilityDoctorScheduleEditor
+          practiceId={practiceId}
+          mode={mode}
+          onSelectMode={onSelectMode}
+          transition={transition}
+        />
+      )}
     </div>
   );
 }

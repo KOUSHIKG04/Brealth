@@ -36,8 +36,8 @@ export function NewAppointmentDialog({
     practices,
     slots,
     practiceId,
-    windowId,
-    setWindowId,
+    nextSlot,
+    isToday,
     patientName,
     setPatientName,
     patientPhone,
@@ -63,8 +63,7 @@ export function NewAppointmentDialog({
     paymentStage,
     onDialogClosed,
   } = useNewAppointment({ onCreated });
-  const selectedSlot = slots.find((slot) => slot.windowId === windowId);
-  const paidVisit = Number(selectedSlot?.feeMinor ?? 0) > 0;
+  const paidVisit = Number(nextSlot?.feeMinor ?? 0) > 0;
   const paymentUnavailable =
     paidVisit &&
     (!clinicDay?.payment.enabled || !clinicDay.payment.can_collect);
@@ -101,8 +100,8 @@ export function NewAppointmentDialog({
             New in-person appointment
           </DialogTitle>
           <DialogDescription>
-            Enter the patient’s details, collect payment and confirm a clinic
-            time. An app account is not required.
+            Enter the patient’s details and collect payment. The walk-in gets
+            the next free clinic time today. An app account is not required.
           </DialogDescription>
           <form onSubmit={submit} className="grid gap-4">
             <WalkInDoctorSelector
@@ -115,18 +114,13 @@ export function NewAppointmentDialog({
             <ClinicScheduleCapacity
               clinicDay={clinicDay}
               slots={slots}
-              pending={pending}
-              loadingSlots={loadingSlots}
-              choosePractice={choosePractice}
               practiceId={practiceId}
             />{" "}
-            <ClinicTimeSelector
-              windowId={windowId}
-              setWindowId={setWindowId}
+            <NextWalkInTime
               practiceId={practiceId}
               loadingSlots={loadingSlots}
-              pending={pending}
-              slots={slots}
+              nextSlot={nextSlot}
+              isToday={isToday}
               clinicDay={clinicDay}
             />{" "}
             <div className="grid gap-2">
@@ -201,14 +195,7 @@ export function NewAppointmentDialog({
                 className="w-full rounded-md border border-[#cbd5e1] bg-white p-3 text-sm"
               />
             </div>
-            {clinicDay &&
-            clinicDay.local_day ===
-              new Intl.DateTimeFormat("en-CA", {
-                timeZone: clinicDay.timezone,
-                year: "numeric",
-                month: "2-digit",
-                day: "2-digit",
-              }).format(new Date()) ? (
+            {isToday ? (
               <label className="flex items-center gap-2 text-sm">
                 <input
                   type="checkbox"
@@ -222,7 +209,7 @@ export function NewAppointmentDialog({
             {paidVisit && clinicDay ? (
               <ReceptionPaymentOptions
                 payment={clinicDay.payment}
-                fee={Number(selectedSlot?.feeMinor ?? 0)}
+                fee={Number(nextSlot?.feeMinor ?? 0)}
                 pending={pending}
                 paymentMethod={paymentMethod}
                 setPaymentMethod={setPaymentMethod}
@@ -237,7 +224,7 @@ export function NewAppointmentDialog({
               disabled={
                 pending ||
                 loadingSlots ||
-                !windowId ||
+                !nextSlot ||
                 !clinicDay?.walkin_remaining ||
                 patientName.trim().length < 2 ||
                 paymentUnavailable ||
@@ -358,19 +345,8 @@ type NewAppointmentState = ReturnType<typeof useNewAppointment>;
 function ClinicScheduleCapacity({
   clinicDay,
   slots,
-  pending,
-  loadingSlots,
-  choosePractice,
   practiceId,
-}: Pick<
-  NewAppointmentState,
-  | "clinicDay"
-  | "slots"
-  | "pending"
-  | "loadingSlots"
-  | "choosePractice"
-  | "practiceId"
->) {
+}: Pick<NewAppointmentState, "clinicDay" | "slots" | "practiceId">) {
   return (
     <>
       {clinicDay ? (
@@ -399,19 +375,10 @@ function ClinicScheduleCapacity({
                 · {clinicDay.timezone}
               </p>
             </div>
-            <div>
-              <Label htmlFor="walk-in-day">Clinic date</Label>
-              <Input
-                id="walk-in-day"
-                type="date"
-                value={clinicDay.local_day}
-                disabled={pending || loadingSlots}
-                onChange={(event) => {
-                  if (event.target.value)
-                    void choosePractice(practiceId, event.target.value);
-                }}
-              />
-            </div>
+            <p className="text-sm">
+              <span className="text-muted-foreground">Clinic date </span>
+              <span className="font-medium">{clinicDay.local_day}</span>
+            </p>
           </div>
           <dl className="grid grid-cols-3 gap-3 text-sm">
             <div>
@@ -495,8 +462,8 @@ function ClinicScheduleCapacity({
           ) : null}
           {clinicDay.walkin_remaining === 0 ? (
             <p role="status" className="text-sm">
-              No walk-in capacity remains. Update the editable quotas in Doctor
-              Schedules or choose another date.
+              No walk-in capacity remains today. Update the limits in Doctor
+              Schedules.
             </p>
           ) : null}
           <details>
@@ -521,56 +488,48 @@ function ClinicScheduleCapacity({
   );
 }
 
-function ClinicTimeSelector({
-  windowId,
-  setWindowId,
+/** The time the next walk-in will get: the first free clinic time today. */
+function NextWalkInTime({
   practiceId,
   loadingSlots,
-  pending,
-  slots,
+  nextSlot,
+  isToday,
   clinicDay,
 }: Pick<
   NewAppointmentState,
-  | "windowId"
-  | "setWindowId"
-  | "practiceId"
-  | "loadingSlots"
-  | "pending"
-  | "slots"
-  | "clinicDay"
+  "practiceId" | "loadingSlots" | "nextSlot" | "isToday" | "clinicDay"
 >) {
+  if (!practiceId) return null;
+  if (loadingSlots)
+    return <p className="text-muted-foreground text-sm">Loading times…</p>;
+  if (!clinicDay) return null;
+  if (!isToday)
+    return (
+      <p role="status" className="text-sm">
+        No clinic hours left today. Walk-ins can be registered only on the day.
+      </p>
+    );
+  if (!nextSlot)
+    return (
+      <p role="status" className="text-sm">
+        No free time left today. Every clinic time is booked or has passed.
+      </p>
+    );
   return (
-    <div className="grid gap-2">
-      <Label htmlFor="walk-in-slot">Clinic time</Label>
-      <select
-        id="walk-in-slot"
-        value={windowId}
-        onChange={(event) => setWindowId(event.target.value)}
-        disabled={!practiceId || loadingSlots || pending}
-        required
-        className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-3 text-sm"
-      >
-        <option value="">
-          {loadingSlots ? "Loading times…" : "Choose a time"}
-        </option>
-        {slots.map((slot) => (
-          <option
-            key={slot.windowId}
-            value={slot.windowId}
-            disabled={slot.state !== "open" || !clinicDay?.walkin_remaining}
-          >
-            {slotLabel(slot)}
-            {slot.state !== "open" ? ` · ${slot.state}` : ""}
-          </option>
-        ))}
-      </select>
-      {practiceId && !loadingSlots && slots.length === 0 && (
-        <p className="text-sm text-[#64748b]">
-          No open in-person slots. Publish clinic availability in Doctor
-          Schedules.
-        </p>
-      )}
-    </div>
+    <p role="status" className="text-sm">
+      <span className="text-muted-foreground">Next walk-in time </span>
+      <span className="font-semibold">
+        {new Intl.DateTimeFormat("en-IN", {
+          timeZone: nextSlot.timezone,
+          hour: "numeric",
+          minute: "2-digit",
+        }).format(new Date(nextSlot.startsAt))}
+      </span>
+      <span className="text-muted-foreground">
+        {" "}
+        · times booked in the app stay with those patients
+      </span>
+    </p>
   );
 }
 

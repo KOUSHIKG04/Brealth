@@ -33,7 +33,6 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
   const [patientGender, setPatientGender] = React.useState("");
   const [checkIn, setCheckIn] = React.useState(true);
   const [practiceId, setPracticeId] = React.useState("");
-  const [windowId, setWindowId] = React.useState("");
   const [patientName, setPatientName] = React.useState("");
   const [patientPhone, setPatientPhone] = React.useState("");
   const [reason, setReason] = React.useState("");
@@ -136,7 +135,6 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
 
   async function choosePractice(id: string, localDay?: string) {
     setPracticeId(id);
-    setWindowId("");
     setSlots([]);
     setClinicDay(null);
     setTermsAccepted(false);
@@ -165,12 +163,26 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
     }
   }
 
+  // Walk-ins are for today only and take the next free time in order; the
+  // server confirms the actual time when booking.
+  const isToday =
+    clinicDay !== null &&
+    clinicDay.local_day ===
+      new Intl.DateTimeFormat("en-CA", {
+        timeZone: clinicDay.timezone,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date());
+  const nextSlot = isToday
+    ? (slots.find((item) => item.state === "open") ?? null)
+    : null;
+
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const slot = slots.find((item) => item.windowId === windowId);
+    const slot = nextSlot;
     if (
       !slot ||
-      slot.state !== "open" ||
       !clinicDay ||
       clinicDay.walkin_remaining < 1 ||
       !practiceId ||
@@ -180,18 +192,11 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
       (Number(slot.feeMinor) > 0 && paymentMethod === "cash" && !cashReceived)
     )
       return;
-    const today = new Intl.DateTimeFormat("en-CA", {
-      timeZone: clinicDay.timezone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    }).format(new Date());
-    const checkInNow = checkIn && clinicDay.local_day === today;
+    const checkInNow = checkIn;
     startTransition(async () => {
       try {
         const result = await createPortalWalkInAppointment({
           practiceId,
-          windowId: slot.windowId,
           practiceServiceId: slot.practiceServiceId,
           patientName: patientName.trim(),
           patientAge: patientAge === "" ? null : Number(patientAge),
@@ -211,7 +216,7 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
             description: result.error,
             type: "error",
           });
-          await choosePractice(practiceId, clinicDay.local_day);
+          await choosePractice(practiceId);
           return;
         }
         if (!result.appointmentId)
@@ -229,12 +234,20 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
             throw new Error(
               "The appointment has not been confirmed. Refresh its payment status."
             );
+          const time = result.startsAt
+            ? new Intl.DateTimeFormat("en-IN", {
+                timeZone: clinicDay.timezone,
+                hour: "numeric",
+                minute: "2-digit",
+              }).format(new Date(result.startsAt))
+            : null;
           toast.add({
             title: "Appointment booked",
-            description:
+            description: `${
               paymentMethod === "cash"
-                ? "Cash received and appointment confirmed."
-                : "Appointment confirmed.",
+                ? "Cash received and appointment confirmed"
+                : "Appointment confirmed"
+            }${time ? ` for ${time}` : ""}.`,
             type: "success",
           });
         }
@@ -246,7 +259,6 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
         setPatientPhone("");
         setReason("");
         setPracticeId("");
-        setWindowId("");
         setSlots([]);
         setClinicDay(null);
         setTermsAccepted(false);
@@ -276,8 +288,8 @@ export function useNewAppointment({ onCreated }: NewAppointmentDialogProps) {
     practices,
     slots,
     practiceId,
-    windowId,
-    setWindowId,
+    nextSlot,
+    isToday,
     clinicDay,
     patientAge,
     setPatientAge,

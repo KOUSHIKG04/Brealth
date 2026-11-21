@@ -5,12 +5,12 @@ import { revalidatePath } from "next/cache";
 import {
   clinicCheckinTokenSchema,
   clinicTransitionSchema,
-  portalPaidWalkInBookingSchema,
+  portalNextWalkInBookingSchema,
   setClinicAutoConfirmLimitSchema,
   uuidSchema,
 } from "@startup/contracts";
 import {
-  preparePortalWalkInAppointment,
+  preparePortalNextWalkInAppointment,
   getPortalWalkInPaymentPolicy,
   listMyPractices,
   getPortalClinicDay,
@@ -126,16 +126,19 @@ export async function loadPortalWalkInSlots(
   };
 }
 
+/** Registers a walk-in today; the server gives the next free time in order. */
 export async function createPortalWalkInAppointment(input: unknown): Promise<{
   error: string | null;
   appointmentId?: string;
   requiresPayment?: boolean;
   status?: string;
+  startsAt?: string;
 }> {
-  const parsed = portalPaidWalkInBookingSchema.safeParse(input);
+  const parsed = portalNextWalkInBookingSchema.safeParse(input);
   if (!parsed.success)
     return {
-      error: "Enter a patient name and choose an available clinic slot.",
+      error:
+        "Enter a patient name and choose a doctor with clinic hours today.",
     };
   await requireApprovedFacility();
   const client = await createClient();
@@ -143,7 +146,10 @@ export async function createPortalWalkInAppointment(input: unknown): Promise<{
   if (authError || !claims)
     return { error: "Your session expired. Sign in again." };
   try {
-    const booking = await preparePortalWalkInAppointment(client, parsed.data);
+    const booking = await preparePortalNextWalkInAppointment(
+      client,
+      parsed.data
+    );
     revalidatePath("/appointments");
     revalidatePath("/");
     revalidatePath("/dashboard");
@@ -152,21 +158,31 @@ export async function createPortalWalkInAppointment(input: unknown): Promise<{
       appointmentId: booking.appointment_id,
       requiresPayment: booking.requires_payment,
       status: booking.status,
+      startsAt: booking.starts_at,
     };
   } catch (error) {
     const code =
       typeof error === "object" && error !== null && "code" in error
         ? String(error.code)
         : null;
+    const message =
+      typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : "";
+    if (message.includes("No free time left today"))
+      return {
+        error:
+          "No free time is left today. Every clinic time is booked or has passed.",
+      };
     if (code === "23514")
       return {
         error:
-          "The clinic quota or selected time is full. Refresh availability and choose another time or date.",
+          "The walk-in limit for today is reached. Update the limits in Doctor Schedules.",
       };
     if (code === "22023")
       return {
         error:
-          "That slot is no longer available. Refresh the times and try again.",
+          "No clinic time is available for this walk-in. Refresh and try again.",
       };
     if (code === "42501")
       return { error: "You do not have access to book this doctor." };

@@ -23,8 +23,6 @@ export function AppointmentRecoveryPolicy({
   });
   const [edits, setEdits] = useState<PolicyDraft | null>(null);
   const draft = edits ?? {
-    onlineGraceMinutes: saved.data?.online_grace_minutes ?? 15,
-    clinicGraceMinutes: saved.data?.clinic_grace_minutes ?? 10,
     rescheduleCutoffMinutes: saved.data?.reschedule_cutoff_minutes ?? 0,
     maxSelfReschedules: saved.data?.max_self_reschedules ?? 1,
     expectedVersion: Number(saved.data?.row_version ?? 0),
@@ -47,33 +45,14 @@ export function AppointmentRecoveryPolicy({
   return (
     <ScheduleSection title="Appointment recovery">
       <p className="text-muted-foreground text-sm">
-        Clinic grace applies after the booked start time. Later arrivals need
-        reception review before returning to the queue. Video consultation grace
-        applies after the booked end time.
+        Choose how close to the start patients can reschedule, and how many
+        times.
       </p>
       {saved.isError ? (
         <Button variant="outline" onClick={() => void saved.refetch()}>
           Retry policy
         </Button>
       ) : null}
-      <NumberSetting
-        title="Clinic arrival grace"
-        value={draft.clinicGraceMinutes}
-        suffix="min"
-        min={0}
-        max={180}
-        disabled={!saved.data || mutation.isPending}
-        onChange={(clinicGraceMinutes) => update({ clinicGraceMinutes })}
-      />
-      <NumberSetting
-        title="Online attendance grace"
-        value={draft.onlineGraceMinutes}
-        suffix="min"
-        min={0}
-        max={180}
-        disabled={!saved.data || mutation.isPending}
-        onChange={(onlineGraceMinutes) => update({ onlineGraceMinutes })}
-      />
       <NumberSetting
         title="Self-reschedule cutoff before start"
         value={draft.rescheduleCutoffMinutes}

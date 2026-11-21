@@ -39,8 +39,13 @@ import {
   previewScheduleChangeRequest,
   approveScheduleChangeRequest,
   rejectScheduleChangeRequest,
+  listFacilityShiftPlanRequests,
+  decideShiftPlan,
+  getShiftPlans,
+  submitShiftPlan,
+  endShiftPlan,
 } from "@startup/data-access";
-import { recoveryPolicySchema } from "@startup/contracts";
+import { recoveryPolicySchema, shiftPlanInputSchema } from "@startup/contracts";
 import { requireApprovedFacility } from "@/server/auth/facilityAccess";
 import { createClient } from "@/lib/supabase/server";
 
@@ -424,5 +429,112 @@ export async function rejectFacilityScheduleChangeRequest(
   } catch (error) {
     unstable_rethrow(error);
     return scheduleFailure(error, "Could not decline this request.");
+  }
+}
+
+/** Doctors' shift rotations waiting for this facility's approval. */
+export async function loadFacilityShiftPlanRequests() {
+  try {
+    await requireApprovedFacility();
+    const client = await createClient();
+    return {
+      ok: true as const,
+      plans: await listFacilityShiftPlanRequests(client),
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not load shift rotation requests.");
+  }
+}
+
+export async function decideFacilityShiftPlan(
+  planId: string,
+  approve: boolean,
+  reason?: string
+) {
+  try {
+    uuidSchema.parse(planId);
+    if (!approve) z.string().trim().min(3).max(500).parse(reason);
+    await requireApprovedFacility();
+    const client = await createClient();
+    await decideShiftPlan(client, { planId, approve, reason });
+    revalidatePath("/doctor-schedules");
+    revalidatePath("/appointments");
+    return { ok: true as const };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(
+      error,
+      approve
+        ? "Could not approve this rotation."
+        : "Could not decline this rotation."
+    );
+  }
+}
+
+const serviceModeSchema = z.enum(["clinic", "online", "home"]);
+
+const isoDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/** A doctor's shift plans at this facility, with the doctor's time zone. */
+export async function loadFacilityShiftPlans(practiceId: string) {
+  try {
+    const { client, doctor } = await authorizedPractice(practiceId);
+    return {
+      ok: true as const,
+      timezone: doctor.booking_timezone as string,
+      plans: await getShiftPlans(client, practiceId),
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not load the shift rotation.");
+  }
+}
+
+/** Facility staff publish a doctor's rotation directly (no approval step). */
+export async function submitFacilityShiftPlan(input: {
+  practiceId: string;
+  mode: "clinic" | "online" | "home";
+  plan: unknown;
+  effectiveFrom: string;
+}) {
+  try {
+    const { client } = await authorizedPractice(input.practiceId);
+    const result = await submitShiftPlan(client, {
+      practiceId: input.practiceId,
+      mode: serviceModeSchema.parse(input.mode),
+      plan: shiftPlanInputSchema.parse(input.plan),
+      effectiveFrom: isoDateSchema.parse(input.effectiveFrom),
+    });
+    revalidatePath("/doctor-schedules");
+    revalidatePath("/appointments");
+    return {
+      ok: true as const,
+      status: result.status,
+      shiftsCreated: result.shifts_created ?? 0,
+    };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not publish the rotation.");
+  }
+}
+
+export async function endFacilityShiftPlan(input: {
+  practiceId: string;
+  mode: "clinic" | "online" | "home";
+  from: string;
+}) {
+  try {
+    const { client } = await authorizedPractice(input.practiceId);
+    await endShiftPlan(client, {
+      practiceId: input.practiceId,
+      mode: serviceModeSchema.parse(input.mode),
+      from: isoDateSchema.parse(input.from),
+    });
+    revalidatePath("/doctor-schedules");
+    return { ok: true as const };
+  } catch (error) {
+    unstable_rethrow(error);
+    return scheduleFailure(error, "Could not end the rotation.");
   }
 }

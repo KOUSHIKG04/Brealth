@@ -9,6 +9,7 @@ import { DoctorSchedulesStats } from "../components/DoctorSchedulesStats";
 import { DoctorShiftGantt } from "../components/DoctorShiftGantt";
 import { DoctorAssignmentsTable } from "../components/DoctorAssignmentsTable";
 import { ScheduleChangeRequests } from "../components/ScheduleChangeRequests";
+import { ShiftPlanRequests } from "../components/ShiftPlanRequests";
 
 export default function DoctorSchedulesScreen({
   doctors,
@@ -60,6 +61,7 @@ export default function DoctorSchedulesScreen({
         </div>
       ) : null}
       <ScheduleChangeRequests />
+      <ShiftPlanRequests />
       <DoctorSchedulesStats
         scheduleSummary={schedule.summary}
         scheduledShifts={schedule.departments.reduce(

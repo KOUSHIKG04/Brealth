@@ -21,8 +21,6 @@ import { useScheduleChangeRequests } from "../hooks/useScheduleChangeRequests";
 import { ScheduleConflictDialog } from "./ScheduleConflictDialog";
 
 const policyRows: [string, string, string][] = [
-  ["Clinic arrival grace", "clinic_grace_minutes", "min"],
-  ["Online attendance grace", "online_grace_minutes", "min"],
   ["Reschedule cutoff", "reschedule_cutoff_minutes", "min"],
   ["Self-service reschedules", "max_self_reschedules", ""],
 ];

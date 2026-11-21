@@ -173,7 +173,6 @@ test("reception only registers an open time with remaining walk-in capacity", as
     else h.day.slots[0].state = "booked";
     await h.render().choosePractice("practice");
     let form = h.render();
-    form.setWindowId("window");
     form.setPatientName("Patient");
     h.render().submit({ preventDefault() {} });
     await h.finish();
@@ -181,25 +180,68 @@ test("reception only registers an open time with remaining walk-in capacity", as
   }
 });
 
-test("demographics reach registration and check-in is limited to the selected clinic day", async () => {
+test("demographics reach registration and walk-ins are registered for today only", async () => {
   for (const future of [false, true]) {
     const h = harness();
     if (future) h.day.local_day = "2099-01-01";
     await h.render().choosePractice("practice");
     const form = h.render();
-    form.setWindowId("window");
     form.setPatientName(" Patient ");
     form.setPatientAge("29");
     form.setPatientGender("Other");
     h.render().submit({ preventDefault() {} });
     await h.finish();
+    if (future) {
+      assert.equal(h.requests.length, 0, "no walk-in for another day");
+      continue;
+    }
     assert.equal(h.requests.length, 1);
     assert.equal(h.requests[0].patientName, "Patient");
     assert.equal(h.requests[0].patientAge, 29);
     assert.equal(h.requests[0].patientGender, "Other");
-    assert.equal(h.requests[0].checkIn, !future);
+    assert.equal(h.requests[0].checkIn, true);
+    assert.equal(
+      "windowId" in h.requests[0],
+      false,
+      "the server picks the time"
+    );
     assert.deepEqual(h.routes, ["/appointments"]);
   }
+});
+
+test("the next walk-in time is the first free time, skipping app-booked ones", async () => {
+  const h = harness();
+  h.day.slots = [
+    {
+      windowId: "one",
+      practiceServiceId: "service",
+      state: "past",
+      feeMinor: 0,
+    },
+    {
+      windowId: "two",
+      practiceServiceId: "service",
+      state: "booked",
+      feeMinor: 0,
+    },
+    {
+      windowId: "three",
+      practiceServiceId: "service",
+      state: "open",
+      feeMinor: 0,
+    },
+    {
+      windowId: "four",
+      practiceServiceId: "service",
+      state: "open",
+      feeMinor: 0,
+    },
+  ];
+  await h.render().choosePractice("practice");
+  assert.equal(h.render().nextSlot.windowId, "three");
+  h.day.slots = h.day.slots.map((slot) => ({ ...slot, state: "booked" }));
+  await h.render().choosePractice("practice");
+  assert.equal(h.render().nextSlot, null, "no free time left today");
 });
 
 test("a slower previous doctor request cannot replace the selected doctor's clinic day", async () => {
@@ -228,7 +270,6 @@ test("paid reception booking opens checkout after the dialog closes and reports 
   const h = harness(undefined, { requiresPayment: true, verification });
   await h.render().choosePractice("practice");
   const form = h.render();
-  form.setWindowId("window");
   form.setPatientName("Patient");
   form.setTermsAccepted(true);
   h.render().submit({ preventDefault() {} });
@@ -255,7 +296,6 @@ test("cancelled checkout leaves a resumable payment reservation, never a confirm
   });
   await h.render().choosePractice("practice");
   const form = h.render();
-  form.setWindowId("window");
   form.setPatientName("Patient");
   form.setTermsAccepted(true);
   h.render().submit({ preventDefault() {} });
@@ -276,7 +316,6 @@ test("cash booking requires both patient terms and confirmation that cash was re
   const h = harness(undefined, { requiresPayment: true });
   await h.render().choosePractice("practice");
   const form = h.render();
-  form.setWindowId("window");
   form.setPatientName("Patient");
   form.setPaymentMethod("cash");
   form.setTermsAccepted(true);

@@ -15,6 +15,7 @@ import {
   scheduleErrorCodes,
   scheduleErrorMessage,
   scheduleSettingNames,
+  withClinicCapacity,
   type DoctorScheduleSettings,
   type DoctorSchedulePreferences,
   type ScheduleChangePreview,
@@ -85,6 +86,10 @@ export function useFacilityDoctorSchedule({
   const version = edits?.version ?? Number(saved?.row_version ?? 0);
   const draft = edits?.settings ??
     savedSettings ?? { ...initialSettings, [daysKey]: [] };
+  // In-person capacity is the app booking limit (within the time slots) plus
+  // the walk-in limit. Edits and publishing keep it consistent; the editor
+  // shows these values.
+  const publishable = mode === "clinic" ? withClinicCapacity(draft) : draft;
   // Saved elsewhere while these edits are unsaved; merged on publish.
   const remoteChanged =
     edits !== null &&
@@ -158,7 +163,10 @@ export function useFacilityDoctorSchedule({
     setEdits({
       version,
       base: edits ? edits.base : savedSettings,
-      settings: { ...draft, ...changes },
+      settings:
+        mode === "clinic"
+          ? withClinicCapacity({ ...draft, ...changes })
+          : { ...draft, ...changes },
     });
   };
   const fail = (message: string) =>
@@ -193,7 +201,7 @@ export function useFacilityDoctorSchedule({
       (!draft.homeRadiusKm || draft.homeRadiusKm <= 0)
     )
       return "Enter a positive home-visit travel radius in km.";
-    const parsed = doctorScheduleSettingsSchema.safeParse(draft);
+    const parsed = doctorScheduleSettingsSchema.safeParse(publishable);
     return parsed.success
       ? null
       : (parsed.error.issues[0]?.message ?? "Check the schedule fields.");
@@ -248,7 +256,7 @@ export function useFacilityDoctorSchedule({
       let current: EditState | null = {
         version,
         base: edits ? edits.base : savedSettings,
-        settings: draft,
+        settings: publishable,
       };
       try {
         // A newer copy already loaded: merge before asking the server.
@@ -359,6 +367,7 @@ export function useFacilityDoctorSchedule({
     endKey,
     durationKey,
     limitKey,
+    publishable,
     feeKey,
     draft,
     pending,

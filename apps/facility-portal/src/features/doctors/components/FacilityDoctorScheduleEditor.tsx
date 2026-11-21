@@ -25,6 +25,7 @@ import { AppointmentRecoveryPolicy } from "./AppointmentRecoveryPolicy";
 import { ClockDurationPicker } from "./ClockDurationPicker";
 import { UnavailableDatePicker } from "./UnavailableDatePicker";
 import { card } from "../utils/facilityScheduleEditorConstants";
+import { clinicTimeSlotCount } from "@startup/contracts";
 
 import { ScheduleConflictDialog } from "./ScheduleConflictDialog";
 import { ScheduleBusyBlocks } from "./ScheduleBusyBlocks";
@@ -45,6 +46,7 @@ export function FacilityDoctorScheduleEditor({
     endKey,
     durationKey,
     limitKey,
+    publishable,
     feeKey,
     draft,
     pending,
@@ -213,13 +215,16 @@ export function FacilityDoctorScheduleEditor({
             update={update}
             setAvailabilityDuration={setAvailabilityDuration}
             draft={draft}
+            publishable={publishable}
             limitKey={limitKey}
             saved={saved}
             suggestion={suggestion}
             setSuggestedDuration={setSuggestedDuration}
           />
           <ScheduleAutoAcceptance
+            mode={mode}
             draft={draft}
+            publishable={publishable}
             pending={pending}
             update={update}
             setShowAutoBookingHelp={setShowAutoBookingHelp}
@@ -386,6 +391,7 @@ function AppointmentSlotSettings({
   update,
   setAvailabilityDuration,
   draft,
+  publishable,
   limitKey,
   saved,
   suggestion,
@@ -398,12 +404,19 @@ function AppointmentSlotSettings({
   | "update"
   | "setAvailabilityDuration"
   | "draft"
+  | "publishable"
   | "limitKey"
   | "saved"
   | "suggestion"
   | "setSuggestedDuration"
 > &
   Pick<FacilityDoctorScheduleEditorProps, "mode">) {
+  const timeSlots = clinicTimeSlotCount(
+    draft.clinicTimeBlocks ?? [
+      { start: draft.clinicStart, end: draft.clinicEnd },
+    ],
+    draft.slotMinutes
+  );
   return (
     <ScheduleSection title="Appointment slots">
       <p className="text-muted-foreground text-sm leading-6">
@@ -427,13 +440,9 @@ function AppointmentSlotSettings({
             setAvailabilityDuration(minutes);
           }}
         />
-        {mode !== "home" ? (
+        {mode === "online" ? (
           <NumberSetting
-            title={
-              mode === "clinic"
-                ? "Total clinic capacity"
-                : "Daily booking limit"
-            }
+            title="Daily booking limit"
             value={draft[limitKey]}
             min={0}
             max={100}
@@ -445,37 +454,44 @@ function AppointmentSlotSettings({
       </div>
       {mode === "clinic" ? (
         <div className="grid gap-4 sm:grid-cols-2">
+          <p className="text-sm font-medium sm:col-span-2">
+            Time slots a day: {timeSlots}
+          </p>
           <NumberSetting
-            title="App booking quota"
-            value={draft.clinicAppDailyLimit ?? draft.walkinDailyLimit}
+            title="App booking slots"
+            value={publishable.clinicAppDailyLimit ?? 0}
             min={0}
-            max={100}
-            suffix="bookings"
+            max={timeSlots}
+            suffix="slots"
             disabled={pending}
             onChange={(clinicAppDailyLimit) => update({ clinicAppDailyLimit })}
           />
           <NumberSetting
-            title="Reception walk-in quota"
-            value={draft.clinicWalkinDailyLimit ?? 0}
+            title="Walk-in limit"
+            value={publishable.clinicWalkinDailyLimit ?? 0}
             min={0}
-            max={100}
-            suffix="bookings"
+            max={timeSlots - (publishable.clinicAppDailyLimit ?? 0)}
+            suffix="walk-ins"
             disabled={pending}
             onChange={(clinicWalkinDailyLimit) =>
               update({ clinicWalkinDailyLimit })
             }
           />
           <p className="text-muted-foreground text-sm sm:col-span-2">
-            App and walk-in quotas must fit within total clinic capacity. Set a
-            walk-in quota to accept reception registrations.
+            Patients book app slots at set times; when they are all taken, the
+            app shows booking closed for that day. Reception registers each
+            walk-in into the next free time, in order from the start of clinic
+            hours. App slots and walk-ins share the day&apos;s time slots.
           </p>
         </div>
       ) : null}
       {mode !== "home" ? (
         <>
-          <p className="text-muted-foreground text-sm leading-6">
-            Changing the daily limit does not change appointment times.
-          </p>
+          {mode === "online" ? (
+            <p className="text-muted-foreground text-sm leading-6">
+              Changing the daily limit does not change appointment times.
+            </p>
+          ) : null}
           {!saved?.published_modes?.includes(mode) ? (
             <div className="space-y-2">
               <p className="text-muted-foreground text-sm leading-6">
@@ -498,14 +514,20 @@ function AppointmentSlotSettings({
 }
 
 function ScheduleAutoAcceptance({
+  mode,
   draft,
+  publishable,
   pending,
   update,
   setShowAutoBookingHelp,
 }: Pick<
   ScheduleEditor,
-  "draft" | "pending" | "update" | "setShowAutoBookingHelp"
->) {
+  "draft" | "publishable" | "pending" | "update" | "setShowAutoBookingHelp"
+> &
+  Pick<FacilityDoctorScheduleEditorProps, "mode">) {
+  // In-person auto-accept stays within the app booking slots.
+  const max =
+    mode === "clinic" ? Math.max(1, publishable.clinicAppDailyLimit ?? 0) : 100;
   return (
     <ScheduleSection title="Auto Accept Bookings">
       <ToggleSetting
@@ -526,9 +548,13 @@ function ScheduleAutoAcceptance({
         <>
           <NumberSetting
             title="Shared daily auto-accept limit"
-            value={draft.autoAcceptLimit}
+            value={
+              mode === "clinic"
+                ? publishable.autoAcceptLimit
+                : draft.autoAcceptLimit
+            }
             min={1}
-            max={100}
+            max={max}
             suffix="bookings"
             disabled={pending}
             onChange={(value) => update({ autoAcceptLimit: value })}

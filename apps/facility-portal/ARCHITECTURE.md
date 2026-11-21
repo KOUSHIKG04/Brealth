@@ -113,8 +113,8 @@ checks passed. Browser acceptance remains separate.
 Appointments consume the shared `clinic_queue` projection: reserved tokens, ready
 counts, current service, estimates and late-arrival review all use backend rules.
 Call controls respect server eligibility, and Resume explicitly admits reviewed
-late arrivals to an available opening. Clinic grace is editable beside existing
-recovery settings through the same authorized Server Action. Reception can use a
+late arrivals held before grace periods were retired. Late check-ins now join
+the queue at their arrival time, and the recovery settings no longer show grace. Reception can use a
 currently open window after migration, while expired windows remain unavailable.
 Existing live invalidation and visible-page refresh update time-sensitive queue
 metadata. The test migration and hosted rollback checks passed on 30 October
@@ -190,8 +190,9 @@ features/appointments/
   utils/appointmentsConstants.ts
 ```
 
-Regression tests live under `tests/unit`; the architecture checker and shared test
-tools live under `scripts`. Do not add test files to runtime feature folders.
+Unit tests live under `tests/unit` and Playwright browser tests under `tests/e2e`.
+The architecture checker and shared test tools live under `scripts`. Do not add
+test files to runtime feature folders.
 
 Keep `page.tsx` thin: parse route/search parameters, invoke an authorized query
 when needed, and compose the feature screen. Server Components are the default;
@@ -293,6 +294,29 @@ pnpm --filter facility-portal typecheck
 pnpm --filter facility-portal build
 ```
 
+For browser testing, install Chromium once and run the Playwright suite:
+
+```sh
+pnpm --filter facility-portal exec playwright install chromium
+pnpm --filter facility-portal test:e2e
+```
+
+Playwright starts a dedicated portal dev server on `localhost:3100` and a
+loopback Supabase fixture server on `127.0.0.1:3101`. The portal uses test-only
+Supabase settings and isolated Next.js output. Each authenticated test creates
+its own synthetic account and RPC responses. The tests exercise actual portal
+routes, forms, server actions and request payloads in desktop Chromium and
+mobile emulation. No external account or backend is required.
+
+The suite covers account access, role restrictions, facility verification,
+dashboard requests, bed inventory and stale edits, appointment search and queue
+actions, rescheduling, reception bookings, doctor associations, schedule
+publication and conflicts, team invitations, cash collection and refunds, and
+transaction history. The fixture responses represent the backend outcomes for
+each scenario.
+Use the database workflow suites for real authorization and transaction rules.
+Camera hardware and live Razorpay checkout require separate verification.
+
 Typechecking first generates current Next.js route types. A production build can
 require network access for the existing Google fonts. Architecture regression tests
 use Node's built-in test runner. Add backend workflow tests when integrating data, including
@@ -315,10 +339,29 @@ configuration. Named contracts live in feature types; public exports stay delibe
 
 ## Reception registration and clinic capacity
 
-`features/doctors` owns editable total clinic capacity, app quota and reception
-walk-in quota in its existing schedule editor. Shared contracts reject allocations
-whose sum exceeds the total. Existing settings retain their app allocation;
-reception starts at zero until explicitly configured.
+`features/doctors` owns the in-person limits in its existing schedule editor:
+**App booking slots** and the **Walk-in limit**, which share the day's time
+slots (app + walk-ins never above them). Total capacity is no longer typed; it is saved as app + walk-ins, up to
+a maximum of 100, through the shared `withClinicCapacity` rule in
+`@startup/contracts`, which the doctor app uses too. Edits and publishing normalize the settings; the shared
+auto-accept limit stays within the app slots. Reception starts at zero walk-ins
+until explicitly configured.
+
+Doctor Schedules shows `ShiftPlanRequests`: doctors' pending shift rotations
+(shifts, weeks and date changes) with Approve and Decline (reason required),
+through `loadFacilityShiftPlanRequests` / `decideFacilityShiftPlan`. Facility staff
+also edit a doctor's rotation: each service on the doctor's schedule page has a
+**Same every week / Shift rotation** choice (`FacilityDoctorScheduleScreen`), and
+`FacilityShiftRotationEditor` (data through `useFacilityShiftPlan`,
+`loadFacilityShiftPlans` / `submitFacilityShiftPlan` / `endFacilityShiftPlan`)
+publishes directly, replacing any pending doctor request. Shift defaults, draft
+checks and the preview are shared with the doctor app from `@startup/contracts`.
+
+Reception does not choose a walk-in time. New appointment shows the next free
+time for today, and `createPortalWalkInAppointment` books through
+`prepare_portal_next_walk_in_booking`, which gives the walk-in the next free
+time in order (app-booked and finished times are skipped) and reports it back.
+Walk-ins are registered for today only; the clinic date is shown read-only.
 
 `features/appointments` loads `get_portal_clinic_day` through its existing Server
 Actions and `@startup/data-access`. The staff-only response includes the selected
@@ -397,8 +440,7 @@ attendance actions require backend `can_manage_practice` permission.
 The table and its filters use `appointmentRecoveryView` for expired requests,
 needs-review, waiting-for-doctor, no-show, doctor-unavailable and rescheduled labels.
 Its 30-second display clock cannot complete visits or decide attendance. Clinic
-review follows the session end; other modes use the booked end plus configured
-grace. Staff confirm patient no-show after the deadline or record doctor
+review follows the session end; other modes use the booked end. Staff confirm patient no-show after the deadline or record doctor
 unavailability separately with a reason. Resolving an attendance review does not
 itself decide attendance. Approving a requested move revalidates its target; review
 requests do not hold capacity.
@@ -415,8 +457,8 @@ ticket rather than inheriting check-in or QR state.
 `features/doctors/components/AppointmentRecoveryPolicy.tsx` belongs to the existing
 Doctor Schedule editor, with a separate versioned Server Action/RPC save. It requires
 an approved doctor association and backend schedule-edit permission. Defaults are
-15 minutes of attendance grace, zero minutes of patient notice and one patient move;
-the respective ranges are 0–180, 0–10080 and 0–10. The policy applies to the practice
+zero minutes of patient notice and one patient move; the respective ranges are
+0–10080 and 0–10. Attendance grace is retired. The policy applies to the practice
 across visit types and does not publish slots. Reloading stale settings starts from
 the latest saved version.
 

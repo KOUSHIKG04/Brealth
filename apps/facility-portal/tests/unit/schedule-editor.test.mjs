@@ -133,6 +133,11 @@ test("embedded schedule service selection uses buttons and forwards the drawer c
       "../components/ScheduleAdjustmentNotices": {
         ScheduleAdjustmentNotices: "Notices",
       },
+      "../components/FacilityShiftRotationEditor": {
+        FacilityShiftRotationEditor: "Rotation",
+      },
+      "../hooks/useFacilityShiftPlan": { useFacilityShiftPlan: () => ({}) },
+      react: { useState: (initial) => [initial, () => {}] },
     }
   );
   const flatten = (node) =>
@@ -166,8 +171,20 @@ test("embedded schedule service selection uses buttons and forwards the drawer c
     onSelectMode,
     transition,
   });
-  assert.equal(editor.type, "Editor");
-  assert.equal(editor.props.onSelectMode, onSelectMode);
+  // A service opens with the schedule-type choice; weekly is the default.
+  const service = flatten(editor.type(editor.props));
+  const weekly = service.find((node) => node.type === "Editor");
+  assert.equal(weekly.props.onSelectMode, onSelectMode);
+  assert.equal(
+    service.some((node) => node.type === "Rotation"),
+    false
+  );
+  assert.ok(
+    service.some(
+      (node) =>
+        node.props?.role === "radio" && node.props.children === "Shift rotation"
+    )
+  );
 });
 
 const source = fs.readFileSync(
@@ -342,6 +359,10 @@ function editor({
       "react/jsx-runtime": { jsx, jsxs: jsx },
       "next/link": { default: "Link" },
       "next/navigation": { useRouter: () => ({ refresh: () => {} }) },
+      "../components/FacilityShiftRotationEditor": {
+        FacilityShiftRotationEditor: "Rotation",
+      },
+      "../hooks/useFacilityShiftPlan": { useFacilityShiftPlan: () => ({}) },
       "@tanstack/react-query": {
         useQueryClient: () => ({
           setQueryData: () => {},
@@ -430,7 +451,11 @@ function editor({
       practiceId: "practice-a",
       mode,
     });
-    walk(entry.type(entry.props));
+    const service = entry.type(entry.props);
+    const editor = [service.props.children]
+      .flat(Infinity)
+      .find((child) => child && typeof child.type === "function");
+    walk(editor.type(editor.props));
     return nodes;
   }
   return { render, publications, toasts, finish: () => Promise.all(tasks) };
@@ -463,22 +488,21 @@ for (const mode of ["clinic", "online"])
       nodes.find((node) => node.type === "Duration").props.value,
       duration
     );
-    nodes
-      .find(
-        (node) =>
-          node.props.title ===
-          (mode === "clinic" ? "Total clinic capacity" : "Daily booking limit")
-      )
-      .props.onChange(20);
     if (mode === "clinic") {
+      // App slots and walk-ins share the 12 forty-minute times in the hours.
+      const app = nodes.find(
+        (node) => node.props.title === "App booking slots"
+      );
+      assert.equal(app.props.max, 12);
+      app.props.onChange(8);
       nodes = view.render();
+      const walkin = nodes.find((node) => node.props.title === "Walk-in limit");
+      assert.equal(walkin.props.max, 4);
+      walkin.props.onChange(4);
+    } else {
       nodes
-        .find((node) => node.props.title === "App booking quota")
-        .props.onChange(12);
-      nodes = view.render();
-      nodes
-        .find((node) => node.props.title === "Reception walk-in quota")
-        .props.onChange(8);
+        .find((node) => node.props.title === "Daily booking limit")
+        .props.onChange(20);
     }
     nodes = view.render();
     assert.equal(
@@ -502,8 +526,9 @@ for (const mode of ["clinic", "online"])
     assert.equal(practice, "practice-a");
     assert.equal(selectedMode, mode);
     if (mode === "clinic") {
-      assert.equal(settings.clinicAppDailyLimit, 12);
-      assert.equal(settings.clinicWalkinDailyLimit, 8);
+      assert.equal(settings.clinicAppDailyLimit, 8);
+      assert.equal(settings.clinicWalkinDailyLimit, 4);
+      assert.equal(settings.walkinDailyLimit, 12);
     }
     assert.equal(version, 8);
     assert.equal(date, chosen);
@@ -525,9 +550,7 @@ test("published schedule keeps a sixty-minute duration and hides setup recalcula
     nodes.find((node) => node.props.children === "Suggest duration"),
     undefined
   );
-  nodes
-    .find((node) => node.props.title === "Total clinic capacity")
-    .props.onChange(30);
+  nodes.find((node) => node.props.title === "Walk-in limit").props.onChange(10);
   nodes = view.render();
   assert.equal(nodes.find((node) => node.type === "Duration").props.value, 60);
   nodes
@@ -864,4 +887,92 @@ test("schedule calendar preserves date-only selections and booking date bounds",
   assert.equal(blocked.props.disabled, true);
   blocked.props.onSelect(new Date(2026, 10, 9, 12));
   assert.equal(changes.length, 1);
+});
+
+test("facility staff edit a doctor's shift rotation and publish it with a start date", () => {
+  const require = createRequire(import.meta.url);
+  const shiftContracts = load(
+    "../../../../packages/contracts/src/shift-plan.ts",
+    {
+      zod: require("zod"),
+    }
+  );
+  const state = [];
+  let cursor = 0;
+  const published = [];
+  const jsx = (type, props) => ({ type, props: props ?? {} });
+  const { FacilityShiftRotationEditor } = load(
+    "../../src/features/doctors/components/FacilityShiftRotationEditor.tsx",
+    {
+      react: {
+        useState: (initial) => {
+          const index = cursor++;
+          if (!(index in state)) state[index] = initial;
+          return [state[index], (value) => (state[index] = value)];
+        },
+      },
+      "react/jsx-runtime": { jsx, jsxs: jsx },
+      "@startup/contracts": {
+        ...shiftContracts,
+        formatDisplayDate: (value) => value,
+      },
+      "@startup/web-ui/components/ui/button": { Button: "Button" },
+      "@startup/web-ui/components/ui/input": { Input: "Input" },
+      "@startup/web-ui/components/ui/label": { Label: "Label" },
+      "@startup/web-ui/components/ui/skeleton": { Skeleton: "Skeleton" },
+      "./ClockTimePicker": { ClockTimePicker: "Clock" },
+      "./NumberSetting": { NumberSetting: "Number" },
+      "./ScheduleSection": { ScheduleSection: "Section" },
+      "../hooks/useFacilityShiftPlan": {
+        useFacilityShiftPlan: () => ({
+          loading: false,
+          today: "2026-11-21",
+          timezone: "Asia/Kolkata",
+          busy: false,
+          publish: (plan, effectiveFrom) =>
+            published.push([plan, effectiveFrom]),
+          end() {},
+        }),
+      },
+    }
+  );
+  const flatten = (node) =>
+    Array.isArray(node)
+      ? node.flatMap(flatten)
+      : node && typeof node === "object"
+        ? [node, ...flatten(node.props?.children)]
+        : [];
+  const render = () => {
+    cursor = 0;
+    return flatten(
+      FacilityShiftRotationEditor({ practiceId: "p", mode: "clinic" })
+    );
+  };
+  let nodes = render();
+  // Shift length moves in 30-minute steps up to 28 hours.
+  const length = nodes.find(
+    (node) => node.type === "Number" && node.props.title === "Length"
+  );
+  assert.equal(length.props.step, 30);
+  assert.equal(length.props.max, 1680);
+  // Clicking a day cycles Off -> Day shift.
+  nodes
+    .find((node) => node.props?.["aria-label"] === "Week 1 Sat: Off")
+    .props.onClick();
+  nodes = render();
+  assert.ok(
+    nodes.some((node) => node.props?.["aria-label"] === "Week 1 Sat: Day shift")
+  );
+  nodes
+    .find(
+      (node) =>
+        node.type === "Button" && node.props.children === "Publish rotation"
+    )
+    .props.onClick();
+  assert.equal(published.length, 1);
+  const [plan, effectiveFrom] = published[0];
+  assert.equal(effectiveFrom, "2026-11-22", "starts tomorrow by default");
+  assert.equal("effectiveFrom" in plan, false);
+  assert.equal(plan.rotation[0][5], "day");
+  assert.equal(plan.cycle_weeks, 2);
 });

@@ -13,6 +13,7 @@ export function NumberSetting({
   suffix,
   disabled,
   onChange,
+  step = 1,
 }: NumberSettingProps) {
   const [text, setText] = useState(String(value));
   const [focused, setFocused] = useState(false);
@@ -38,7 +39,7 @@ export function NumberSetting({
           type="button"
           aria-label={`Decrease ${title}`}
           disabled={disabled || current <= min}
-          onClick={() => commit(current - 1)}
+          onClick={() => commit(current - step)}
           className="border-input flex w-11 shrink-0 items-center justify-center border-r text-[#008577] focus-visible:outline-2 focus-visible:outline-[#008577] disabled:opacity-30"
         >
           <Minus size={18} />
@@ -71,7 +72,7 @@ export function NumberSetting({
           type="button"
           aria-label={`Increase ${title}`}
           disabled={disabled || current >= max}
-          onClick={() => commit(current + 1)}
+          onClick={() => commit(current + step)}
           className="border-input flex w-11 shrink-0 items-center justify-center border-l text-[#008577] focus-visible:outline-2 focus-visible:outline-[#008577] disabled:opacity-30"
         >
           <Plus size={18} />
