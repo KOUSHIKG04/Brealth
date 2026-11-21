@@ -61,6 +61,13 @@ BEGIN
   IF EXISTS(SELECT 1 FROM jsonb_array_elements(public.list_practice_service_slots(practice,'clinic',NULL,now(),10000)) x
     WHERE ((x->>'starts_at')::timestamptz AT TIME ZONE (x->>'timezone'))::date=day) THEN
     RAISE EXCEPTION 'Patient app still offers exhausted app quota'; END IF;
+  -- The doctor page labels the taken times and shows app booking closed.
+  IF (SELECT count(*) FILTER(WHERE x->>'status'='booked')<>2 OR count(*) FILTER(WHERE x->>'status'='closed')=0
+      FROM jsonb_array_elements(public.list_practice_clinic_time_board(practice)) x
+      JOIN clinzo.appointment_window w ON w.id=(x->>'window_id')::uuid
+      JOIN clinzo.session s ON s.id=w.session_id JOIN clinzo.doctor_booking_day bd ON bd.id=s.booking_day_id
+      WHERE bd.local_date=day) THEN
+    RAISE EXCEPTION 'Time board does not label booked and closed times'; END IF;
   SELECT x INTO slot FROM jsonb_array_elements(view->'slots') x WHERE x->>'state'='open' LIMIT 1;
   denied:=false;
   BEGIN PERFORM public.book_clinic_appointment(patient,(slot->>'window_id')::uuid,(slot->>'practice_service_id')::uuid,'',gen_random_uuid());
@@ -112,14 +119,17 @@ BEGIN
   -- Explicit check-in timestamps simulate late attendance in a future fixture
   -- session; all normal table triggers and checks remain enabled.
   INSERT INTO clinzo.appointment_checkin(appointment_id,checked_in_by,method,reason,created_at)
-    SELECT a.id,identity_id,'manual','Disposable late arrival fixture',w.starts_at+make_interval(mins=>p.clinic_grace_minutes+1)
-    FROM clinzo.appointment a JOIN clinzo.appointment_window w ON w.id=a.window_id JOIN clinzo.session s ON s.id=a.session_id
-    JOIN clinzo.doctor_schedule_preferences p ON p.doctor_facility_id=s.doctor_facility_id WHERE a.id=first_reception;
+    SELECT a.id,identity_id,'manual','Disposable late arrival fixture',w.starts_at+interval '11 minutes'
+    FROM clinzo.appointment a JOIN clinzo.appointment_window w ON w.id=a.window_id WHERE a.id=first_reception;
   UPDATE clinzo.queue_entry SET state='waiting' WHERE appointment_id=first_reception;
-  IF NOT coalesce((clinzo.clinic_queue_details(first_reception)->>'late_review_required')::boolean,false) THEN
-    RAISE EXCEPTION 'Late arrival bypassed reception review'; END IF;
-  IF EXISTS(SELECT 1 FROM clinzo.clinic_ready_queue(queue_session) WHERE appointment_id=first_reception) THEN
-    RAISE EXCEPTION 'Held late arrival displaced ready patients'; END IF;
+  -- Grace periods are retired: no reception hold, and the late patient waits
+  -- from their arrival time rather than their booked time.
+  IF coalesce((clinzo.clinic_queue_details(first_reception)->>'late_review_required')::boolean,false) THEN
+    RAISE EXCEPTION 'Late arrival was held for review after grace periods were retired'; END IF;
+  IF NOT EXISTS(SELECT 1 FROM clinzo.clinic_ready_queue(queue_session) r
+      JOIN clinzo.appointment_checkin c ON c.appointment_id=r.appointment_id
+      WHERE r.appointment_id=first_reception AND abs(extract(epoch FROM r.due_at-c.created_at))<1) THEN
+    RAISE EXCEPTION 'Late arrival did not join the queue at its arrival time'; END IF;
   IF coalesce((clinzo.clinic_queue_details(second_reception)->>'can_call')::boolean,false) THEN
     RAISE EXCEPTION 'Future session allowed consultation before its start'; END IF;
   PERFORM public.transition_clinic_appointment(online_booking,(SELECT row_version FROM clinzo.appointment WHERE id=online_booking),'cancel','Disposable cancellation fixture');

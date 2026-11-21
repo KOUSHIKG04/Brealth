@@ -168,10 +168,10 @@ to define available capacity; no extra booking capacity is manufactured.
   token. Absent patients do not block service. If nobody due is ready, staff can
   offer early service to the next ready patient; obtain their agreement first.
   Earlier due patients at the same practice remain ahead across clinic blocks.
-- Clinic grace defaults to ten minutes after the booked start. Reception-created
-  bookings in the current window use the later of start/registration time.
-  Check-in after grace records arrival but places the visit on hold for review.
-  Explicit staff admission uses recovery time for ordering, preserving the token
+- Grace periods are retired (`20261120110000`). Reception-created bookings in
+  the current window use the later of start/registration time. A check-in after
+  that time joins the ready queue at its arrival time, with no hold. Visits held
+  for late review before the change keep the explicit admission path: staff admission uses recovery time for ordering, preserving the token
   without restoring unlimited historical priority. Skipping before the booked
   time is not a no-show; the existing explicit attendance-resolution flow remains.
 - One private queue-ordering function supplies call validation and ready-patient
@@ -181,7 +181,8 @@ to define available capacity; no extra booking capacity is manufactured.
   ranges based on configured window duration and currently ready patients.
 - Only existing authorized appointment projections expose queue metadata. Private
   helpers remain unavailable to app roles. The versioned recovery-policy RPC has
-  a six-argument overload for clinic grace; old five-argument clients still work.
+  a six-argument overload; grace arguments are still accepted but ignored, and
+  old five-argument clients still work.
 
 Applied to the test project on 30 October 2026. The maintained
 `tests/smoke/clinic-channel-capacity.cli-smoke.sql` fixture passed against actual

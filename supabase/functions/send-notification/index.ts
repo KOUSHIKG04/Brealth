@@ -49,6 +49,40 @@ function notificationCopy(delivery: PushDelivery) {
       body: `${facility} changed this schedule after your request. Review it and submit again.`,
     };
   }
+  if (delivery.template_key.startsWith("shift.plan_")) {
+    const facility =
+      typeof delivery.safe_parameters.facility_name === "string"
+        ? delivery.safe_parameters.facility_name.slice(0, 120)
+        : "The facility";
+    const service =
+      delivery.safe_parameters.service_mode === "online"
+        ? "online"
+        : delivery.safe_parameters.service_mode === "home"
+          ? "home-visit"
+          : "in-person";
+    const starts =
+      typeof delivery.safe_parameters.effective_from === "string"
+        ? ` It starts on ${delivery.safe_parameters.effective_from.slice(0, 10)}.`
+        : "";
+    const reason =
+      typeof delivery.safe_parameters.reason === "string"
+        ? ` Reason: ${delivery.safe_parameters.reason.slice(0, 300)}`
+        : "";
+    if (delivery.template_key === "shift.plan_approved")
+      return {
+        title: "Shift rotation approved",
+        body: `${facility} approved your ${service} shift rotation.${starts}`,
+      };
+    if (delivery.template_key === "shift.plan_rejected")
+      return {
+        title: "Shift rotation declined",
+        body: `${facility} declined your ${service} shift rotation.${reason}`,
+      };
+    return {
+      title: "Shift rotation updated",
+      body: `${facility} published a ${service} shift rotation for you.${starts}`,
+    };
+  }
   if (delivery.template_key.startsWith("appointment.")) {
     if (delivery.template_key === "appointment.reschedule_requested") {
       return {
@@ -150,7 +184,12 @@ export default {
                   }
                 : delivery.template_key.startsWith("schedule.request_")
                   ? { route: "/schedule" }
-                  : {}),
+                  : delivery.template_key.startsWith("shift.plan_")
+                    ? {
+                        route: "/schedule",
+                        mode: delivery.safe_parameters.service_mode,
+                      }
+                    : {}),
             },
             sound: "default",
           }))
