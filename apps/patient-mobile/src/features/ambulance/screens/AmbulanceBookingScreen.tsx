@@ -1,269 +1,195 @@
-import { useEffect, useState } from "react";
-import {
-  BackHandler,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
-import { Clock3, MapPin, ShieldCheck } from "lucide-react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { colors, fontFamilies, gradients } from "@startup/design-tokens";
-import { Header } from "@startup/mobile-ui";
-import {
-  ASSIGNING_DELAY_MS,
-  HOSPITAL_ARRIVED_DELAY_MS,
-  TRACKING_STAGE_DELAY_MS,
-  ambulanceTypes,
-  nearbyHospitals,
-  type AmbulanceFlowStep,
-  type AmbulanceType,
-} from "../utils/ambulanceConstants";
+import { getHeaderTitle } from "../utils/ambulancePresentation";
+import { useAmbulanceBooking } from "../hooks/useAmbulanceBooking";
+
+import { Keyboard, StyleSheet, View } from "react-native";
+
+import * as Crypto from "expo-crypto";
+
+import { colors, fontFamilies, surfaces } from "@startup/design-tokens";
+import { Button, Header } from "@startup/mobile-ui";
+import { router } from "expo-router";
+
 import type { AmbulanceBookingScreenProps } from "../types/ambulance";
 import {
-  ActionButton,
   AmbulanceCompletion,
-  AmbulanceOption,
   Assigning,
-  EmergencyModeCard,
-  EmergencyNumbers,
-  LocationFields,
   PickupMap,
-  SectionTitle,
-  Suggestions,
   Tracking,
 } from "../components/index";
+import { AmbulanceBookingForm } from "../components/AmbulanceBookingForm";
 
 export function AmbulanceBookingScreen({
   onBackPress,
   onComplete,
   onFullscreenChange,
 }: AmbulanceBookingScreenProps) {
-  const [step, setStep] = useState<AmbulanceFlowStep>("booking");
-  const [destination, setDestination] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [emergency, setEmergency] = useState(false);
-  const [type, setType] = useState<AmbulanceType["id"]>("advanced");
-
-  useEffect(() => {
-    const next: [AmbulanceFlowStep, number] | undefined =
-      step === "assigning"
-        ? ["tracking", ASSIGNING_DELAY_MS]
-        : step === "tracking"
-          ? ["arrived", TRACKING_STAGE_DELAY_MS]
-          : step === "arrived"
-            ? ["hospital", TRACKING_STAGE_DELAY_MS]
-            : step === "hospital"
-              ? ["complete", HOSPITAL_ARRIVED_DELAY_MS]
-              : undefined;
-    if (!next) return undefined;
-    const timer = setTimeout(() => setStep(next[0]), next[1]);
-    return () => clearTimeout(timer);
-  }, [step]);
-
-  useEffect(() => {
-    onFullscreenChange?.(step === "pickup" || step === "assigning");
-  }, [onFullscreenChange, step]);
-
-  useEffect(() => {
-    const onHardwareBack = () => {
-      if (searching) {
-        setSearching(false);
-        return true;
-      }
-      if (step === "pickup") {
-        setStep("booking");
-        return true;
-      }
-      if (step === "assigning") {
-        setStep("booking");
-        return true;
-      }
-      if (step === "payment") {
-        setStep("hospital");
-        return true;
-      }
-      if (step === "complete") {
-        onComplete();
-        return true;
-      }
-      return false;
-    };
-
-    const sub = BackHandler.addEventListener(
-      "hardwareBackPress",
-      onHardwareBack
-    );
-    return () => sub.remove();
-  }, [onComplete, searching, step]);
-
-  const handleBack = () => {
-    if (searching) {
-      setSearching(false);
-      return;
-    }
-    if (step === "pickup") {
-      setStep("booking");
-      return;
-    }
-    if (step === "assigning") {
-      setStep("booking");
-      return;
-    }
-    if (step === "payment") {
-      setStep("hospital");
-      return;
-    }
-    if (step === "complete") {
-      onComplete();
-      return;
-    }
-    onBackPress();
-  };
-
-  const getHeaderTitle = () => {
-    if (step === "pickup") return "Set pickup on map";
-    if (
-      step === "assigning" ||
-      step === "tracking" ||
-      step === "arrived" ||
-      step === "hospital"
-    ) {
-      return "Ambulance Tracking";
-    }
-    if (step === "payment") return "Hospital Handover & Bill";
-    if (step === "complete") return "Emergency Handover";
-    return "Book Ambulance";
-  };
-
+  const {
+    showToast,
+    locatingPickup,
+    destination,
+    setDestination,
+    externalHospital,
+    setExternalHospital,
+    hospitalId,
+    setHospitalId,
+    pickup,
+    pickupAddress,
+    setPickupAddress,
+    setError,
+    setIdempotencyKey,
+    searching,
+    setSearching,
+    emergency,
+    setEmergency,
+    type,
+    setType,
+    queryClient,
+    hospitals,
+    googleHospitals,
+    bookings,
+    activeBooking,
+    completedBooking,
+    tracking,
+    pinVisible,
+    pin,
+    step,
+    finishBooking,
+    request,
+    cancel,
+    choosePickup,
+    onHeaderBack,
+    submitTripRating,
+  } = useAmbulanceBooking({ onBackPress, onComplete, onFullscreenChange });
   return (
     <View style={s.screen}>
       <Header
-        title={getHeaderTitle()}
-        onBackPress={handleBack}
-        centered={
-          step === "hospital" || step === "payment" || step === "complete"
-        }
+        app="patient"
+        title={getHeaderTitle(step)}
+        onBackPress={onHeaderBack}
+        centered={step === "hospital" || step === "complete"}
       />
+      {step === "booking" ? (
+        <Button
+          theme="patient"
+          label="Past trips & payments"
+          variant="outline"
+          onPress={() => router.push("/ambulance/payments")}
+        />
+      ) : null}
       {step === "pickup" ? (
         <PickupMap
           destination={destination}
-          onConfirm={() => setStep("assigning")}
+          address={pickupAddress}
+          onAddressChange={setPickupAddress}
+          onConfirm={choosePickup}
         />
       ) : step === "assigning" ? (
         <Assigning />
-      ) : step === "tracking" || step === "arrived" || step === "hospital" ? (
+      ) : activeBooking &&
+        (step === "tracking" || step === "arrived" || step === "hospital") ? (
         <Tracking
           stage={step}
+          booking={activeBooking}
+          location={tracking.data ?? null}
+          completionPin={pinVisible ? (pin.data ?? null) : null}
           emergency={emergency}
-          onEmergencyChange={setEmergency}
-          onCancel={onComplete}
-          onProceedToPayment={() => setStep("complete")}
+          onEmergencyChange={(value) => {
+            if (value)
+              showToast({
+                title: "Emergency Mode unavailable",
+                message:
+                  "This booking cannot promise priority dispatch yet. Use the separate SOS flow for emergency dispatch.",
+                type: "info",
+              });
+            else setEmergency(false);
+          }}
+          onCancel={() => {
+            if (activeBooking?.status === "searching") cancel.mutate();
+            else
+              showToast({
+                title: "Cancellation unavailable",
+                message:
+                  "This assigned trip cannot be cancelled from this screen.",
+                type: "info",
+              });
+          }}
+          onProceedToPayment={() => {
+            if (activeBooking?.trip_status === "completed")
+              void queryClient.invalidateQueries({
+                queryKey: ["my-ambulance-bookings"],
+              });
+            else
+              showToast({
+                title: "Trip still active",
+                message:
+                  "The driver must verify the completion PIN at your destination.",
+                type: "info",
+              });
+          }}
         />
       ) : step === "complete" ? (
-        <AmbulanceCompletion onGoHome={onComplete} />
+        completedBooking ? (
+          <AmbulanceCompletion
+            booking={completedBooking}
+            onGoHome={finishBooking}
+            onSubmitRating={submitTripRating}
+          />
+        ) : (
+          <Assigning />
+        )
       ) : (
-        <ScrollView
-          contentContainerStyle={s.bookingContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <LinearGradient
-            colors={gradients.patientBanner.colors}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={s.headerExtension}
-          />
-          <LocationFields
-            destination={destination}
-            onChange={(value) => {
-              setDestination(value);
-              setSearching(true);
-            }}
-            onFocus={() => setSearching(true)}
-            onCurrentLocationPress={() => setStep("pickup")}
-          />
-          {searching ? (
-            <Suggestions
-              query={destination}
-              onSelect={(name) => {
-                setDestination(name);
-                setSearching(false);
-              }}
-              onClose={() => setSearching(false)}
-            />
-          ) : (
-            <>
-              <SectionTitle>Select Nearby Hospitals</SectionTitle>
-              <ScrollView
-                horizontal
-                contentContainerStyle={s.hospitalList}
-                showsHorizontalScrollIndicator={false}
-              >
-                {nearbyHospitals.map((hospital, index) => (
-                  <Pressable
-                    key={hospital.name}
-                    onPress={() => setDestination(hospital.name)}
-                    style={({ pressed }) => [
-                      s.hospitalCard,
-                      (destination
-                        ? destination === hospital.name
-                        : index === 1) && s.hospitalSelected,
-                      pressed && s.pressed,
-                    ]}
-                  >
-                    <Text numberOfLines={1} style={s.hospitalName}>
-                      {hospital.name}
-                    </Text>
-                    <View style={s.metaRow}>
-                      <Clock3 color="#00998D" size={11} />
-                      <Text style={s.meta}>3 min</Text>
-                      <MapPin color="#00998D" size={11} />
-                      <Text style={s.meta}>1.2 km</Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </ScrollView>
-
-              <EmergencyModeCard
-                emergency={emergency}
-                onEmergencyChange={setEmergency}
-              />
-
-              <SectionTitle>Select Ambulance Type</SectionTitle>
-              <View style={s.ambulanceList}>
-                {ambulanceTypes.map((item) => (
-                  <AmbulanceOption
-                    key={item.id}
-                    item={item}
-                    selected={type === item.id}
-                    onPress={() => setType(item.id)}
-                  />
-                ))}
-              </View>
-
-              <ActionButton
-                label="Book Ambulance Now"
-                onPress={() => setStep("assigning")}
-                style={s.bookButton}
-              />
-
-              <SectionTitle style={s.numbersTitle}>
-                Emergency Numbers
-              </SectionTitle>
-              <EmergencyNumbers />
-
-              <View style={s.safetyNote}>
-                <ShieldCheck color="#087F78" size={18} />
-                <Text style={s.safetyNoteText}>
-                  All ambulances are GPS-tracked & equipped with trained
-                  paramedics. Your safety is our priority.
-                </Text>
-              </View>
-            </>
-          )}
-        </ScrollView>
+        <AmbulanceBookingForm
+          destination={destination}
+          onDestinationChange={(dest) => {
+            setDestination(dest);
+            setHospitalId(null);
+            setExternalHospital(null);
+            setIdempotencyKey(Crypto.randomUUID());
+          }}
+          hospitalId={externalHospital?.id ?? hospitalId}
+          onSelectHospital={(h) => {
+            setDestination(h.name);
+            if ("source" in h && h.source === "google") {
+              setExternalHospital(h);
+              setHospitalId(null);
+            } else {
+              setHospitalId(h.id);
+              setExternalHospital(null);
+            }
+            setSearching(false);
+            Keyboard.dismiss();
+            setIdempotencyKey(Crypto.randomUUID());
+          }}
+          locatingPickup={locatingPickup}
+          pickup={pickup}
+          pickupAddress={pickupAddress}
+          searching={searching}
+          onSearchingChange={setSearching}
+          onCurrentLocationPress={choosePickup}
+          onPickupAddressChange={(value) => {
+            setPickupAddress(value);
+            setIdempotencyKey(Crypto.randomUUID());
+          }}
+          hospitalsData={hospitals.data ?? []}
+          googleHospitals={googleHospitals.data?.places ?? []}
+          isGoogleLoading={googleHospitals.isFetching}
+          isHospitalsLoading={hospitals.isLoading}
+          isHospitalsError={hospitals.isError}
+          emergency={emergency}
+          onEmergencyChange={(value) => {
+            if (value)
+              setError(
+                "Emergency priority for a selected hospital and ambulance type is not configured. Call 112 or use SOS for urgent help."
+              );
+            else setEmergency(false);
+          }}
+          type={type}
+          onTypeChange={setType}
+          isRequestPending={request.isPending}
+          isBookingsLoading={bookings.isLoading}
+          hasActiveBooking={Boolean(activeBooking)}
+          onRequestBooking={() => request.mutate()}
+        />
       )}
     </View>
   );
@@ -279,6 +205,7 @@ const s = StyleSheet.create({
   bookingContent: { paddingBottom: 40 },
   hospitalList: { gap: 12, paddingHorizontal: 16, paddingBottom: 4 },
   hospitalCard: {
+    ...surfaces.card,
     width: 128,
     height: 96,
     justifyContent: "center",
@@ -286,8 +213,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 14,
     backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
   },
   hospitalSelected: {
     backgroundColor: "#E8F5F4",
@@ -323,5 +248,11 @@ const s = StyleSheet.create({
     fontFamily: fontFamilies.regular,
     fontSize: 12,
     lineHeight: 16,
+  },
+  bookingMessage: {
+    color: colors.patient.textSecondary,
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    marginHorizontal: 16,
   },
 });

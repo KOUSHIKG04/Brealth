@@ -1,0 +1,119 @@
+import { userErrorMessage } from "@startup/contracts";
+import { Button } from "@startup/mobile-ui";
+import { Input } from "@startup/mobile-ui";
+import { AppText as Text, useToastFeedback } from "@startup/mobile-ui";
+import { useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+import { sendPhoneOtp } from "@startup/data-access";
+import { colors, fontFamilies } from "@startup/design-tokens";
+import { supabase } from "../../services/supabase";
+
+export default function DriverPhone() {
+  const [phone, setPhone] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useToastFeedback({ error });
+  async function submit() {
+    if (!supabase) {
+      setError("Supabase is not configured.");
+      return;
+    }
+    const number = `+91${phone.replace(/\D/g, "")}`;
+    setBusy(true);
+    setError("");
+    try {
+      await sendPhoneOtp(supabase, number);
+      router.push({ pathname: "/verify-otp", params: { phone: number } });
+    } catch (cause) {
+      setError(userErrorMessage(cause, "Could not send the code."));
+    } finally {
+      setBusy(false);
+    }
+  }
+  return (
+    <View style={styles.screen}>
+      <Pressable accessibilityRole="button" onPress={() => router.back()}>
+        <Text variant="body" style={styles.back}>
+          ‹ Back
+        </Text>
+      </Pressable>
+      <View style={styles.content}>
+        <Text variant="screenTitle" style={styles.title}>
+          Enter your mobile number
+        </Text>
+        <View style={styles.number}>
+          <Text variant="sectionHeading" style={styles.country}>
+            +91
+          </Text>
+          <Input
+            variant="unstyled"
+            accessibilityLabel="Mobile number"
+            keyboardType="phone-pad"
+            autoComplete="tel"
+            maxLength={10}
+            value={phone}
+            onChangeText={setPhone}
+            placeholder="9483XXXXXX"
+            style={styles.input}
+          />
+        </View>
+
+        <Button
+          loading={busy}
+          label="Send OTP"
+          variant="primary"
+          labelStyle={styles.buttonText}
+          accessibilityRole="button"
+          disabled={busy || phone.replace(/\D/g, "").length !== 10}
+          onPress={() => void submit()}
+          style={styles.button}
+        >
+          <Text variant="cardHeading" style={styles.buttonText}>
+            {busy ? "Sending…" : "Send OTP"}
+          </Text>
+        </Button>
+        <Text variant="bodySmall" style={styles.safe}>
+          Your number is safe with us.
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: "white", padding: 24, paddingTop: 58 },
+  back: { color: colors.driver.primary },
+  content: { alignItems: "center", paddingTop: 24 },
+  title: { color: colors.driver.text, textAlign: "center" },
+  number: {
+    flexDirection: "row",
+    alignItems: "center",
+    width: "100%",
+    maxWidth: 305,
+    height: 54,
+    borderWidth: 1,
+    borderColor: "#C7D9D9",
+    borderRadius: 12,
+    marginTop: 38,
+  },
+  country: {
+    paddingHorizontal: 16,
+    borderRightWidth: 1,
+    borderRightColor: "#C7D9D9",
+  },
+  input: { flex: 1, height: 52, paddingHorizontal: 15, fontSize: 19 },
+  button: {
+    width: "100%",
+    maxWidth: 305,
+    minHeight: 54,
+    backgroundColor: colors.driver.primary,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 12,
+    marginTop: 18,
+  },
+  buttonText: { color: "white", fontFamily: fontFamilies.bold, fontSize: 17 },
+  safe: { color: colors.driver.textSecondary, marginTop: 20 },
+  error: { color: colors.danger, marginTop: 15 },
+});

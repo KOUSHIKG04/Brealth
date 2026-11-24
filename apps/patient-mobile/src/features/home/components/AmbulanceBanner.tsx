@@ -1,47 +1,38 @@
-import {
-  Image,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type ViewStyle,
-} from "react-native";
-import { colors, fontFamilies, shadows } from "@startup/design-tokens";
-import { Button, StatusBadge } from "@startup/mobile-ui";
+import type { AmbulanceBannerProps } from "../types/home";
 
-export type AmbulanceBannerProps = {
-  onBookPress?: () => void;
-  style?: StyleProp<ViewStyle>;
-};
+export type { AmbulanceBannerProps } from "../types/home";
+
+import { AppText as Text, Button } from "@startup/mobile-ui";
+import { Image, StyleSheet, View } from "react-native";
+import { colors, surfaces } from "@startup/design-tokens";
 
 export function AmbulanceBanner({ onBookPress, style }: AmbulanceBannerProps) {
   return (
     <View style={[styles.banner, style]}>
       <View style={styles.content}>
-        <StatusBadge
-          status="Emergency Service"
-          dotColor="#EF4444"
-          backgroundColor="transparent"
-          style={styles.emergencyBadge}
-          textStyle={styles.emergencyText}
-        />
-
-        <Text style={styles.title}>Book Ambulance Now</Text>
-        <Text numberOfLines={1} style={styles.description}>
-          Real-time tracking • Nearest driver
+        <View style={styles.eyebrow}>
+          <View style={styles.emergencyDot} />
+          <Text variant="labelSmall" style={styles.eyebrowText}>
+            Emergency service
+          </Text>
+        </View>
+        <Text variant="cardHeading" style={styles.title}>
+          Book an ambulance
         </Text>
-
         <Button
-          label="Book Now"
+          label="Book now"
           theme="patient"
           onPress={onBookPress}
           style={styles.button}
-          labelStyle={styles.buttonLabel}
         />
+        <Text variant="caption" numberOfLines={2} style={styles.description}>
+          Real-time tracking · Nearest driver
+        </Text>
       </View>
 
       <View style={styles.imageCard}>
         <Image
+          alt=""
           accessibilityIgnoresInvertColors
           resizeMode="cover"
           source={require("../../../../assets/images/ambulance.png")}
@@ -60,67 +51,56 @@ const styles = StyleSheet.create({
     minHeight: 145,
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
     padding: 20,
     borderRadius: 16,
-    backgroundColor: "#E6F7F6",
-    elevation: 8,
+    backgroundColor: colors.patient.surface,
+    ...surfaces.card,
   },
   content: {
-    minWidth: 0,
     flex: 1,
+    minWidth: 0,
     alignItems: "flex-start",
+    gap: 4,
   },
-  emergencyBadge: {
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-    marginLeft: 20,
-    marginBottom: 6,
+  eyebrow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
-  emergencyText: {
-    color: "#EF4444",
-    fontFamily: fontFamilies.semibold,
-    fontSize: 12,
-    lineHeight: 15,
+  emergencyDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: colors.patient.sos.primary,
+  },
+  eyebrowText: {
+    color: colors.patient.sos.dark,
   },
   title: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.bold,
-    fontSize: 15,
-    fontWeight: "800",
-    lineHeight: 20,
   },
   description: {
-    marginTop: 1,
-    color: "#6B7280",
-    fontFamily: fontFamilies.regular,
-    fontSize: 10,
-    fontWeight: "400",
-    lineHeight: 13,
+    marginTop: 4,
+    color: colors.patient.textSecondary,
   },
   button: {
     width: 166,
-    minHeight: 36,
-    marginTop: 12,
+    maxWidth: "100%",
+    minHeight: 40,
+    marginTop: 8,
     paddingVertical: 0,
     borderRadius: 12,
     backgroundColor: colors.patient.primaryDark,
   },
-  buttonLabel: {
-    fontFamily: fontFamilies.semibold,
-    fontSize: 13,
-    lineHeight: 16,
-  },
   imageCard: {
-    width: 134,
-    height: 96,
-    alignItems: "center",
-    justifyContent: "center",
+    width: 120,
+    height: 88,
     overflow: "hidden",
     borderRadius: 12,
   },
   image: {
     width: "100%",
     height: "100%",
-    borderRadius: 12,
   },
 });

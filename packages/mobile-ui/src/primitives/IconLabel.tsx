@@ -1,48 +1,18 @@
+import { AppText as Text } from "./AppText";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import type { ReactNode } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type PressableProps,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
-import { colors, fontFamilies, shadows } from "@startup/design-tokens";
-import { type AppTheme } from "../utils/appTheme";
+import { Pressable, StyleSheet, View } from "react-native";
+import { colors, fontFamilies, surfaces } from "@startup/design-tokens";
+import type { IconLabelIconProps, IconLabelProps } from "../types/iconLabel";
 
-export type IconLabelIconProps = {
-  color: string;
-  size: number;
-};
-
-export type IconLabelProps = Omit<PressableProps, "children"> & {
-  icon: ReactNode | ((props: IconLabelIconProps) => ReactNode);
-  label: string;
-  theme?: AppTheme;
-  backgroundColor?: string;
-  borderColor?: string;
-  borderWidth?: number;
-  iconColor?: string;
-  iconSize?: number;
-  surfaceSize?: number;
-  surfaceRadius?: number;
-  labelWidth?: number;
-  gap?: number;
-  iconContainerStyle?: StyleProp<ViewStyle>;
-  labelStyle?: StyleProp<TextStyle>;
-  labelNumberOfLines?: number;
-};
+export type { IconLabelIconProps, IconLabelProps } from "../types/iconLabel";
 
 export function IconLabel({
   icon,
   label,
   theme,
   backgroundColor,
-  borderColor = colors.borderDefault,
-  borderWidth = 0,
+  borderColor = surfaces.card.borderColor,
+  borderWidth = surfaces.card.borderWidth,
   iconColor,
   iconSize = 28,
   surfaceSize = 56,
@@ -104,6 +74,7 @@ export function IconLabel({
           </View>
 
           <Text
+            variant="labelSmall"
             numberOfLines={labelNumberOfLines}
             style={[
               styles.label,
@@ -127,7 +98,7 @@ const styles = StyleSheet.create({
   iconSurface: {
     alignItems: "center",
     justifyContent: "center",
-    ...shadows.card,
+    ...surfaces.card,
   },
   label: {
     fontFamily: fontFamilies.semibold,

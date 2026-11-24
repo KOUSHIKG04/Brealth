@@ -1,0 +1,533 @@
+// Server-only Drizzle models. Never import into a web/mobile client bundle.
+import { sql } from "drizzle-orm";
+import {
+  uuid,
+  text,
+  boolean,
+  integer,
+  smallint,
+  bigint,
+  numeric,
+  char,
+  date,
+  time,
+  timestamp,
+  jsonb,
+  index,
+  uniqueIndex,
+  unique,
+  check,
+  foreignKey,
+  primaryKey,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
+import {
+  clinzo,
+  geographyPoint,
+  geographyArea,
+  bytea,
+  type JsonValue,
+} from "./common";
+import { identity } from "./identity";
+import { facility } from "./organizations";
+
+export const doctor = clinzo
+  .table(
+    "doctor",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      identity_id: uuid("identity_id").references(
+        (): AnyPgColumn => identity.id,
+        { onDelete: "restrict" }
+      ),
+      public_code: text("public_code").notNull(),
+      full_name: text("full_name").notNull(),
+      profile_photo_path: text("profile_photo_path"),
+      qualification: text("qualification"),
+      bio: text("bio"),
+      registration_authority: text("registration_authority").notNull(),
+      registration_number: text("registration_number").notNull(),
+      practice_started_on: date("practice_started_on", {
+        mode: "string",
+      }).notNull(),
+      credential_status: text("credential_status", {
+        enum: ["pending", "verified", "suspended"],
+      }).notNull(),
+      active: boolean("active").notNull().default(true),
+      booking_timezone: text("booking_timezone")
+        .notNull()
+        .default("Asia/Kolkata"),
+    },
+    (table) => [
+      uniqueIndex("doctor_uq_1").on(table.identity_id),
+      uniqueIndex("doctor_uq_2").on(table.public_code),
+      uniqueIndex("doctor_uq_3").on(
+        table.registration_authority,
+        table.registration_number
+      ),
+      index("doctor_identity_id_idx").on(table.identity_id),
+      check("doctor_ck_1", sql.raw("row_version > 0")),
+      check(
+        "doctor_ck_2",
+        sql.raw("\"credential_status\" IN ('pending', 'verified', 'suspended')")
+      ),
+    ]
+  )
+  .enableRLS();
+
+export type Doctor = typeof doctor.$inferSelect;
+
+export type NewDoctor = typeof doctor.$inferInsert;
+
+export const specialty = clinzo
+  .table(
+    "specialty",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      code: text("code").notNull(),
+      name: text("name").notNull(),
+      active: boolean("active").notNull().default(true),
+    },
+    (table) => [
+      uniqueIndex("specialty_uq_1").on(table.code),
+      check("specialty_ck_1", sql.raw("row_version > 0")),
+    ]
+  )
+  .enableRLS();
+
+export type Specialty = typeof specialty.$inferSelect;
+
+export type NewSpecialty = typeof specialty.$inferInsert;
+
+export const symptom = clinzo
+  .table(
+    "symptom",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      code: text("code").notNull(),
+      label: text("label").notNull(),
+      active: boolean("active").notNull().default(true),
+    },
+    (table) => [
+      uniqueIndex("symptom_uq_1").on(table.code),
+      check("symptom_ck_1", sql.raw("row_version > 0")),
+    ]
+  )
+  .enableRLS();
+
+export type Symptom = typeof symptom.$inferSelect;
+
+export type NewSymptom = typeof symptom.$inferInsert;
+
+export const symptomSpecialty = clinzo
+  .table(
+    "symptom_specialty",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      symptom_id: uuid("symptom_id")
+        .notNull()
+        .references((): AnyPgColumn => symptom.id, { onDelete: "restrict" }),
+      specialty_id: uuid("specialty_id")
+        .notNull()
+        .references((): AnyPgColumn => specialty.id, { onDelete: "restrict" }),
+      rank: smallint("rank").notNull().default(0),
+    },
+    (table) => [
+      uniqueIndex("symptom_specialty_uq_1").on(
+        table.symptom_id,
+        table.specialty_id
+      ),
+      index("symptom_specialty_symptom_id_idx").on(table.symptom_id),
+      index("symptom_specialty_specialty_id_idx").on(table.specialty_id),
+      check("symptom_specialty_ck_1", sql.raw("rank >= 0")),
+      check("symptom_specialty_ck_2", sql.raw("row_version > 0")),
+    ]
+  )
+  .enableRLS();
+
+export type SymptomSpecialty = typeof symptomSpecialty.$inferSelect;
+
+export type NewSymptomSpecialty = typeof symptomSpecialty.$inferInsert;
+
+export const doctorSpecialty = clinzo
+  .table(
+    "doctor_specialty",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      doctor_id: uuid("doctor_id")
+        .notNull()
+        .references((): AnyPgColumn => doctor.id, { onDelete: "restrict" }),
+      specialty_id: uuid("specialty_id")
+        .notNull()
+        .references((): AnyPgColumn => specialty.id, { onDelete: "restrict" }),
+    },
+    (table) => [
+      uniqueIndex("doctor_specialty_uq_1").on(
+        table.doctor_id,
+        table.specialty_id
+      ),
+      index("doctor_specialty_doctor_id_idx").on(table.doctor_id),
+      index("doctor_specialty_specialty_id_idx").on(table.specialty_id),
+      check("doctor_specialty_ck_1", sql.raw("row_version > 0")),
+    ]
+  )
+  .enableRLS();
+
+export type DoctorSpecialty = typeof doctorSpecialty.$inferSelect;
+
+export type NewDoctorSpecialty = typeof doctorSpecialty.$inferInsert;
+
+export const doctorLanguage = clinzo
+  .table(
+    "doctor_language",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      doctor_id: uuid("doctor_id")
+        .notNull()
+        .references((): AnyPgColumn => doctor.id, { onDelete: "restrict" }),
+      language_code: text("language_code").notNull(),
+    },
+    (table) => [
+      uniqueIndex("doctor_language_uq_1").on(
+        table.doctor_id,
+        table.language_code
+      ),
+      index("doctor_language_doctor_id_idx").on(table.doctor_id),
+      check("doctor_language_ck_1", sql.raw("row_version > 0")),
+    ]
+  )
+  .enableRLS();
+
+export type DoctorLanguage = typeof doctorLanguage.$inferSelect;
+
+export type NewDoctorLanguage = typeof doctorLanguage.$inferInsert;
+
+export const doctorFacility = clinzo
+  .table(
+    "doctor_facility",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      doctor_id: uuid("doctor_id")
+        .notNull()
+        .references((): AnyPgColumn => doctor.id, { onDelete: "restrict" }),
+      facility_id: uuid("facility_id")
+        .notNull()
+        .references((): AnyPgColumn => facility.id, { onDelete: "restrict" }),
+      room_label: text("room_label"),
+      active: boolean("active").notNull().default(true),
+    },
+    (table) => [
+      uniqueIndex("doctor_facility_uq_1").on(
+        table.doctor_id,
+        table.facility_id
+      ),
+      uniqueIndex("doctor_facility_uq_2").on(table.id, table.doctor_id),
+      index("doctor_facility_doctor_id_idx").on(table.doctor_id),
+      index("doctor_facility_facility_id_idx").on(table.facility_id),
+      check("doctor_facility_ck_1", sql.raw("row_version > 0")),
+    ]
+  )
+  .enableRLS();
+
+export type DoctorFacility = typeof doctorFacility.$inferSelect;
+
+export type NewDoctorFacility = typeof doctorFacility.$inferInsert;
+
+export const doctorFacilityRequest = clinzo
+  .table(
+    "doctor_facility_request",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      doctor_id: uuid("doctor_id")
+        .notNull()
+        .references(() => doctor.id, { onDelete: "restrict" }),
+      facility_id: uuid("facility_id")
+        .notNull()
+        .references(() => facility.id, { onDelete: "restrict" }),
+      status: text("status", { enum: ["pending", "approved", "rejected"] })
+        .notNull()
+        .default("pending"),
+      created_at: timestamp("created_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true })
+        .notNull()
+        .defaultNow(),
+      reviewed_at: timestamp("reviewed_at", { withTimezone: true }),
+      reviewed_by: uuid("reviewed_by").references(() => identity.id),
+      rejection_reason: text("rejection_reason"),
+      initiated_by: text("initiated_by", { enum: ["doctor", "facility"] })
+        .notNull()
+        .default("doctor"),
+    },
+    (table) => [
+      unique("doctor_facility_request_unique").on(
+        table.doctor_id,
+        table.facility_id
+      ),
+      index("doctor_facility_request_facility_pending_idx")
+        .on(table.facility_id, table.created_at)
+        .where(sql`status = 'pending'`),
+      check(
+        "doctor_facility_request_rejection_ck",
+        sql`status <> 'rejected' OR length(trim(coalesce(rejection_reason,''))) BETWEEN 5 AND 500`
+      ),
+    ]
+  )
+  .enableRLS();
+
+export type DoctorFacilityRequest = typeof doctorFacilityRequest.$inferSelect;
+
+export const doctorPresence = clinzo
+  .table("doctor_presence", {
+    doctor_id: uuid("doctor_id")
+      .primaryKey()
+      .references((): AnyPgColumn => doctor.id, { onDelete: "restrict" }),
+    present: boolean("present").notNull().default(false),
+    changed_at: timestamp("changed_at", { withTimezone: true, mode: "date" })
+      .notNull()
+      .defaultNow(),
+  })
+  .enableRLS();
+
+export const doctorSchedulePreferences = clinzo
+  .table(
+    "doctor_schedule_preferences",
+    {
+      schedule_adjustments: jsonb("schedule_adjustments")
+        .notNull()
+        .default(sql`'[]'::jsonb`),
+      doctor_facility_id: uuid("doctor_facility_id")
+        .primaryKey()
+        .references((): AnyPgColumn => doctorFacility.id, {
+          onDelete: "restrict",
+        }),
+      working_days: smallint("working_days").array().notNull(),
+      online_working_days: smallint("online_working_days")
+        .array()
+        .notNull()
+        .default(sql`ARRAY[1,2,3,4,5]::smallint[]`),
+      home_working_days: smallint("home_working_days")
+        .array()
+        .notNull()
+        .default(sql`ARRAY[1,2,3,4,5]::smallint[]`),
+      online_auto_accept: boolean("online_auto_accept")
+        .notNull()
+        .default(false),
+      home_auto_accept: boolean("home_auto_accept").notNull().default(false),
+      online_auto_accept_limit: smallint("online_auto_accept_limit")
+        .notNull()
+        .default(0),
+      home_auto_accept_limit: smallint("home_auto_accept_limit")
+        .notNull()
+        .default(0),
+      clinic_start: time("clinic_start").notNull(),
+      clinic_end: time("clinic_end").notNull(),
+      online_start: time("online_start").notNull().default("13:00"),
+      online_end: time("online_end").notNull().default("15:00"),
+      home_start: time("home_start").notNull().default("16:00"),
+      home_end: time("home_end").notNull().default("17:00"),
+      clinic_time_blocks: jsonb("clinic_time_blocks")
+        .$type<{ start: string; end: string }[]>()
+        .notNull()
+        .default(sql`'[]'::jsonb`),
+      online_time_blocks: jsonb("online_time_blocks")
+        .$type<{ start: string; end: string }[]>()
+        .notNull()
+        .default(sql`'[]'::jsonb`),
+      home_time_blocks: jsonb("home_time_blocks")
+        .$type<{ start: string; end: string }[]>()
+        .notNull()
+        .default(sql`'[]'::jsonb`),
+      home_travel_buffer_minutes: integer("home_travel_buffer_minutes")
+        .notNull()
+        .default(0),
+      online_grace_minutes: integer("online_grace_minutes")
+        .notNull()
+        .default(15),
+      clinic_grace_minutes: integer("clinic_grace_minutes")
+        .notNull()
+        .default(10),
+      reschedule_cutoff_minutes: integer("reschedule_cutoff_minutes")
+        .notNull()
+        .default(0),
+      max_self_reschedules: integer("max_self_reschedules")
+        .notNull()
+        .default(1),
+      slot_minutes: smallint("slot_minutes").notNull(),
+      online_slot_minutes: smallint("online_slot_minutes").notNull(),
+      home_slot_minutes: smallint("home_slot_minutes").notNull(),
+      online_daily_limit: smallint("online_daily_limit").notNull(),
+      walkin_daily_limit: smallint("walkin_daily_limit").notNull(),
+      clinic_app_daily_limit: integer("clinic_app_daily_limit")
+        .default(0)
+        .notNull(),
+      clinic_walkin_daily_limit: integer("clinic_walkin_daily_limit")
+        .default(0)
+        .notNull(),
+      auto_accept: boolean("auto_accept").notNull().default(false),
+      auto_accept_limit: smallint("auto_accept_limit").notNull().default(0),
+      home_visits: boolean("home_visits").notNull().default(false),
+      home_radius_km: numeric("home_radius_km", { precision: 6, scale: 2 }),
+      online_fee_minor: integer("online_fee_minor"),
+      clinic_fee_minor: integer("clinic_fee_minor").notNull(),
+      home_fee_minor: integer("home_fee_minor"),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+    },
+    (table) => [
+      check(
+        "schedule_service_days_check",
+        sql`cardinality(${table.online_working_days}) between 1 and 7 and cardinality(${table.home_working_days}) between 1 and 7 and ${table.online_working_days} <@ ARRAY[1,2,3,4,5,6,7]::smallint[] and ${table.home_working_days} <@ ARRAY[1,2,3,4,5,6,7]::smallint[]`
+      ),
+      check(
+        "clinic_channel_limits_check",
+        sql`${table.clinic_app_daily_limit} between 0 and 100 and ${table.clinic_walkin_daily_limit} between 0 and 100 and ${table.clinic_app_daily_limit} + ${table.clinic_walkin_daily_limit} <= ${table.walkin_daily_limit}`
+      ),
+      check(
+        "schedule_home_travel_buffer_check",
+        sql`${table.home_travel_buffer_minutes} between 0 and 180`
+      ),
+      check(
+        "doctor_schedule_preferences_online_grace_minutes_check",
+        sql`${table.online_grace_minutes} between 0 and 180`
+      ),
+      check(
+        "doctor_schedule_preferences_clinic_grace_minutes_check",
+        sql`${table.clinic_grace_minutes} between 0 and 180`
+      ),
+      check(
+        "doctor_schedule_preferences_reschedule_cutoff_minutes_check",
+        sql`${table.reschedule_cutoff_minutes} between 0 and 10080`
+      ),
+      check(
+        "doctor_schedule_preferences_max_self_reschedules_check",
+        sql`${table.max_self_reschedules} between 0 and 10`
+      ),
+      check(
+        "schedule_service_hours_check",
+        sql`${table.online_start} < ${table.online_end} and ${table.home_start} < ${table.home_end}`
+      ),
+      check(
+        "schedule_service_approval_limits_check",
+        sql`${table.online_auto_accept_limit} between 0 and 100 and ${table.home_auto_accept_limit} between 0 and 100`
+      ),
+    ]
+  )
+  .enableRLS();
+
+export const practiceService = clinzo
+  .table(
+    "practice_service",
+    {
+      id: uuid("id").primaryKey().defaultRandom(),
+      created_at: timestamp("created_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      updated_at: timestamp("updated_at", { withTimezone: true, mode: "date" })
+        .notNull()
+        .defaultNow(),
+      row_version: bigint("row_version", { mode: "bigint" })
+        .notNull()
+        .default(sql`1`),
+      doctor_facility_id: uuid("doctor_facility_id")
+        .notNull()
+        .references((): AnyPgColumn => doctorFacility.id, {
+          onDelete: "restrict",
+        }),
+      code: text("code").notNull(),
+      name: text("name").notNull(),
+      fee_minor: bigint("fee_minor", { mode: "bigint" }).notNull(),
+      currency: char("currency", { length: 3 }).notNull(),
+      duration_minutes: smallint("duration_minutes").notNull(),
+      room_label: text("room_label"),
+      active: boolean("active").notNull().default(true),
+    },
+    (table) => [
+      uniqueIndex("practice_service_uq_1").on(
+        table.doctor_facility_id,
+        table.code
+      ),
+      index("practice_service_doctor_facility_id_idx").on(
+        table.doctor_facility_id
+      ),
+      check(
+        "practice_service_ck_1",
+        sql.raw("fee_minor >= 0 AND duration_minutes > 0")
+      ),
+      check("practice_service_ck_2", sql.raw("row_version > 0")),
+      check("practice_service_ck_3", sql.raw("currency ~ '^[A-Z]{3}$'")),
+    ]
+  )
+  .enableRLS();
+
+export type PracticeService = typeof practiceService.$inferSelect;
+
+export type NewPracticeService = typeof practiceService.$inferInsert;

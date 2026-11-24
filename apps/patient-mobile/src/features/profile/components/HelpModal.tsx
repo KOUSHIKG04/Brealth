@@ -1,78 +1,94 @@
-import { Linking, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import type { HelpModalProps } from "../types/help-modal";
+import { AppText as Text } from "@startup/mobile-ui";
+import { Linking, Pressable, StyleSheet, View } from "react-native";
 import { ChevronRight, HelpCircle, Mail, Phone, X } from "lucide-react-native";
 import { colors, fontFamilies, radius } from "@startup/design-tokens";
-import { Button } from "@startup/mobile-ui";
+import { Button, ModalSurface } from "@startup/mobile-ui";
 import { supportContacts } from "../utils/profileConstants";
 
-export function HelpModal({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
+export function HelpModal({ visible, onClose }: HelpModalProps) {
   return (
-    <Modal
+    <ModalSurface
       visible={visible}
-      animationType="fade"
-      transparent
-      onRequestClose={onClose}
+      onClose={onClose}
+      contentStyle={styles.modalCard}
     >
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
-          <View style={styles.modalHeader}>
-            <View style={styles.modalTitleRow}>
-              <HelpCircle color={colors.patient.primaryDark} size={20} />
-              <Text style={styles.modalTitle}>Help & Support</Text>
-            </View>
-            <Pressable
-              onPress={onClose}
-              style={({ pressed }) => [styles.modalCloseBtn, pressed && styles.pressed]}
-            >
-              <X color={colors.patient.textSecondary} size={18} />
-            </Pressable>
-          </View>
-
-          <View style={styles.modalBody}>
-            <Text style={styles.modalDescription}>
-              We are here 24/7 to assist with your medical appointments, emergency
-              dispatch, and account queries.
-            </Text>
-
-            <Pressable
-              onPress={() => void Linking.openURL(`tel:${supportContacts.phone.replace(/-/g, "")}`)}
-              style={({ pressed }) => [styles.contactCard, pressed && styles.pressed]}
-            >
-              <Phone color={colors.patient.primaryDark} size={18} />
-              <View style={styles.contactTextCol}>
-                <Text style={styles.contactLabel}>{supportContacts.hours}</Text>
-                <Text style={styles.contactValue}>{supportContacts.phone}</Text>
-              </View>
-              <ChevronRight color="#8EA0B4" size={16} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => void Linking.openURL(`mailto:${supportContacts.email}`)}
-              style={({ pressed }) => [styles.contactCard, pressed && styles.pressed]}
-            >
-              <Mail color={colors.patient.primaryDark} size={18} />
-              <View style={styles.contactTextCol}>
-                <Text style={styles.contactLabel}>Email Support</Text>
-                <Text style={styles.contactValue}>{supportContacts.email}</Text>
-              </View>
-              <ChevronRight color="#8EA0B4" size={16} />
-            </Pressable>
-          </View>
-
-          <Button
-            label="Close"
-            variant="secondary"
-            onPress={onClose}
-            style={styles.modalButton}
-          />
+      <View style={styles.modalHeader}>
+        <View style={styles.modalTitleRow}>
+          <HelpCircle color={colors.patient.primaryDark} size={20} />
+          <Text variant="cardHeading" style={styles.modalTitle}>
+            Help & Support
+          </Text>
         </View>
+        <Pressable
+          onPress={onClose}
+          style={({ pressed }) => [
+            styles.modalCloseBtn,
+            pressed && styles.pressed,
+          ]}
+        >
+          <X color={colors.patient.textSecondary} size={18} />
+        </Pressable>
       </View>
-    </Modal>
+
+      <View style={styles.modalBody}>
+        <Text variant="body" style={styles.modalDescription}>
+          We are here 24/7 to assist with your medical appointments, emergency
+          dispatch, and account queries.
+        </Text>
+
+        <Pressable
+          onPress={() =>
+            void Linking.openURL(
+              `tel:${supportContacts.phone.replace(/-/g, "")}`
+            )
+          }
+          style={({ pressed }) => [
+            styles.contactCard,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Phone color={colors.patient.primaryDark} size={18} />
+          <View style={styles.contactTextCol}>
+            <Text variant="label" style={styles.contactLabel}>
+              {supportContacts.hours}
+            </Text>
+            <Text variant="bodyEmphasis" style={styles.contactValue}>
+              {supportContacts.phone}
+            </Text>
+          </View>
+          <ChevronRight color="#8EA0B4" size={16} />
+        </Pressable>
+
+        <Pressable
+          onPress={() =>
+            void Linking.openURL(`mailto:${supportContacts.email}`)
+          }
+          style={({ pressed }) => [
+            styles.contactCard,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Mail color={colors.patient.primaryDark} size={18} />
+          <View style={styles.contactTextCol}>
+            <Text variant="label" style={styles.contactLabel}>
+              Email Support
+            </Text>
+            <Text variant="bodyEmphasis" style={styles.contactValue}>
+              {supportContacts.email}
+            </Text>
+          </View>
+          <ChevronRight color="#8EA0B4" size={16} />
+        </Pressable>
+      </View>
+
+      <Button
+        label="Close"
+        variant="secondary"
+        onPress={onClose}
+        style={styles.modalButton}
+      />
+    </ModalSurface>
   );
 }
 
@@ -80,7 +96,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.72 },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(12, 36, 52, 0.45)",
+    backgroundColor: colors.ui.overlay,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,

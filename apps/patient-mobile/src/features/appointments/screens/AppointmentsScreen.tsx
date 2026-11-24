@@ -1,41 +1,72 @@
-import { useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { useAppointments } from "../hooks/useAppointments";
+import { appointmentRecoveryView } from "@startup/contracts";
+import { AppointmentRecoveryActions } from "../components/AppointmentRecoveryActions";
+import { AppointmentRecovery } from "../components/AppointmentRecovery";
+import { bookAgainRoute } from "../utils/bookAgain";
+import {
+  bookingFilterLabels,
+  bookingFilters,
+} from "../utils/appointmentsConstants";
+import { AppText as Text } from "@startup/mobile-ui";
+import { useState } from "react";
+
+import { ScrollView, StyleSheet, View } from "react-native";
 import { router, type Href } from "expo-router";
+
 import { colors, fontFamilies, spacing } from "@startup/design-tokens";
-import { Chip, FadedScrollView, Header } from "@startup/mobile-ui";
+import {
+  Button,
+  Chip,
+  FadedScrollView,
+  Header,
+  ModalSurface,
+  Skeleton,
+} from "@startup/mobile-ui";
 import BookingCard from "../components/BookingCard";
-import type { Appointment } from "../types/appointment";
-import { appointments } from "../utils/appointments";
-import type {
-  AppointmentsScreenProps,
-  BookingFilter,
-} from "../types/appointments";
-
-const bookingFilters: readonly BookingFilter[] = [
-  "Clinic Visit",
-  "Home Visit",
-  "Online",
-  "Medicine and test",
-];
-
-function openAppointment(appointment: Appointment) {
-  router.push({
-    pathname: "/booking-status",
-    params: { ...appointment, status: "approved" },
-  } as unknown as Href);
-}
+import type { AppointmentsScreenProps } from "../types/appointments";
+import { clinicAppointmentCard } from "../utils/clinicAppointmentCard";
+import { clinicVisitRoute } from "../utils/clinicVisit";
 
 export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
-  const [filter, setFilter] = useState<BookingFilter>("Home Visit");
-  const visibleAppointments = useMemo(
-    () => appointments.filter((item) => item.consultationType === filter),
-    [filter]
+  const { filter, setFilter, appointments, cancel, visible, now } =
+    useAppointments({
+      onBackPress,
+    });
+  const [menuAppointmentId, setMenuAppointmentId] = useState<string | null>(
+    null
   );
-
+  const [recoveryTarget, setRecoveryTarget] = useState<{
+    id: string;
+    intent: "reschedule" | "review";
+  } | null>(null);
+  // Optional actions live behind the card's ⋮ menu. A doctor's rescheduling
+  // request stays on the card itself because the patient must respond.
+  const menuActions = (item: (typeof visible)[number]) => {
+    const view = appointmentRecoveryView(item, now);
+    return {
+      reschedule:
+        view.canReschedule && !item.recovery?.schedule_change?.pending,
+      rescheduleLabel: view.requiresApproval
+        ? "Request reschedule"
+        : "Reschedule",
+      review: view.canReview,
+      bookAgain: view.bookAgain,
+      cancel: view.canCancel,
+    };
+  };
+  const hasMenuActions = (actions: ReturnType<typeof menuActions>) =>
+    actions.reschedule || actions.review || actions.bookAgain || actions.cancel;
+  const menuAppointment = visible.find((item) => item.id === menuAppointmentId);
+  const menu = menuAppointment ? menuActions(menuAppointment) : null;
+  const recoveryAppointment = visible.find(
+    (item) => item.id === recoveryTarget?.id
+  );
   return (
     <View style={styles.screen}>
       <Header title="My Bookings" app="patient" onBackPress={onBackPress} />
       <FadedScrollView
+        onRefresh={() => appointments.refetch({ throwOnError: true })}
+        refreshTheme="patient"
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
@@ -44,40 +75,244 @@ export function AppointmentsScreen({ onBackPress }: AppointmentsScreenProps) {
           contentContainerStyle={styles.filters}
           showsHorizontalScrollIndicator={false}
         >
-          {bookingFilters.map((option) => {
-            const selected = filter === option;
-            return (
-              <Chip
-                key={option}
-                variant="radio"
-                selected={selected}
-                theme="patient"
-                label={option}
-                onPress={() => setFilter(option)}
-              />
-            );
-          })}
+          {bookingFilters.map((option) => (
+            <Chip
+              key={option}
+              variant="radio"
+              selected={filter === option}
+              theme="patient"
+              label={bookingFilterLabels[option]}
+              onPress={() => setFilter(option)}
+            />
+          ))}
         </ScrollView>
-
-        {visibleAppointments.length ? (
-          <View style={styles.list}>
-            {visibleAppointments.map((appointment) => (
-              <BookingCard
-                key={appointment.id}
-                appointment={appointment}
-                onPress={() => openAppointment(appointment)}
-              />
-            ))}
+        {appointments.isLoading ? (
+          <View style={styles.loadingList}>
+            <Skeleton theme="patient" height={144} radius={16} />
+            <Skeleton theme="patient" height={144} radius={16} />
           </View>
-        ) : (
+        ) : null}
+        {!appointments.isLoading &&
+        !appointments.isError &&
+        visible.length === 0 ? (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyTitle}>No bookings here yet</Text>
-            <Text style={styles.emptyDescription}>
-              Appointments of this type will appear here.
+            <Text variant="cardHeading" style={styles.emptyTitle}>
+              No {filter === "All" ? "" : `${filter.toLowerCase()} `}bookings
+              yet
             </Text>
+            <Text variant="body" style={styles.emptyDescription}>
+              {filter === "Medicine and test"
+                ? "This booking type is not connected yet."
+                : "Find a verified doctor and choose an available slot."}
+            </Text>
+            {filter !== "Medicine and test" ? (
+              <Button
+                label="Find a doctor"
+                onPress={() => router.push("/find-doctor" as Href)}
+              />
+            ) : null}
           </View>
-        )}
+        ) : null}
+        {visible.map((item) => {
+          const recovery = appointmentRecoveryView(item, now);
+          const canShowQr = recovery.canShowQr;
+          const canJoin = recovery.canJoin;
+          const showQueue = recovery.canShowQueue;
+          const actions = menuActions(item);
+          const doctorRequested =
+            recovery.canReschedule &&
+            Boolean(item.recovery?.schedule_change?.pending);
+          const paymentDue =
+            item.confirmation_payment_pending &&
+            item.status === "pending" &&
+            Date.parse(item.request_expires_at ?? "") > now;
+          const hasFooter =
+            paymentDue ||
+            canShowQr ||
+            canJoin ||
+            showQueue ||
+            item.status === "completed" ||
+            doctorRequested ||
+            Boolean(recovery.message) ||
+            Boolean(item.recovery?.request) ||
+            Boolean(item.recovery?.rescheduled_to_id);
+          return (
+            <BookingCard
+              key={item.id}
+              appointment={clinicAppointmentCard(item)}
+              statusLabel={recovery.patientStatus}
+              onMorePress={
+                hasMenuActions(actions)
+                  ? () => setMenuAppointmentId(item.id)
+                  : undefined
+              }
+              moreDisabled={cancel.isPending}
+              moreLoading={cancel.isPending && cancel.variables?.id === item.id}
+              onPress={() =>
+                router.push({
+                  pathname: "/appointment-details/[id]",
+                  params: { id: item.id },
+                } as Href)
+              }
+              footer={
+                hasFooter ? (
+                  <View style={styles.cardActions}>
+                    {paymentDue ? (
+                      <Button
+                        label="Complete payment"
+                        onPress={() =>
+                          router.push({
+                            pathname: "/appointment-details/[id]",
+                            params: { id: item.id },
+                          } as Href)
+                        }
+                        style={styles.actionButton}
+                        labelStyle={styles.actionLabel}
+                      />
+                    ) : null}
+                    <AppointmentRecoveryActions
+                      item={item}
+                      now={now}
+                      placement="card"
+                      buttonStyle={styles.actionButton}
+                      labelStyle={styles.actionLabel}
+                    />
+                    {canShowQr || showQueue ? (
+                      <Button
+                        label={
+                          canShowQr ? "Show check-in QR" : "View clinic queue"
+                        }
+                        onPress={() =>
+                          router.push(clinicVisitRoute(item) as unknown as Href)
+                        }
+                        style={styles.actionButton}
+                        labelStyle={styles.actionLabel}
+                      />
+                    ) : null}
+                    {canJoin ? (
+                      <Button
+                        label="Join consultation"
+                        onPress={() =>
+                          router.push({
+                            pathname: "/visit-session",
+                            params: {
+                              ...clinicAppointmentCard(item),
+                              mode: "online-video",
+                            },
+                          } as unknown as Href)
+                        }
+                        style={styles.actionButton}
+                        labelStyle={styles.actionLabel}
+                      />
+                    ) : null}
+                    {item.status === "completed" ? (
+                      <View style={styles.ratingRow}>
+                        <Text variant="inherit" style={styles.thankYou}>
+                          Thank you
+                        </Text>
+                        <Button
+                          label="Rate doctor"
+                          variant="outline"
+                          style={styles.actionButton}
+                          labelStyle={styles.actionLabel}
+                          onPress={() =>
+                            router.push({
+                              pathname: "/rate-doctor/[id]",
+                              params: { id: item.id },
+                            } as Href)
+                          }
+                        />
+                      </View>
+                    ) : null}
+                  </View>
+                ) : undefined
+              }
+            />
+          );
+        })}
       </FadedScrollView>
+      <ModalSurface
+        visible={Boolean(menuAppointment && menu && hasMenuActions(menu))}
+        onClose={() => setMenuAppointmentId(null)}
+        dismissOnBackdrop
+      >
+        <Text variant="inherit" style={styles.menuTitle}>
+          Booking actions
+        </Text>
+        <Text variant="inherit" style={styles.description}>
+          {menuAppointment?.doctor_name}
+          {menuAppointment ? ` · ${menuAppointment.public_code.slice(-8)}` : ""}
+        </Text>
+        {menu?.reschedule ? (
+          <Button
+            theme="patient"
+            label={menu.rescheduleLabel}
+            variant="outline"
+            onPress={() => {
+              if (!menuAppointment) return;
+              setMenuAppointmentId(null);
+              setRecoveryTarget({
+                id: menuAppointment.id,
+                intent: "reschedule",
+              });
+            }}
+          />
+        ) : null}
+        {menu?.review ? (
+          <Button
+            theme="patient"
+            label="Report a problem"
+            variant="outline"
+            onPress={() => {
+              if (!menuAppointment) return;
+              setMenuAppointmentId(null);
+              setRecoveryTarget({ id: menuAppointment.id, intent: "review" });
+            }}
+          />
+        ) : null}
+        {menu?.bookAgain ? (
+          <Button
+            theme="patient"
+            label="Book again"
+            variant="outline"
+            onPress={() => {
+              if (!menuAppointment) return;
+              setMenuAppointmentId(null);
+              router.push(bookAgainRoute(menuAppointment));
+            }}
+          />
+        ) : null}
+        {menu?.cancel ? (
+          <Button
+            theme="patient"
+            label="Cancel booking"
+            variant="danger"
+            disabled={cancel.isPending || !menuAppointment}
+            loading={
+              cancel.isPending && cancel.variables?.id === menuAppointmentId
+            }
+            onPress={() => {
+              if (!menuAppointment || cancel.isPending) return;
+              setMenuAppointmentId(null);
+              cancel.mutate(menuAppointment);
+            }}
+          />
+        ) : null}
+        <Button
+          theme="patient"
+          label="Close"
+          variant="ghost"
+          onPress={() => setMenuAppointmentId(null)}
+        />
+      </ModalSurface>
+      {recoveryAppointment && recoveryTarget ? (
+        <AppointmentRecovery
+          key={`${recoveryAppointment.id}-${recoveryTarget.intent}`}
+          item={recoveryAppointment}
+          intent={recoveryTarget.intent}
+          onClose={() => setRecoveryTarget(null)}
+        />
+      ) : null}
     </View>
   );
 }
@@ -90,31 +325,58 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: 126,
   },
-  title: {
-    color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
-    fontSize: 16,
-    fontWeight: "700",
-    lineHeight: 22,
-  },
   filters: { gap: 8 },
-  list: { gap: 14 },
+  loadingList: { gap: 12 },
+  cardActions: { gap: 12 },
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    flexWrap: "wrap",
+  },
+  thankYou: {
+    color: colors.white,
+    fontFamily: fontFamilies.medium,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  actionButton: {
+    alignSelf: "stretch",
+    minWidth: 0,
+    borderColor: "#FFFFFF99",
+    borderWidth: 1,
+  },
+  actionLabel: { fontSize: 14, color: colors.white },
+  menuTitle: {
+    color: colors.patient.text,
+    fontFamily: fontFamilies.semibold,
+    fontSize: 18,
+    lineHeight: 24,
+  },
+  description: {
+    color: colors.patient.textSecondary,
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    lineHeight: 18,
+  },
   emptyState: {
     alignItems: "center",
-    gap: 5,
+    gap: 10,
     paddingHorizontal: 24,
     paddingVertical: 56,
   },
   emptyTitle: {
     color: colors.patient.text,
     fontFamily: fontFamilies.semibold,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: "600",
   },
   emptyDescription: {
     color: colors.patient.textSecondary,
     fontFamily: fontFamilies.regular,
-    fontSize: 12,
+    fontSize: 13,
     textAlign: "center",
   },
+  error: { color: colors.patient.text, fontFamily: fontFamilies.medium },
 });

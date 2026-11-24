@@ -1,51 +1,119 @@
-import { StyleSheet, Text, View } from "react-native";
+import type { ProfileIdentityProps } from "../types/profile";
+import { AppText as Text } from "@startup/mobile-ui";
+import { Image, StyleSheet, View } from "react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
-import { patientProfile } from "../utils/profileConstants";
+
+import { Mars, Venus } from "lucide-react-native";
 
 export function ProfileIdentity({
-  initials = patientProfile.initials,
-  name = patientProfile.name,
-}: {
-  initials?: string;
-  name?: string;
-}) {
+  initials,
+  name,
+  gender,
+  photoUrl,
+  children,
+  inverse = false,
+}: ProfileIdentityProps) {
   return (
     <View style={styles.identity}>
-      <View style={styles.avatar}>
-        <Text style={styles.initials}>{initials}</Text>
+      <View style={styles.avatarShadow}>
+        <View style={styles.avatar}>
+          {photoUrl ? (
+            <Image source={{ uri: photoUrl }} style={styles.photo} />
+          ) : (
+            <Text variant="sectionHeading" style={styles.initials}>
+              {initials}
+            </Text>
+          )}
+        </View>
       </View>
-      <Text style={styles.name}>{name}</Text>
+      <View style={styles.copy}>
+        <View style={styles.nameRow}>
+          <Text
+            variant="cardHeading"
+            style={[styles.name, inverse && { color: colors.white }]}
+          >
+            {name}
+          </Text>
+          {gender?.toLowerCase() === "male" ? (
+            <View accessibilityLabel="Male">
+              <Mars
+                size={18}
+                color={inverse ? colors.white : colors.patient.primaryDark}
+              />
+            </View>
+          ) : gender?.toLowerCase() === "female" ? (
+            <View accessibilityLabel="Female">
+              <Venus
+                size={18}
+                color={inverse ? colors.white : colors.patient.primaryDark}
+              />
+            </View>
+          ) : null}
+        </View>
+        {children}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  identity: {
-    alignItems: "center",
-    gap: 8,
-    paddingTop: 8,
-    paddingBottom: 4,
+  identity: { flexDirection: "row", alignItems: "center", gap: 20 },
+  avatarShadow: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: colors.white,
+    elevation: 3,
+    shadowColor: colors.patient.text,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.14,
+    shadowRadius: 4,
   },
   avatar: {
-    width: 76,
-    height: 76,
+    width: 88,
+    height: 88,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
-    borderColor: "#087F78",
-    borderRadius: 38,
-    backgroundColor: "#C8EDE9",
+    borderRadius: 44,
+    borderWidth: 0.25,
+    borderColor: colors.border,
+    backgroundColor: colors.patient.surface,
+    overflow: "hidden",
   },
   initials: {
-    color: "#1A3A6B",
+    color: colors.patient.primaryDark,
     fontFamily: fontFamilies.bold,
-    fontSize: 20,
-    fontWeight: "700",
+    fontSize: 24,
+  },
+  photo: { width: "100%", height: "100%" },
+  copy: { flex: 1, gap: 12 },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: 1.5,
+  },
+  genderBadge: {
+    flexShrink: 0,
+    backgroundColor: colors.patient.surface,
+    borderRadius: 8,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  gender: {
+    color: colors.patient.primaryDark,
+    fontFamily: fontFamilies.medium,
+    fontSize: 12,
+    lineHeight: 18,
+    textTransform: "capitalize",
+    includeFontPadding: false,
   },
   name: {
+    flexShrink: 1,
     color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.semibold,
     fontSize: 18,
-    fontWeight: "700",
+    lineHeight: 24,
+    includeFontPadding: false,
   },
 });

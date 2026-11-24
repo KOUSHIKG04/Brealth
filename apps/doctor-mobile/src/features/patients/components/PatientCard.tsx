@@ -1,31 +1,58 @@
+import type { PatientCardProps } from "../types/patient-card";
+import {
+  appointmentQueueNumber,
+  appointmentRecoveryView,
+} from "@startup/contracts";
 import { Pressable, StyleSheet, View } from "react-native";
 import { ChevronRight, User } from "lucide-react-native";
 import { Button } from "@startup/mobile-ui";
-import { fontFamilies } from "@startup/design-tokens";
-import { patients, modeLabels } from "../../../data/demo";
-import { useDoctorStore } from "../../../stores/useDoctorStore";
-import type { Appointment } from "../../../types/doctor";
-import { openAppointment, visitRoute } from "../../consultations/utils/consultation";
-import { router } from "expo-router";
-import { Heading, Label, palette, ui } from "../../../components/DoctorScreen";
+import { fontFamilies, surfaces } from "@startup/design-tokens";
+
+import { Heading, Label } from "../../../components/DoctorScreen";
+import { palette, ui } from "../../../components/theme";
+
 export function PatientCard({
+  now,
   appointment,
   home = false,
-}: {
-  appointment: Appointment;
-  home?: boolean;
-}) {
-  const patient = patients.find((p) => p.id === appointment.patientId)!;
-  const completed = useDoctorStore((s) =>
-    s.completedIds.includes(appointment.id)
-  );
-  const open = () =>
-    completed
-      ? router.push(visitRoute("clinical-notes", appointment))
-      : openAppointment(appointment);
+  onOpen,
+  onAction,
+  actionLabel,
+}: PatientCardProps) {
+  const completed = appointment.status === "completed";
+  const recovery = appointmentRecoveryView(appointment, now);
+  const expiredRequest =
+    appointment.status === "pending" &&
+    Date.parse(appointment.request_expires_at ?? appointment.starts_at) <=
+      Date.now();
+  const consultationLabel =
+    appointment.visit_mode === "online"
+      ? "Video Consultation"
+      : appointment.visit_mode === "home"
+        ? "Home Visit"
+        : "In-person (OPD) Consultation";
+  const time = new Date(appointment.starts_at).toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  // Issued ticket or reserved hybrid-queue number; ahead count only while waiting.
+  const queueNumber = appointmentQueueNumber(appointment);
+  const queueLabel =
+    appointment.visit_mode !== "clinic"
+      ? ""
+      : ` • Queue ${queueNumber ? `#${queueNumber}` : "not assigned"}${
+          appointment.queue_state === "waiting"
+            ? ` (${appointment.ahead_count} ahead)`
+            : ""
+        }`;
   return (
     <View style={styles.card}>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${patient.name}, ${modeLabels[appointment.mode]}, ${completed ? "completed" : "waiting"}. Open appointment`} onPress={open} style={({ pressed }) => [ui.row, pressed && { opacity: 0.88 }]}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${appointment.patient_name}, ${consultationLabel}, ${recovery.staffStatus}. Open appointment`}
+        onPress={onOpen}
+        style={({ pressed }) => [ui.row, pressed && { opacity: 0.88 }]}
+      >
         <View
           style={[
             styles.avatar,
@@ -35,64 +62,80 @@ export function PatientCard({
           <User size={home ? 25 : 28} color="white" />
         </View>
         <View style={ui.flex}>
-          <Heading style={styles.white}>{patient.name}</Heading>
-          <Label style={styles.secondary}>
+          <Heading style={styles.white}>{appointment.patient_name}</Heading>
+          <Label variant="caption" style={styles.secondary}>
             {home
-              ? `${patient.gender}, ${patient.age} • Queue No: #${appointment.queue}`
-              : `${patient.gender}, Age - ${patient.age}`}
+              ? `${appointment.patient_gender ?? "Gender unavailable"}, ${appointment.patient_age_years ?? "age unavailable"}${queueLabel}`
+              : `${appointment.patient_gender ?? "Gender unavailable"}, Age - ${appointment.patient_age_years ?? "unavailable"}`}
           </Label>
-          {!home && <Label style={styles.time}>{appointment.time}</Label>}
+          {!home ? (
+            <Label variant="labelSmall" style={styles.time}>
+              {time}
+            </Label>
+          ) : null}
         </View>
         <View style={styles.badge}>
-          <Label style={styles.badgeText}>
+          <Label variant="labelSmall" style={styles.badgeText}>
             {home
-              ? completed
-                ? "COMPLETED"
-                : "WAITING"
-              : modeLabels[appointment.mode].toUpperCase()}
+              ? expiredRequest
+                ? "REQUEST EXPIRED"
+                : completed
+                  ? "COMPLETED"
+                  : recovery.staffStatus.toUpperCase()
+              : recovery.needsReview ||
+                  recovery.bookAgain ||
+                  appointment.recovery?.outcome ||
+                  appointment.status === "in_consultation"
+                ? recovery.staffStatus
+                : appointment.visit_mode === "online"
+                  ? "ONLINE"
+                  : appointment.visit_mode === "home"
+                    ? "HOME VISIT"
+                    : "IN-PERSON (OPD)"}
           </Label>
         </View>
-        {!home && (
+        {!home ? (
           <View style={styles.arrow}>
             <ChevronRight size={20} color={palette.primary} />
           </View>
-        )}
+        ) : null}
       </Pressable>
-      {home && (
+      {home ? (
         <>
           <View style={ui.between}>
-            <Label style={styles.secondary}>
+            <Label variant="caption" style={styles.secondary}>
               Type:{" "}
-              <Label style={styles.time}>
-                {appointment.mode === "clinic"
-                  ? "In-Clinic Consultation"
-                  : appointment.mode === "online"
-                    ? "Video Call Consultation"
-                    : "Home Visit"}
+              <Label variant="labelSmall" style={styles.time}>
+                {consultationLabel}
               </Label>
             </Label>
-            <Label style={styles.time}>
-              {appointment.id === "clinic-meera"
-                ? "10:15 AM"
-                : appointment.time}
+            <Label variant="labelSmall" style={styles.time}>
+              {new Date(appointment.starts_at).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                timeZone: appointment.timezone,
+              })}{" "}
+              · {time}
             </Label>
           </View>
-          {!completed && (
+          {!completed && onAction ? (
             <Button
-              label="Start Consultation"
+              label={actionLabel ?? "Start Consultation"}
               theme="doctor"
-              onPress={open}
+              onPress={onAction}
               style={{ backgroundColor: palette.white }}
               labelStyle={{ color: palette.primary }}
             />
-          )}
+          ) : null}
         </>
-      )}
+      ) : null}
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   card: {
+    ...surfaces.card,
     padding: 16,
     gap: 14,
     borderRadius: 16,
@@ -104,25 +147,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  white: { color: palette.white, fontSize: 16 },
-  secondary: { color: "#D4F0EC", fontSize: 12, lineHeight: 18 },
-  time: {
-    color: palette.white,
-    fontSize: 12,
-    fontFamily: fontFamilies.semibold,
-  },
+  white: { color: palette.white },
+  secondary: { color: "#D4F0EC" },
+  time: { color: palette.white },
   badge: {
     backgroundColor: "#DEF5F2",
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 10,
   },
-  badgeText: {
-    color: palette.dark,
-    fontSize: 10,
-    lineHeight: 14,
-    fontFamily: fontFamilies.bold,
-  },
+  badgeText: { color: palette.dark },
   arrow: {
     width: 32,
     height: 32,

@@ -1,40 +1,19 @@
-import type { ReactNode } from "react";
+import { AppText as Text } from "../primitives/AppText";
 import { ChevronLeft } from "lucide-react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type TextStyle,
-  type ViewProps,
-} from "react-native";
-import { SafeAreaView, type Edge } from "react-native-safe-area-context";
-import { colors, fontFamilies, typography } from "@startup/design-tokens";
+import { Pressable, StyleSheet, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { colors, typography } from "@startup/design-tokens";
 import { appBackgrounds, type HeaderApp } from "../utils/headerBackground";
+import { useReadableTypography } from "../theme/MobileTypographyProvider";
+import type { HeaderProps } from "../types/header";
+
+export type { HeaderProps } from "../types/header";
 
 export type { HeaderApp } from "../utils/headerBackground";
 
-export type HeaderProps = ViewProps & {
-  title?: string;
-  subtitle?: string;
-  centered?: boolean;
-  centerContent?: ReactNode;
-  rightAction?: ReactNode;
-  onBackPress?: () => void;
-  onBack?: () => void;
-  app?: HeaderApp;
-  backgroundColor?: string;
-  foregroundColor?: string;
-  titleStyle?: TextStyle;
-  subtitleStyle?: TextStyle;
-  backAccessibilityLabel?: string;
-  safeAreaEdges?: readonly Edge[];
-};
-
 export function Header({
   title,
-  subtitle,
   centered = false,
   centerContent,
   rightAction,
@@ -44,12 +23,12 @@ export function Header({
   backgroundColor,
   foregroundColor = colors.white,
   titleStyle,
-  subtitleStyle,
   style,
   backAccessibilityLabel = "Go back",
   safeAreaEdges = ["top"],
   ...props
 }: HeaderProps) {
+  const readable = useReadableTypography();
   const appBackground = appBackgrounds[app];
   const resolvedBackgroundColor =
     backgroundColor ??
@@ -75,7 +54,7 @@ export function Header({
       ) : null}
 
       <SafeAreaView edges={safeAreaEdges}>
-        <View style={styles.container}>
+        <View style={[styles.container, readable && { minHeight: 88 }]}>
           {handleBack ? (
             <Pressable
               accessibilityRole="button"
@@ -87,7 +66,11 @@ export function Header({
                 pressed && styles.backButtonPressed,
               ]}
             >
-              <ChevronLeft color={foregroundColor} size={30} strokeWidth={2.5} />
+              <ChevronLeft
+                color={foregroundColor}
+                size={30}
+                strokeWidth={2.5}
+              />
             </Pressable>
           ) : null}
 
@@ -102,7 +85,8 @@ export function Header({
             >
               {title ? (
                 <Text
-                  numberOfLines={1}
+                  variant="screenTitle"
+                  numberOfLines={readable ? 2 : 1}
                   style={[
                     styles.title,
                     centered && styles.centeredText,
@@ -111,19 +95,6 @@ export function Header({
                   ]}
                 >
                   {title}
-                </Text>
-              ) : null}
-              {subtitle ? (
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.subtitle,
-                    centered && styles.centeredText,
-                    { color: foregroundColor },
-                    subtitleStyle,
-                  ]}
-                >
-                  {subtitle}
                 </Text>
               ) : null}
             </View>
@@ -185,12 +156,5 @@ const styles = StyleSheet.create({
   },
   title: {
     ...typography.headerText,
-  },
-  subtitle: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 13,
-    lineHeight: 18,
-    opacity: 0.9,
-    marginTop: 2,
   },
 });

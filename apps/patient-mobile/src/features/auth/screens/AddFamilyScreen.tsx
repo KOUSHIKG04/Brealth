@@ -1,0 +1,224 @@
+import { useFamilyMembers } from "../hooks/useFamilyMembers";
+import { AppText as Text } from "@startup/mobile-ui";
+import { Button } from "@startup/mobile-ui";
+
+import { Pressable, StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+
+import { Plus, UserRound, Users } from "lucide-react-native";
+
+import { colors, fontFamilies } from "@startup/design-tokens";
+import {
+  onboardingButtonStyles,
+  OnboardingShell,
+} from "../components/OnboardingShell";
+
+export default function AddFamilyScreen() {
+  const { familyMembers } = useFamilyMembers();
+  return (
+    <OnboardingShell
+      onBack={() =>
+        router.canGoBack()
+          ? router.back()
+          : router.replace("/(app)/(tabs)/profile")
+      }
+      bottomArt={false}
+      scroll
+    >
+      <View style={styles.body}>
+        <View style={styles.topSection}>
+          <View style={styles.header}>
+            <View style={styles.titleRow}>
+              <Text variant="cardHeading" style={styles.title}>
+                Add Family Members
+              </Text>
+              <View style={styles.iconWrap}>
+                <Users
+                  size={24}
+                  color={colors.patient.primaryDark}
+                  strokeWidth={2.2}
+                />
+              </View>
+            </View>
+          </View>
+
+          {familyMembers.length > 0 ? (
+            <View style={styles.membersList}>
+              {familyMembers.map((member) => (
+                <View key={member.id} style={styles.memberCard}>
+                  <View style={styles.memberAvatar}>
+                    <UserRound size={18} color={colors.white} strokeWidth={2} />
+                  </View>
+                  <View style={styles.memberInfo}>
+                    <Text variant="body" style={styles.memberName}>
+                      {member.full_name}
+                    </Text>
+                    <Text variant="body" style={styles.memberMeta}>
+                      {member.relation}
+                      {member.age_years !== null
+                        ? ` · ${member.age_years} yrs`
+                        : ""}
+                      {member.blood_group ? ` · ${member.blood_group}` : ""}
+                    </Text>
+                  </View>
+                  {member.can_edit ? (
+                    <Button
+                      theme="patient"
+                      variant="outline"
+                      label="Edit"
+                      style={{ backgroundColor: colors.white }}
+                      accessibilityLabel={`Edit ${member.full_name}`}
+                      onPress={() =>
+                        router.push({
+                          pathname: "/(app)/add-family-member",
+                          params: { memberId: member.id },
+                        })
+                      }
+                    />
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          ) : null}
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Add Family Member"
+            onPress={() => router.push("/(app)/add-family-member")}
+            style={({ pressed }) => [styles.addCard, pressed && styles.pressed]}
+          >
+            <UserRound
+              size={22}
+              color={colors.patient.primaryDark}
+              strokeWidth={1.8}
+            />
+            <Text variant="body" style={styles.addText}>
+              Add Family Member
+            </Text>
+            <Plus
+              size={22}
+              color={colors.patient.primaryDark}
+              strokeWidth={2}
+            />
+          </Pressable>
+        </View>
+
+        <View style={styles.bottomSection}>
+          <Button
+            theme="patient"
+            style={onboardingButtonStyles.button}
+            labelStyle={onboardingButtonStyles.label}
+            rightIcon={
+              <Text variant="button" style={onboardingButtonStyles.label}>
+                ›
+              </Text>
+            }
+            label={familyMembers.length > 0 ? "Continue" : "Skip and Continue"}
+            onPress={() => router.replace("/(app)/(tabs)")}
+          />
+        </View>
+      </View>
+    </OnboardingShell>
+  );
+}
+
+const styles = StyleSheet.create({
+  body: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 340,
+    alignSelf: "center",
+    paddingTop: 36,
+    paddingBottom: 24,
+    justifyContent: "space-between",
+    minHeight: 520,
+  },
+  topSection: {
+    width: "100%",
+  },
+  header: {
+    alignItems: "center",
+    marginBottom: 36,
+  },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  title: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 22,
+    color: colors.black,
+    textAlign: "center",
+  },
+  iconWrap: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  membersList: {
+    gap: 12,
+    marginBottom: 16,
+  },
+  memberCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: colors.patient.surface,
+    borderWidth: 1,
+    borderColor: "#00000030",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  memberAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.patient.primaryDark,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  memberInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  memberName: {
+    fontFamily: fontFamilies.medium,
+    fontSize: 15,
+    color: colors.black,
+  },
+  memberMeta: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    color: "#777",
+  },
+  addCard: {
+    width: "100%",
+    height: 54,
+    backgroundColor: colors.white,
+    borderWidth: 1,
+    borderColor: "#00000030",
+    borderRadius: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+  },
+  addText: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 17,
+    color: "rgba(0, 0, 0, 0.5)",
+    textAlign: "center",
+    flex: 1,
+  },
+  pressed: {
+    opacity: 0.75,
+    backgroundColor: "#F9FBFB",
+  },
+  bottomSection: {
+    width: "100%",
+    marginTop: 40,
+    marginBottom: 12,
+  },
+});

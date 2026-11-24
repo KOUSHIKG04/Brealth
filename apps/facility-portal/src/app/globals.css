@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import "@startup/web-ui/styles/theme.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@source "../../../../packages/web-ui/src";
+
+@theme inline {
+  --font-sans: var(--font-inter), var(--font-geist-sans), system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-heading:
+    var(--font-inter), var(--font-geist-sans), system-ui, sans-serif;
+}
+
+body {
+  position: relative;
+  font-family: var(--font-sans, system-ui, -apple-system, sans-serif);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}

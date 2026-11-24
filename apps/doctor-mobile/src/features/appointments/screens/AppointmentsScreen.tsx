@@ -1,145 +1,145 @@
-import { useState } from "react";
-import { ScrollView, View, Pressable } from "react-native";
-import { Calendar, ChevronLeft, ChevronRight } from "lucide-react-native";
-import { appointments, demoDate, modeLabels } from "../../../data/demo";
+import { appointmentFilters } from "../utils/appointmentsConstants";
+import { DayPill } from "../components/DayPill";
+import { styles } from "../components/Appointments.styles";
+import { useAppointments } from "../hooks/useAppointments";
+
+export type { DayItem } from "../types/appointments-screen";
+
+import { View } from "react-native";
+import { router } from "expo-router";
+import { Calendar } from "lucide-react-native";
+
+import { modeLabels } from "../../../data/demo";
 import { PatientCard } from "../../patients/components/PatientCard";
+import { Chip, Dropdown, FadedScrollView, Loader } from "@startup/mobile-ui";
 import {
-  Choice,
   DoctorScreen,
   Heading,
-  IconButton,
   Label,
-  palette,
   Panel,
-  ui,
 } from "../../../components/DoctorScreen";
-import type { VisitMode } from "../../../types/doctor";
+import { palette, ui } from "../../../components/theme";
+
 export function AppointmentsScreen() {
-  const [date, setDate] = useState(demoDate);
-  const [week, setWeek] = useState(0);
-  const [filter, setFilter] = useState<"all" | VisitMode>("all");
-  const days = Array.from({ length: 7 }, (_, index) => {
-    const value = new Date(2026, 7, 2 + week * 7 + index);
-    return {
-      key: `${value.getFullYear()}-${String(value.getMonth() + 1).padStart(2, "0")}-${String(value.getDate()).padStart(2, "0")}`,
-      day: value.getDate(),
-      label: value.toLocaleDateString("en-US", { weekday: "short" }),
-      month: value.toLocaleDateString("en-US", {
-        month: "long",
-        year: "numeric",
-      }),
-    };
-  });
-  const visible = appointments.filter(
-    (a) =>
-      a.date === date &&
-      (filter === "all" || a.mode === filter) &&
-      a.id !== "online-akash"
-  );
+  const {
+    now,
+    appointmentId,
+    date,
+    month,
+    datesRef,
+    filter,
+    setFilter,
+    appointments,
+    monthOptions,
+    days,
+    scrollToSelectedDate,
+    selectDate,
+    selectMonth,
+    visible,
+  } = useAppointments();
   return (
-    <DoctorScreen title="Appointment">
-      <View style={ui.between}>
-        <Heading style={{ fontSize: 18 }}>{days[0].month}</Heading>
-        <View style={ui.row}>
-          <IconButton
-            label="Previous week"
-            onPress={() => {
-              setWeek(week - 1);
-              setDate("");
-            }}
-          >
-            <ChevronLeft size={20} color={palette.primary} />
-          </IconButton>
-          <IconButton
-            label="Return to demo date, 5 August"
-            onPress={() => {
-              setWeek(0);
-              setDate(demoDate);
-            }}
-          >
-            <Calendar size={20} color={palette.primary} />
-          </IconButton>
-          <IconButton
-            label="Next week"
-            onPress={() => {
-              setWeek(week + 1);
-              setDate("");
-            }}
-          >
-            <ChevronRight size={20} color={palette.primary} />
-          </IconButton>
-        </View>
+    <DoctorScreen
+      title="Appointments"
+      onRefresh={() => appointments.refetch({ throwOnError: true })}
+    >
+      <View style={styles.monthRow}>
+        <Heading variant="sectionHeading" style={styles.dateHeading}>
+          Select date
+        </Heading>
+        <Dropdown
+          theme="doctor"
+          leftIcon={<Calendar size={18} color={palette.primary} />}
+          accessibilityLabel="Select appointment month"
+          options={monthOptions}
+          value={month}
+          onValueChange={selectMonth}
+          containerStyle={styles.monthDropdown}
+          triggerStyle={styles.monthTrigger}
+          valueStyle={styles.monthLabel}
+        />
       </View>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ gap: 8 }}
-      >
-        {days.map((day) => (
-          <Pressable
-            key={day.key}
-            accessibilityRole="button"
-            accessibilityLabel={`${day.day} ${day.month}`}
-            accessibilityState={{ selected: date === day.key }}
-            onPress={() => setDate(day.key)}
-            style={{
-              width: 46,
-              height: 64,
-              borderRadius: 14,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: date === day.key ? palette.dark : "#F0F2F5",
-            }}
-          >
-            <Heading
-              style={{
-                fontSize: 19,
-                color: date === day.key ? "white" : palette.text,
-              }}
-            >
-              {day.day}
-            </Heading>
-            <Label
-              style={{
-                fontSize: 11,
-                color: date === day.key ? "white" : palette.muted,
-              }}
-            >
-              {day.label}
-            </Label>
-          </Pressable>
-        ))}
-      </ScrollView>
-      <View style={[ui.wrap, { justifyContent: "center", gap: 6 }]}>
-        {(["all", "clinic", "online", "home"] as const).map((mode) => (
-          <Choice
-            key={mode}
-            label={mode === "all" ? "All" : modeLabels[mode]}
-            selected={filter === mode}
-            onPress={() => setFilter(mode)}
-          />
-        ))}
+      <View style={styles.dateControls}>
+        <FadedScrollView
+          edgeColor={palette.white}
+          containerStyle={styles.dateStrip}
+          style={styles.horizontalScroll}
+          ref={datesRef}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.daysList}
+          onContentSizeChange={scrollToSelectedDate}
+        >
+          {days.map((day) => (
+            <DayPill
+              key={day.key}
+              day={day}
+              selected={date === day.key}
+              onPress={selectDate}
+            />
+          ))}
+        </FadedScrollView>
+        <FadedScrollView
+          horizontal
+          edgeColor={palette.white}
+          containerStyle={styles.filterStrip}
+          style={styles.horizontalScroll}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filters}
+        >
+          {appointmentFilters.map((mode) => (
+            <Chip
+              key={mode}
+              theme="doctor"
+              variant="radio"
+              style={styles.filterPill}
+              label={mode === "all" ? "All" : modeLabels[mode]}
+              selected={filter === mode}
+              onPress={() => setFilter(mode)}
+            />
+          ))}
+        </FadedScrollView>
       </View>
-      {visible.map((appointment) => (
-        <PatientCard key={appointment.id} appointment={appointment} />
-      ))}
-      {!visible.length && (
+      {appointments.isLoading ? (
+        <Loader theme="doctor" style={{ minHeight: 88 }} />
+      ) : null}
+      {appointments.isError ? (
         <Panel>
-          <Heading>{date ? "No appointments" : "Select a day"}</Heading>
-          <Label muted>
-            {date
-              ? "No appointments match this day and visit type."
-              : "Choose a date above to see appointments."}
+          <Label variant="label" style={ui.error}>
+            Could not load appointments. Pull down to retry.
           </Label>
         </Panel>
-      )}
-      {filter === "home" && week === 0 && date !== "2026-08-06" && (
-        <Choice
-          label="View home visit on 6 August"
-          selected={false}
-          onPress={() => setDate("2026-08-06")}
+      ) : null}
+      {visible.map((item) => (
+        <PatientCard
+          now={now}
+          key={item.id}
+          appointment={item}
+          onOpen={() =>
+            router.push({
+              pathname: "/appointment-details",
+              params: { appointmentId: item.id },
+            })
+          }
         />
-      )}
+      ))}
+      {date &&
+      visible.length === 0 &&
+      !appointments.isLoading &&
+      !appointments.isError ? (
+        <View style={styles.emptyState}>
+          <Heading style={styles.emptyText}>No appointments</Heading>
+          <Label muted style={styles.emptyText}>
+            {filter === "all"
+              ? "No appointments for this date."
+              : `No ${modeLabels[filter].toLowerCase()} appointments for this date.`}
+          </Label>
+        </View>
+      ) : null}
+      {!date ? (
+        <Panel>
+          <Label muted>Choose a day to see appointments.</Label>
+        </Panel>
+      ) : null}
     </DoctorScreen>
   );
 }

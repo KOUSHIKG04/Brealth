@@ -11,7 +11,8 @@ adaptive
 - **Patients**: Individuals and families seeking rapid healthcare solutions, booking outpatient appointments (clinic visits, video consultations), managing family member appointments, and requesting emergency ambulance assistance.
 - **Doctors**: Healthcare practitioners managing daily patient queues, consultation schedules, clinic appointments, and electronic prescriptions.
 - **Emergency Drivers**: Ambulance operators receiving real-time emergency dispatch requests, patient location navigation, and hospital transport coordination.
-- **Clinic / Hospital Administrators**: Operational staff managing hospital resources, doctor listings, and overall healthcare services via the web dashboard.
+- **Clinic / Hospital Administrators and Receptionists**: Facility owners, administrators and front-desk staff managing doctors, schedules, the clinic queue, payments and team access in the Facility Portal (web).
+- **Platform Reviewers**: Internal staff verifying doctors, drivers and facilities in Company Admin (web).
 
 ## Product Purpose
 
@@ -30,7 +31,8 @@ An all-in-one care network connecting patients, doctors, and emergency response 
 
 ## Capabilities and Constraints
 
-- **Multi-App Monorepo**: Turborepo workspace encompassing `patient-mobile` (Expo/React Native), `doctor-mobile`, `driver-mobile`, and `web` admin.
+- **Multi-App Monorepo**: Turborepo workspace encompassing `patient-mobile`, `doctor-mobile` and `driver-mobile` (Expo/React Native, platform `adaptive`), plus the Next.js web apps `facility-portal` and `company-admin` (platform `web`, each with its own PRODUCT.md).
+- **Backend**: Shared Supabase backend through `@startup/data-access`, including the hybrid clinic queue, schedule conflict review and Razorpay payments. Deployment and device/browser verification status lives in each app's `ARCHITECTURE.md`.
 - **Design System & Primitives**: Shared `@startup/design-tokens` (colors, typography, spacing, radius) and `@startup/mobile-ui` (Button, Card, Chip, Header, FadedScrollView, TimeSlot, SearchInput).
 - **Booking & Consultations**: Supports both in-person "Clinic Visit" and remote "Video Consultation" with dynamic slot selection, month/date carousels, and patient selector (Self/Family).
 - **Emergency SOS Dispatch**: Integrated ambulance flow with instant location routing and status tracking.

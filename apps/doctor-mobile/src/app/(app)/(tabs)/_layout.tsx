@@ -2,14 +2,25 @@ import { Tabs, router, type Href } from "expo-router";
 import { View, StyleSheet } from "react-native";
 import { Home, Calendar, Calendars, User, ScanLine } from "lucide-react-native";
 import { BottomNavBar, type NavItem } from "@startup/mobile-ui";
-import { IconButton, palette } from "../../../components/DoctorScreen";
+import { IconButton } from "../../../components/DoctorScreen";
+import { palette } from "../../../components/theme";
+
 const items: NavItem[] = [
   { key: "index", label: "Home", icon: Home },
   { key: "appointments", label: "Appointments", icon: Calendar },
   { key: "schedule", label: "Schedules", icon: Calendars },
   { key: "profile", label: "Profile", icon: User },
 ];
-const fullScreen = ["online-consultation", "chat", "home-visit", "scan-qr"];
+
+const fullScreen = [
+  "clinical-notes",
+  "prescription",
+  "online-consultation",
+  "chat",
+  "home-visit",
+  "scan-qr",
+];
+
 export default function TabsLayout() {
   return (
     <View style={styles.container}>
@@ -17,7 +28,8 @@ export default function TabsLayout() {
         backBehavior="history"
         screenOptions={{
           headerShown: false,
-          animation: "none",
+          animation: "fade",
+          freezeOnBlur: true,
           tabBarHideOnKeyboard: true,
           sceneStyle: { backgroundColor: palette.white },
         }}
@@ -70,6 +82,7 @@ export default function TabsLayout() {
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: { flex: 1, width: "100%", maxWidth: 600, alignSelf: "center" },
   scan: {

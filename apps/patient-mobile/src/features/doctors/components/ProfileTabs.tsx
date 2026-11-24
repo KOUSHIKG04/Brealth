@@ -1,5 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { colors, fontFamilies, radius } from "@startup/design-tokens";
+import { AppText as Text } from "@startup/mobile-ui";
+import { Pressable, StyleSheet, View } from "react-native";
+import { colors, radius, surfaces } from "@startup/design-tokens";
 import { profileTabs } from "../utils/doctorProfileConstants";
 import type { ProfileTabsProps } from "../types/doctor-profile";
 
@@ -21,7 +22,10 @@ export function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
               pressed ? styles.pressed : undefined,
             ]}
           >
-            <Text style={[styles.tabLabel, selected && styles.activeTabLabel]}>
+            <Text
+              variant="label"
+              style={[styles.tabLabel, selected && styles.activeTabLabel]}
+            >
               {label}
             </Text>
           </Pressable>
@@ -38,11 +42,7 @@ const styles = StyleSheet.create({
     padding: 1,
     borderRadius: radius.md,
     backgroundColor: colors.surface,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 3,
+    ...surfaces.card,
   },
   tab: {
     flex: 1,
@@ -55,14 +55,9 @@ const styles = StyleSheet.create({
   },
   tabLabel: {
     color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.medium,
-    fontSize: 14,
-    fontWeight: "500",
   },
   activeTabLabel: {
     color: colors.white,
-    fontFamily: fontFamilies.bold,
-    fontWeight: "700",
   },
   pressed: {
     opacity: 0.76,

@@ -1,45 +1,12 @@
+import { AppText as Text } from "./AppText";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import { useState, type ReactNode } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { useState } from "react";
+import { Pressable, StyleSheet, View, type ViewStyle } from "react-native";
 import { ChevronDown } from "lucide-react-native";
-import { colors, fontFamilies, radius } from "@startup/design-tokens";
-import { type AppTheme } from "../utils/appTheme";
+import { colors, fontFamilies, radius, surfaces } from "@startup/design-tokens";
+import type { AccordionVariant, AccordionProps } from "../types/accordion";
 
-export type AccordionVariant = "elevated" | "outlined" | "surface" | "plain";
-
-export type AccordionProps = {
-  title: ReactNode;
-  subtitle?: ReactNode;
-  leftIcon?: ReactNode;
-  rightIcon?: ReactNode;
-  badge?: ReactNode;
-  children: ReactNode;
-  isOpen?: boolean;
-  defaultOpen?: boolean;
-  onToggle?: (isOpen: boolean) => void;
-  variant?: AccordionVariant;
-  theme?: AppTheme;
-  disabled?: boolean;
-  separator?: boolean;
-  separatorColor?: string;
-  chevronColor?: string;
-  chevronSize?: number;
-  style?: StyleProp<ViewStyle>;
-  headerStyle?: StyleProp<ViewStyle>;
-  contentStyle?: StyleProp<ViewStyle>;
-  closedPlaceholder?: ReactNode;
-  titleStyle?: StyleProp<TextStyle>;
-  subtitleStyle?: StyleProp<TextStyle>;
-  accessibilityLabel?: string;
-};
+export type { AccordionVariant, AccordionProps } from "../types/accordion";
 
 export function Accordion({
   title,
@@ -111,6 +78,7 @@ export function Accordion({
           <View style={styles.titleContainer}>
             {typeof title === "string" ? (
               <Text
+                variant="cardHeading"
                 style={[
                   styles.title,
                   variant === "surface"
@@ -126,7 +94,12 @@ export function Accordion({
             )}
             {subtitle ? (
               typeof subtitle === "string" ? (
-                <Text style={[styles.subtitle, subtitleStyle]}>{subtitle}</Text>
+                <Text
+                  variant="cardHeading"
+                  style={[styles.subtitle, subtitleStyle]}
+                >
+                  {subtitle}
+                </Text>
               ) : (
                 subtitle
               )
@@ -195,12 +168,7 @@ function getVariantStyle(
       return {
         backgroundColor: theme.surface,
         borderRadius: radius.md,
-        shadowColor: colors.ui.shadow,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-        elevation: 3,
-        borderWidth: 0,
+        ...surfaces.card,
       };
     case "surface":
       return {
@@ -220,8 +188,7 @@ function getVariantStyle(
       return {
         backgroundColor: theme.surface,
         borderRadius: radius.md,
-        borderWidth: 1,
-        borderColor: theme.border,
+        ...surfaces.card,
       };
   }
 }

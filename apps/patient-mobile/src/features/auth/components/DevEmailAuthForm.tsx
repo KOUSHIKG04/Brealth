@@ -1,0 +1,201 @@
+import type { DevEmailAuthFormProps } from "../types/dev-email-auth-form";
+
+export type { DevEmailAuthFormProps } from "../types/dev-email-auth-form";
+
+import { AppText as Text } from "@startup/mobile-ui";
+import { Button } from "@startup/mobile-ui";
+import { Input } from "@startup/mobile-ui";
+import { Pressable, StyleSheet, View } from "react-native";
+import { colors, fontFamilies } from "@startup/design-tokens";
+import { onboardingButtonStyles } from "./OnboardingShell";
+
+function EmailConfirmationNotice({
+  email,
+  onBackToSignIn,
+}: {
+  email: string;
+  onBackToSignIn: () => void;
+}) {
+  return (
+    <>
+      <Text variant="body" style={styles.info}>
+        If an account can be created for {email.trim()}, Supabase will send a
+        confirmation link. Open it, then return here and sign in to create your
+        patient profile.
+      </Text>
+      <Button
+        theme="patient"
+        style={onboardingButtonStyles.button}
+        labelStyle={onboardingButtonStyles.label}
+        rightIcon={
+          <Text variant="button" style={onboardingButtonStyles.label}>
+            ›
+          </Text>
+        }
+        label="Back to sign in"
+        onPress={onBackToSignIn}
+      />
+    </>
+  );
+}
+
+function EmailCredentialsForm({
+  emailMode,
+  email,
+  onEmailChange,
+  password,
+  onPasswordChange,
+  confirmPassword,
+  onConfirmPasswordChange,
+  busy,
+  onSubmit,
+  onSwitchEmailMode,
+}: Omit<DevEmailAuthFormProps, "confirmationPending" | "onBackToSignIn">) {
+  const isSignUp = emailMode === "signup";
+  const isSubmitDisabled =
+    busy || !email || !password || (isSignUp && !confirmPassword);
+
+  const submitLabel = busy
+    ? isSignUp
+      ? "Creating account…"
+      : "Signing in…"
+    : isSignUp
+      ? "Create account"
+      : "Sign in";
+
+  return (
+    <>
+      <Input
+        variant="unstyled"
+        accessibilityLabel="Email"
+        autoCapitalize="none"
+        autoComplete="email"
+        keyboardType="email-address"
+        placeholder="your@email.com"
+        value={email}
+        onChangeText={onEmailChange}
+        style={styles.input}
+        editable={!busy}
+      />
+      <Input
+        variant="unstyled"
+        accessibilityLabel="Password"
+        autoComplete={isSignUp ? "new-password" : "password"}
+        secureTextEntry
+        placeholder="Password"
+        value={password}
+        onChangeText={onPasswordChange}
+        style={styles.input}
+        editable={!busy}
+      />
+      {isSignUp ? (
+        <Input
+          variant="unstyled"
+          accessibilityLabel="Confirm password"
+          autoComplete="new-password"
+          secureTextEntry
+          placeholder="Confirm password"
+          value={confirmPassword}
+          onChangeText={onConfirmPasswordChange}
+          style={styles.input}
+          editable={!busy}
+        />
+      ) : null}
+      <Button
+        loading={busy}
+        theme="patient"
+        style={onboardingButtonStyles.button}
+        labelStyle={onboardingButtonStyles.label}
+        rightIcon={
+          <Text variant="button" style={onboardingButtonStyles.label}>
+            ›
+          </Text>
+        }
+        label={submitLabel}
+        disabled={isSubmitDisabled}
+        onPress={onSubmit}
+      />
+      <Pressable
+        accessibilityRole="button"
+        onPress={onSwitchEmailMode}
+        disabled={busy}
+      >
+        <Text variant="body" style={styles.switchText}>
+          {isSignUp
+            ? "Already have an account? Sign in"
+            : "New here? Create an account"}
+        </Text>
+      </Pressable>
+    </>
+  );
+}
+
+export function DevEmailAuthForm(props: DevEmailAuthFormProps) {
+  if (props.confirmationPending) {
+    return (
+      <View style={styles.form}>
+        <Text variant="cardHeading" style={styles.formHeading}>
+          Check your email
+        </Text>
+        <EmailConfirmationNotice
+          email={props.email}
+          onBackToSignIn={props.onBackToSignIn}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.form}>
+      <Text variant="cardHeading" style={styles.formHeading}>
+        {props.emailMode === "signup"
+          ? "Create your account"
+          : "Sign in with email"}
+      </Text>
+      <EmailCredentialsForm {...props} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  form: {
+    width: "100%",
+    gap: 12,
+    marginTop: 8,
+  },
+  formHeading: {
+    fontSize: 16,
+    fontFamily: fontFamilies.bold,
+    color: colors.patient.text,
+    marginBottom: 4,
+  },
+  info: {
+    fontSize: 13,
+    fontFamily: fontFamilies.regular,
+    color: colors.patient.textSecondary,
+    lineHeight: 18,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    fontFamily: fontFamilies.regular,
+    color: colors.patient.text,
+    backgroundColor: "#FAFAFA",
+  },
+  error: {
+    fontSize: 13,
+    fontFamily: fontFamilies.regular,
+    color: "#DC2626",
+  },
+  switchText: {
+    fontSize: 13,
+    fontFamily: fontFamilies.medium,
+    color: colors.patient.primaryDark,
+    textAlign: "center",
+    marginTop: 6,
+  },
+});

@@ -1,65 +1,54 @@
-import { useEffect, useRef, useState } from "react";
+import type { FeedbackBottomSheetProps } from "../types/feedback-bottom-sheet";
+
+export type { FeedbackBottomSheetProps } from "../types/feedback-bottom-sheet";
+
+import { AppText as Text } from "@startup/mobile-ui";
+import { ModalSurface } from "@startup/mobile-ui";
+import { useState } from "react";
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
 } from "react-native";
 import { CheckCircle2 } from "lucide-react-native";
-import { router } from "expo-router";
-import { colors, fontFamilies, radius, spacing } from "@startup/design-tokens";
+import { colors, fontFamilies, radius } from "@startup/design-tokens";
 import { Button, TextArea } from "@startup/mobile-ui";
-
-type FeedbackBottomSheetProps = {
-  visible: boolean;
-  onClose: () => void;
-  onSubmitSuccess?: () => void;
-};
 
 export default function FeedbackBottomSheet({
   visible,
   onClose,
-  onSubmitSuccess,
+  onSubmit,
 }: FeedbackBottomSheetProps) {
   const [feedback, setFeedback] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
+  const handleClose = () => {
+    setSubmitted(false);
+    setFeedback("");
+    onClose();
+  };
 
-  useEffect(() => {
-    if (!visible) {
-      if (timerRef.current) clearTimeout(timerRef.current);
-      setSubmitted(false);
-      setFeedback("");
+  const submit = async () => {
+    if (submitting || !feedback.trim()) return;
+    setSubmitting(true);
+    try {
+      await onSubmit(feedback.trim());
+      setSubmitted(true);
+    } catch {
+      // Keep the form open so the patient can retry after the route's error toast.
+    } finally {
+      setSubmitting(false);
     }
-  }, [visible]);
-
-  const submit = () => {
-    setSubmitted(true);
-    timerRef.current = setTimeout(() => {
-      setSubmitted(false);
-      setFeedback("");
-      onClose();
-      if (onSubmitSuccess) {
-        onSubmitSuccess();
-      } else {
-        router.replace("/");
-      }
-    }, 3000);
   };
 
   return (
-    <Modal
+    <ModalSurface
+      layout="custom"
       animationType="slide"
-      onRequestClose={submitted ? undefined : onClose}
+      onClose={submitted ? undefined : handleClose}
       statusBarTranslucent
       transparent
       visible={visible}
@@ -73,7 +62,7 @@ export default function FeedbackBottomSheet({
           accessibilityLabel="Close feedback"
           accessibilityRole="button"
           disabled={submitted}
-          onPress={onClose}
+          onPress={handleClose}
           style={styles.backdrop}
         />
         <View style={styles.sheet}>
@@ -81,15 +70,26 @@ export default function FeedbackBottomSheet({
             <View style={styles.thankYouContainer}>
               <View style={styles.successHaloOuter}>
                 <View style={styles.successHaloInner}>
-                  <CheckCircle2 color={colors.white} size={44} strokeWidth={2.5} />
+                  <CheckCircle2
+                    color={colors.white}
+                    size={44}
+                    strokeWidth={2.5}
+                  />
                 </View>
               </View>
-              <Text style={styles.thankYouTitle}>Thank you!</Text>
+              <Text variant="cardHeading" style={styles.thankYouTitle}>
+                Thank you!
+              </Text>
+              <Button
+                label="Done"
+                onPress={handleClose}
+                style={styles.submitButton}
+              />
             </View>
           ) : (
             <>
               <View style={styles.handle} />
-              <Text style={styles.title}>
+              <Text variant="cardHeading" style={styles.title}>
                 Tell us what went well and what we can improve.
               </Text>
               <TextArea
@@ -100,16 +100,17 @@ export default function FeedbackBottomSheet({
                 style={styles.textArea}
               />
               <Button
-                disabled={!feedback.trim()}
+                loading={submitting}
+                disabled={!feedback.trim() || submitting}
                 label="Submit"
-                onPress={submit}
+                onPress={() => void submit()}
                 style={styles.submitButton}
               />
             </>
           )}
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </ModalSurface>
   );
 }
 
@@ -117,7 +118,7 @@ const styles = StyleSheet.create({
   modal: { flex: 1, justifyContent: "flex-end" },
   backdrop: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: "rgba(5, 28, 31, 0.42)",
+    backgroundColor: colors.ui.overlay,
   },
   sheet: {
     gap: 12,

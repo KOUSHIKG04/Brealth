@@ -1,60 +1,80 @@
+import { OPTION_HEIGHT } from "../utils/dropdownConstants";
+import { calculateMenuPosition } from "../utils/dropdownPosition";
+import type { TriggerPosition } from "../types/dropdown";
+import { AppText as Text } from "./AppText";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import { useRef, useState, type ReactNode } from "react";
+import { useReadableTypography } from "../theme/MobileTypographyProvider";
+import { memo, useCallback, useRef, useState } from "react";
 import {
-  Modal,
+  FlatList,
   Pressable,
-  ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
 } from "react-native";
 import { Check, ChevronDown } from "lucide-react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
-import { type AppTheme } from "../utils/appTheme";
+import { ModalSurface } from "./ModalSurface";
+import type { DropdownOption, DropdownProps } from "../types/dropdown";
 
-export type DropdownOption = {
-  label: string;
-  value: string;
-  disabled?: boolean;
-};
+export type { DropdownOption, DropdownProps } from "../types/dropdown";
 
-export type DropdownProps = {
-  options: readonly DropdownOption[];
-  value?: string;
-  onValueChange: (value: string) => void;
-  label?: string;
-  placeholder?: string;
-  triggerLabel?: string;
-  prefix?: string;
-  theme?: AppTheme;
-  disabled?: boolean;
-  error?: string;
-  maxVisibleOptions?: number;
-  containerStyle?: StyleProp<ViewStyle>;
-  triggerStyle?: StyleProp<ViewStyle>;
-  valueStyle?: StyleProp<TextStyle>;
-  accessibilityLabel?: string;
-  leftIcon?: ReactNode;
-  rightIcon?: ReactNode;
-  chevronSize?: number;
-  chevronColor?: string;
-  menuWidth?: number;
-  menuStyle?: StyleProp<ViewStyle>;
-};
-
-type TriggerPosition = {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-};
-
-const OPTION_HEIGHT = 44;
-const MENU_GAP = 4;
+const DropdownOptionRow = memo(function DropdownOptionRow({
+  option,
+  isSelected,
+  softColor,
+  textColor,
+  primaryTextColor,
+  primaryColor,
+  onSelect,
+}: {
+  option: DropdownOption;
+  isSelected: boolean;
+  softColor: string;
+  textColor: string;
+  primaryTextColor: string;
+  primaryColor: string;
+  onSelect: (option: DropdownOption) => void;
+}) {
+  const handlePress = () => onSelect(option);
+  return (
+    <Pressable
+      accessibilityLabel={option.label}
+      accessibilityRole="radio"
+      accessibilityState={{
+        selected: isSelected,
+        disabled: option.disabled === true,
+      }}
+      disabled={option.disabled}
+      onPress={handlePress}
+      style={({ pressed }) => [
+        styles.option,
+        isSelected && { backgroundColor: softColor },
+        pressed && !option.disabled && styles.optionPressed,
+        option.disabled && styles.optionDisabled,
+      ]}
+    >
+      <Text
+        variant="body"
+        numberOfLines={1}
+        style={[
+          styles.optionLabel,
+          { color: textColor },
+          isSelected && [
+            styles.optionLabelSelected,
+            { color: primaryTextColor },
+          ],
+          option.disabled && styles.disabledText,
+        ]}
+      >
+        {option.label}
+      </Text>
+      {isSelected ? (
+        <Check color={primaryColor} size={16} strokeWidth={2.4} />
+      ) : null}
+    </Pressable>
+  );
+});
 
 export function Dropdown({
   options,
@@ -71,6 +91,7 @@ export function Dropdown({
   containerStyle,
   triggerStyle,
   valueStyle,
+  compact = false,
   accessibilityLabel,
   leftIcon,
   rightIcon,
@@ -78,12 +99,15 @@ export function Dropdown({
   chevronColor,
   menuWidth,
   menuStyle,
+  backdropColor,
+  selectedOptionBackgroundColor,
 }: DropdownProps) {
   const triggerRef = useRef<View>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [triggerPosition, setTriggerPosition] = useState<TriggerPosition>();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const themeColors = useMobileTheme(theme);
+  const readable = useReadableTypography();
   const selectedOption = options.find((option) => option.value === value);
   const menuHeight =
     Math.min(options.length, maxVisibleOptions) * OPTION_HEIGHT + 12;
@@ -99,31 +123,45 @@ export function Dropdown({
 
   const closeMenu = () => setIsOpen(false);
 
-  const selectOption = (option: DropdownOption) => {
-    if (option.disabled) return;
-    onValueChange(option.value);
-    closeMenu();
-  };
+  const selectOption = useCallback(
+    (option: DropdownOption) => {
+      if (option.disabled) return;
+      onValueChange(option.value);
+      closeMenu();
+    },
+    [onValueChange]
+  );
 
-  const shouldOpenAbove = triggerPosition
-    ? triggerPosition.y + triggerPosition.height + MENU_GAP + menuHeight >
-      windowHeight
-    : false;
+  const { menuTop, menuLeft, targetWidth } = calculateMenuPosition({
+    triggerPosition,
+    menuHeight,
+    menuWidth,
+    windowWidth,
+    windowHeight,
+  });
 
-  const menuTop = triggerPosition
-    ? shouldOpenAbove
-      ? Math.max(MENU_GAP, triggerPosition.y - menuHeight - MENU_GAP)
-      : triggerPosition.y + triggerPosition.height + MENU_GAP
-    : 0;
-
-  const targetWidth = menuWidth ?? Math.max(triggerPosition?.width ?? 160, 160);
-  const idealLeft = triggerPosition
-    ? triggerPosition.x + triggerPosition.width / 2 > windowWidth / 2
-      ? triggerPosition.x + triggerPosition.width - targetWidth
-      : triggerPosition.x
-    : 0;
-  const maxLeft = Math.max(12, windowWidth - targetWidth - 12);
-  const menuLeft = Math.max(12, Math.min(idealLeft, maxLeft));
+  const renderOption = useCallback(
+    ({ item }: { item: DropdownOption }) => (
+      <DropdownOptionRow
+        option={item}
+        isSelected={item.value === value}
+        softColor={selectedOptionBackgroundColor ?? themeColors.soft}
+        textColor={themeColors.text}
+        primaryTextColor={themeColors.primaryText}
+        primaryColor={themeColors.primary}
+        onSelect={selectOption}
+      />
+    ),
+    [
+      value,
+      themeColors.soft,
+      selectedOptionBackgroundColor,
+      themeColors.text,
+      themeColors.primaryText,
+      themeColors.primary,
+      selectOption,
+    ]
+  );
 
   const displayValue =
     triggerLabel ??
@@ -133,7 +171,11 @@ export function Dropdown({
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? (
+        <Text variant="label" style={styles.label}>
+          {label}
+        </Text>
+      ) : null}
 
       <Pressable
         ref={triggerRef}
@@ -141,6 +183,7 @@ export function Dropdown({
         accessibilityRole="button"
         accessibilityState={{ disabled, expanded: isOpen }}
         disabled={disabled}
+        hitSlop={compact ? 6 : undefined}
         onPress={openMenu}
         style={({ pressed }) => [
           styles.trigger,
@@ -153,10 +196,12 @@ export function Dropdown({
           disabled ? styles.triggerDisabled : undefined,
           pressed && !disabled ? styles.triggerPressed : undefined,
           triggerStyle,
+          readable && !compact && { minHeight: 52 },
         ]}
       >
         {leftIcon ? <View style={styles.leftIcon}>{leftIcon}</View> : null}
         <Text
+          variant={compact ? "label" : "body"}
           numberOfLines={1}
           style={[
             styles.value,
@@ -185,11 +230,16 @@ export function Dropdown({
         )}
       </Pressable>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text variant="label" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
 
-      <Modal
+      <ModalSurface
+        layout="custom"
         animationType="fade"
-        onRequestClose={closeMenu}
+        onClose={closeMenu}
         statusBarTranslucent
         transparent
         visible={isOpen && Boolean(triggerPosition)}
@@ -198,7 +248,10 @@ export function Dropdown({
           <Pressable
             accessibilityLabel="Close options"
             onPress={closeMenu}
-            style={styles.backdrop}
+            style={[
+              styles.backdrop,
+              backdropColor ? { backgroundColor: backdropColor } : undefined,
+            ]}
           />
 
           {triggerPosition ? (
@@ -215,63 +268,19 @@ export function Dropdown({
                 menuStyle,
               ]}
             >
-              <ScrollView
+              <FlatList
+                data={options as DropdownOption[]}
+                keyExtractor={(item) => item.value}
                 bounces={false}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.menuContent}
-              >
-                {options.map((option) => {
-                  const isSelected = option.value === value;
-
-                  return (
-                    <Pressable
-                      key={option.value}
-                      accessibilityLabel={option.label}
-                      accessibilityRole="radio"
-                      accessibilityState={{
-                        selected: isSelected,
-                        disabled: option.disabled === true,
-                      }}
-                      disabled={option.disabled}
-                      onPress={() => selectOption(option)}
-                      style={({ pressed }) => [
-                        styles.option,
-                        isSelected && { backgroundColor: themeColors.soft },
-                        pressed && !option.disabled && styles.optionPressed,
-                        option.disabled && styles.optionDisabled,
-                      ]}
-                    >
-                      <Text
-                        numberOfLines={1}
-                        style={[
-                          styles.optionLabel,
-                          { color: themeColors.text },
-                          isSelected && [
-                            styles.optionLabelSelected,
-                            { color: themeColors.primaryText },
-                          ],
-                          option.disabled && styles.disabledText,
-                        ]}
-                      >
-                        {option.label}
-                      </Text>
-
-                      {isSelected ? (
-                        <Check
-                          color={themeColors.primary}
-                          size={16}
-                          strokeWidth={2.4}
-                        />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </ScrollView>
+                renderItem={renderOption}
+              />
             </View>
           ) : null}
         </View>
-      </Modal>
+      </ModalSurface>
     </View>
   );
 }
@@ -354,11 +363,7 @@ const styles = StyleSheet.create({
     borderColor: colors.ui.menuBorder,
     borderRadius: 14,
     backgroundColor: colors.white,
-    shadowColor: colors.ui.menuShadow,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    boxShadow: "0px 6px 16px rgba(5, 91, 86, 0.12)",
   },
   menuContent: {
     paddingVertical: 6,

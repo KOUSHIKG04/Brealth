@@ -1,31 +1,49 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import {
-  AlertCircle,
-  Ambulance,
-  ArrowRight,
-  Phone,
-  PhoneCall,
-  Siren,
-  Star,
-} from "lucide-react-native";
-import { colors, fontFamilies } from "@startup/design-tokens";
-import { SafeAreaView } from "@startup/mobile-ui";
+import { useSosEmergency } from "../hooks/useSosEmergency";
+import { Hotline } from "../components/Hotline";
+import { ActivatingSos } from "../components/ActivatingSos";
+import { SosCancelSheet } from "../components/SosCancelSheet";
+import { s } from "../components/SosEmergency.styles";
+import { sosTripStatusLabels } from "../utils/sosConstants";
+import { sosDistanceLabel } from "../utils/sosDistance";
 import type { SosEmergencyScreenProps } from "../types/sos";
+import { AppText as Text, Loader, SafeAreaView } from "@startup/mobile-ui";
 
-export function SosEmergencyScreen({
-  onCancel,
-  onCallEmergency,
-}: SosEmergencyScreenProps) {
-  const [dispatched, setDispatched] = useState(false);
+import { Linking, Pressable, ScrollView, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import { ArrowRight, ChevronDown, Siren, Star } from "lucide-react-native";
+import { colors } from "@startup/design-tokens";
 
-  useEffect(() => {
-    const timer = setTimeout(() => setDispatched(true), 2200);
-    return () => clearTimeout(timer);
-  }, []);
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
 
-  if (!dispatched) return <ActivatingSos />;
+export function SosEmergencyScreen({ onClose }: SosEmergencyScreenProps) {
+  const sos = useSosEmergency({ onClose });
+  if (sos.phase !== "live")
+    return (
+      <ActivatingSos
+        phase={sos.phase}
+        failure={sos.failure}
+        onCancel={sos.leaveBeforeSending}
+        onRetry={sos.retry}
+      />
+    );
+
+  const booking = sos.booking;
+  const status = booking?.status;
+  const assigned = status === "assigned";
+  const searching =
+    !booking || status === "searching" || status === "awaiting_location";
+  const ended =
+    status === "fulfilled" ||
+    status === "cancelled" ||
+    status === "unfulfilled";
+  const driverDistance = sosDistanceLabel(sos.tracking, sos.pickup);
 
   return (
     <LinearGradient colors={["#3A0508", "#1A0102"]} style={s.screen}>
@@ -34,177 +52,212 @@ export function SosEmergencyScreen({
           <View style={s.sirenCircle}>
             <Siren color="#FFFFFF" size={20} />
           </View>
-          <Text style={s.headerTitle}>EMERGENCY ACTIVATED</Text>
+          <Text
+            variant="cardHeading"
+            accessibilityRole="header"
+            style={s.headerTitle}
+          >
+            EMERGENCY ACTIVATED
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Minimise. Your SOS stays active"
+            hitSlop={8}
+            onPress={onClose}
+            style={({ pressed }) => [s.minimise, pressed && s.pressed]}
+          >
+            <ChevronDown color="rgba(255,255,255,0.8)" size={22} />
+          </Pressable>
         </View>
 
-        <View style={s.content}>
-          <View style={s.driverCard}>
-            <View style={s.driverTop}>
-              <View style={s.avatar}><Text style={s.avatarText}>SN</Text></View>
-              <View style={s.driverCopy}>
-                <Text style={s.driverName}>Suresh Nair</Text>
-                <Text style={s.driverMeta}>KA02CD5678 • BLS Ambulance</Text>
+        <ScrollView contentContainerStyle={s.content}>
+          <View style={s.driverCard} accessibilityLiveRegion="polite">
+            {assigned && booking?.driver_name ? (
+              <>
+                <View style={s.driverTop}>
+                  <View style={s.avatar}>
+                    <Text variant="label" style={s.avatarText}>
+                      {initials(booking.driver_name)}
+                    </Text>
+                  </View>
+                  <View style={s.driverCopy}>
+                    <Text variant="bodyEmphasis" style={s.driverName}>
+                      {booking.driver_name}
+                    </Text>
+                    <Text variant="caption" style={s.driverMeta}>
+                      {[
+                        booking.vehicle_registration,
+                        `${booking.capability_code.toUpperCase()} ambulance`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  </View>
+                  {booking.driver_rating ? (
+                    <View style={s.rating}>
+                      <Star color={colors.patient.sos.dark} size={12} />
+                      <Text variant="labelSmall" style={s.ratingText}>
+                        {booking.driver_rating}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={s.etaRow}>
+                  <View style={s.etaCell}>
+                    <Text variant="caption" style={s.caption}>
+                      Distance
+                    </Text>
+                    <Text variant="bodyEmphasis" style={s.etaValue}>
+                      {driverDistance ?? "Locating driver"}
+                    </Text>
+                  </View>
+                  <View style={[s.etaCell, s.etaCellEnd]}>
+                    <Text variant="caption" style={s.caption}>
+                      Status
+                    </Text>
+                    <Text variant="bodyEmphasis" style={s.etaValue}>
+                      {booking.trip_status
+                        ? sosTripStatusLabels[booking.trip_status]
+                        : "Driver accepted"}
+                    </Text>
+                  </View>
+                </View>
+                {sos.pinVisible ? (
+                  <View style={s.pinBox}>
+                    <Text variant="caption" style={s.caption}>
+                      Completion PIN · give it to the driver at the hospital
+                    </Text>
+                    {sos.verificationPin.data ? (
+                      <Text
+                        variant="pageHeadline"
+                        accessibilityLabel="Four-digit completion PIN"
+                        style={s.pin}
+                      >
+                        {sos.verificationPin.data}
+                      </Text>
+                    ) : (
+                      <Loader theme="patient" style={{ minHeight: 36 }} />
+                    )}
+                  </View>
+                ) : null}
+              </>
+            ) : ended ? (
+              <View style={s.searchingRow}>
+                <Text variant="bodyEmphasis" style={s.driverName}>
+                  {status === "unfulfilled"
+                    ? "No ambulance accepted"
+                    : status === "fulfilled"
+                      ? "Trip completed"
+                      : "SOS cancelled"}
+                </Text>
+                <Text variant="bodySmall" style={s.driverMeta}>
+                  {status === "unfulfilled"
+                    ? "No nearby ambulance took this request. Call 108 now."
+                    : `Request ${booking?.public_code ?? ""}`}
+                </Text>
               </View>
-              <View style={s.rating}><Star color="#C0392B" size={11} /><Text style={s.ratingText}>4.6</Text></View>
-            </View>
-            <View style={s.etaRow}>
-              <View><Text style={s.caption}>DISTANCE</Text><Text style={s.etaValue}>5.1 km</Text></View>
-              <View><Text style={s.caption}>TRAFFIC ETA</Text><Text style={s.etaValue}>8 mins away</Text></View>
-            </View>
-            <DarkButton
-              label="Call Driver Now"
-              icon={<PhoneCall color="#FFFFFF" size={16} />}
-              onPress={() => void Linking.openURL("tel:9876543210")}
-            />
+            ) : (
+              <View style={s.searchingRow}>
+                <Loader theme="patient" style={{ minHeight: 32 }} />
+                <Text variant="bodyEmphasis" style={s.driverName}>
+                  Finding the nearest ambulance
+                </Text>
+                <Text variant="bodySmall" style={s.driverMeta}>
+                  Your location went to ambulances near you. The first driver to
+                  accept is assigned.
+                </Text>
+              </View>
+            )}
           </View>
 
-          <View style={s.hospitalCard}>
-            <Text style={s.hospitalBadge}>NEAREST EMERGENCY HOSPITAL</Text>
-            <Text style={s.hospitalName}>Victoria Government Hospital</Text>
-            <Text style={s.hospitalAddress}>
-              Ft. Victoria Rd, Shivajinagar, Bengaluru
-            </Text>
-            <View style={s.capacityPill}>
-              <View style={s.openDot} />
-              <Text style={s.capacityStrong}>ER Open</Text>
-              <Text style={s.capacityText}>•</Text>
-              <Text style={s.capacityText}>200 Beds Available</Text>
-              <Text style={s.capacityText}>•</Text>
-              <Text style={s.capacityText}>~1 min drive</Text>
-            </View>
-            <View style={s.hospitalActions}>
-              <DarkButton
-                compact
-                label="Call ER"
-                icon={<Phone color="#FFFFFF" size={14} />}
-                onPress={() => void Linking.openURL("tel:108")}
-              />
-              <Pressable style={s.directionButton}>
-                <ArrowRight color="#0C2434" size={15} />
-                <Text style={s.directionText}>Directions</Text>
+          {sos.hospital ? (
+            <View style={s.hospitalCard}>
+              <Text variant="labelSmall" style={s.hospitalBadge}>
+                Nearest registered hospital
+              </Text>
+              <Text variant="cardHeading" style={s.hospitalName}>
+                {sos.hospital.name}
+              </Text>
+              <Text variant="bodySmall" style={s.hospitalAddress}>
+                {sos.hospital.address}
+              </Text>
+              {sos.hospital.distance_meters !== null ? (
+                <View style={s.capacityPill}>
+                  <View style={s.openDot} />
+                  <Text variant="labelSmall" style={s.capacityStrong}>
+                    {(sos.hospital.distance_meters / 1000).toFixed(1)} km from
+                    you
+                  </Text>
+                </View>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Directions to ${sos.hospital.name}`}
+                onPress={() =>
+                  void Linking.openURL(
+                    `https://www.google.com/maps/dir/?api=1&destination=${sos.hospital!.latitude},${sos.hospital!.longitude}`
+                  )
+                }
+                style={({ pressed }) => [
+                  s.directionButton,
+                  pressed && s.pressed,
+                ]}
+              >
+                <ArrowRight color="#0C2434" size={16} />
+                <Text variant="button" style={s.directionText}>
+                  Directions
+                </Text>
               </Pressable>
             </View>
-          </View>
-
-          <View style={s.warning}>
-            <AlertCircle color="rgba(255,255,255,0.63)" size={16} />
-            <Text style={s.warningText}>
-              Emergency contacts will be updated automatically with your active
-              status, location details and hospital route map.
-            </Text>
-          </View>
-        </View>
+          ) : null}
+        </ScrollView>
 
         <View style={s.bottomActions}>
           <View style={s.hotlineRow}>
-            <Hotline label="Ambulance 108" onPress={() => void Linking.openURL("tel:108")} />
-            <Hotline label="Emergency 112" onPress={onCallEmergency} />
+            <Hotline
+              label="Ambulance 108"
+              onPress={() => void Linking.openURL("tel:108")}
+            />
+            <Hotline
+              label="Emergency 112"
+              onPress={() => void Linking.openURL("tel:112")}
+            />
           </View>
-          <Pressable onPress={onCancel} style={({ pressed }) => [s.cancel, pressed && s.pressed]}>
-            <Text style={s.cancelText}>I'm Safe — Cancel Emergency</Text>
-          </Pressable>
+          {searching && booking ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => sos.setCancelOpen(true)}
+              style={({ pressed }) => [s.cancel, pressed && s.pressed]}
+            >
+              <Text variant="button" style={s.cancelText}>
+                I’m safe — Cancel emergency
+              </Text>
+            </Pressable>
+          ) : assigned ? (
+            <Text variant="caption" style={s.footnote}>
+              A driver has accepted your SOS, so it can’t be cancelled in the
+              app. Call 108 if your situation changes.
+            </Text>
+          ) : ended ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={onClose}
+              style={({ pressed }) => [s.cancel, pressed && s.pressed]}
+            >
+              <Text variant="button" style={s.cancelText}>
+                Close
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </SafeAreaView>
+
+      <SosCancelSheet
+        visible={sos.cancelOpen}
+        cancelling={sos.cancel.isPending}
+        onConfirm={() => sos.cancel.mutate()}
+        onDismiss={() => sos.setCancelOpen(false)}
+      />
     </LinearGradient>
   );
 }
-
-function ActivatingSos() {
-  return (
-    <LinearGradient colors={["#F23F47", "#C9161D"]} style={s.activation}>
-      <View style={s.activationGraphic}>
-        <View style={s.activationOuter}>
-          <View style={s.activationInner}>
-            <Ambulance color="#FFFFFF" size={44} />
-          </View>
-        </View>
-      </View>
-      <Text style={s.activationTitle}>EMERGENCY ACTIVATED</Text>
-      <Text style={s.activationCopy}>Getting your precise location...</Text>
-    </LinearGradient>
-  );
-}
-
-function DarkButton({
-  label,
-  icon,
-  onPress,
-  compact,
-}: {
-  label: string;
-  icon: ReactNode;
-  onPress: () => void;
-  compact?: boolean;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        s.darkButton,
-        compact && s.darkButtonCompact,
-        pressed && s.pressed,
-      ]}
-    >
-      {icon}
-      <Text style={s.darkButtonText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-function Hotline({ label, onPress }: { label: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [s.hotline, pressed && s.pressed]}>
-      <Text style={s.hotlineText}>{label}</Text>
-    </Pressable>
-  );
-}
-
-const s = StyleSheet.create({
-  screen: { flex: 1, borderWidth: 1, borderColor: "rgba(255,255,255,0.06)" },
-  safeArea: { flex: 1, justifyContent: "space-between" },
-  pressed: { opacity: 0.72 },
-  header: { height: 63, flexDirection: "row", alignItems: "center", paddingHorizontal: 66, gap: 16 },
-  sirenCircle: { width: 36, height: 36, alignItems: "center", justifyContent: "center", borderRadius: 18, backgroundColor: "#EF3B43" },
-  headerTitle: { color: "#FFFFFF", fontFamily: fontFamilies.bold, fontSize: 16, fontWeight: "700" },
-  content: { flex: 1, gap: 23, paddingHorizontal: 20, paddingTop: 16 },
-  driverCard: { height: 209, padding: 16, borderRadius: 16, backgroundColor: "#FFFFFF" },
-  driverTop: { height: 54, flexDirection: "row", alignItems: "center", gap: 12, paddingHorizontal: 7 },
-  avatar: { width: 40, height: 40, alignItems: "center", justifyContent: "center", borderRadius: 20, backgroundColor: "#EEF4F5" },
-  avatarText: { color: "#0C2434", fontFamily: fontFamilies.semibold, fontSize: 14 },
-  driverCopy: { flex: 1, gap: 3 },
-  driverName: { color: "#0C2434", fontFamily: fontFamilies.bold, fontSize: 14 },
-  driverMeta: { color: "#71818F", fontFamily: fontFamilies.regular, fontSize: 12 },
-  rating: { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 6, paddingVertical: 3, borderRadius: 6, backgroundColor: "#EEF4F5" },
-  ratingText: { color: "#0C2434", fontFamily: fontFamilies.semibold, fontSize: 11 },
-  etaRow: { height: 55, flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 7 },
-  caption: { color: "#71818F", fontFamily: fontFamilies.regular, fontSize: 11 },
-  etaValue: { marginTop: 3, color: "#0C2434", fontFamily: fontFamilies.bold, fontSize: 14 },
-  darkButton: { height: 44, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderRadius: 10, backgroundColor: "#07595D" },
-  darkButtonCompact: { flex: 1, height: 40 },
-  darkButtonText: { color: "#FFFFFF", fontFamily: fontFamilies.bold, fontSize: 13 },
-  hospitalCard: { height: 216, paddingHorizontal: 16, paddingTop: 27, borderRadius: 16, backgroundColor: "#FFFFFF" },
-  hospitalBadge: { marginLeft: 9, color: "#C0392B", fontFamily: fontFamilies.bold, fontSize: 10, letterSpacing: 0.5 },
-  hospitalName: { marginTop: 16, marginLeft: 9, color: "#0C2434", fontFamily: fontFamilies.bold, fontSize: 15 },
-  hospitalAddress: { marginTop: 5, marginLeft: 9, color: "#71818F", fontFamily: fontFamilies.regular, fontSize: 12 },
-  capacityPill: { height: 32, flexDirection: "row", alignItems: "center", gap: 7, marginTop: 17, paddingHorizontal: 12, borderRadius: 12, backgroundColor: "#FDF2F2" },
-  openDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#EF3B43" },
-  capacityStrong: { color: "#0C2434", fontFamily: fontFamilies.semibold, fontSize: 12 },
-  capacityText: { color: "#71818F", fontFamily: fontFamilies.regular, fontSize: 11 },
-  hospitalActions: { flexDirection: "row", gap: 9, marginTop: 17 },
-  directionButton: { flex: 1, height: 40, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8, borderWidth: 1, borderColor: "#D7E3E5", borderRadius: 10 },
-  directionText: { color: "#0C2434", fontFamily: fontFamilies.bold, fontSize: 13 },
-  warning: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingHorizontal: 10 },
-  warningText: { flex: 1, color: "rgba(255,255,255,0.63)", fontFamily: fontFamilies.regular, fontSize: 11, lineHeight: 16 },
-  bottomActions: { gap: 16, paddingHorizontal: 20, paddingBottom: 16 },
-  hotlineRow: { flexDirection: "row", gap: 12 },
-  hotline: { flex: 1, height: 44, alignItems: "center", justifyContent: "center", borderRadius: 14, backgroundColor: "#EF3B43" },
-  hotlineText: { color: "#FFFFFF", fontFamily: fontFamilies.semibold, fontSize: 12 },
-  cancel: { height: 48, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#C0392B", borderRadius: 12 },
-  cancelText: { color: "#C0392B", fontFamily: fontFamilies.bold, fontSize: 14 },
-  activation: { flex: 1, alignItems: "center", paddingTop: 107 },
-  activationGraphic: { width: 120, height: 120, alignItems: "center", justifyContent: "center" },
-  activationOuter: { width: 120, height: 120, alignItems: "center", justifyContent: "center", borderRadius: 60, backgroundColor: "rgba(255,255,255,0.08)" },
-  activationInner: { width: 92, height: 90, alignItems: "center", justifyContent: "center", borderRadius: 45, backgroundColor: "rgba(255,255,255,0.13)" },
-  activationTitle: { marginTop: 80, color: colors.white, fontFamily: fontFamilies.bold, fontSize: 24, fontWeight: "800", letterSpacing: 0.5, textAlign: "center" },
-  activationCopy: { marginTop: 16, color: "rgba(255,255,255,0.8)", fontFamily: fontFamilies.regular, fontSize: 15, lineHeight: 22, textAlign: "center" },
-});

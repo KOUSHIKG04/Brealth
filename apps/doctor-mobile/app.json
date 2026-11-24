@@ -25,6 +25,40 @@
     "scheme": "doctor-mobile",
     "plugins": [
       "expo-router",
+      "expo-maps",
+      "expo-notifications",
+      [
+        "@react-native-community/datetimepicker",
+        {
+          "android": {
+            "datePicker": {
+              "colorAccent": { "light": "#008877" },
+              "colorControlActivated": { "light": "#008877" }
+            }
+          }
+        }
+      ],
+      [
+        "@react-native-community/datetimepicker",
+        {
+          "android": {
+            "datePicker": {
+              "colorAccent": { "light": "#008577" },
+              "colorControlActivated": { "light": "#008577" }
+            }
+          }
+        }
+      ],
+      [
+        "expo-image-picker",
+        { "photosPermission": "Allow Clinzo Doctor to select a profile photo." }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Doctor to capture your clinic location during profile setup."
+        }
+      ],
       [
         "expo-camera",
         {
@@ -32,7 +66,9 @@
           "cameraPermission": "Allow Doctor to scan a patient QR code."
         }
       ],
-      "expo-localization"
+      "expo-localization",
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc"
     ]
   }
 }

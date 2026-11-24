@@ -1,18 +1,20 @@
 "use client";
 
-import * as React from "react";
+import { Fragment, useEffect, useRef } from "react";
+import type { DisplayTableRow } from "../types/dataTable";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useDataTable } from "../hooks/use-data-table";
+import type { DataTableProps } from "../types/dataTable";
+import { flexRender } from "@tanstack/react-table";
 import {
-  type ColumnDef,
-  type SortingState,
-  type PaginationState,
-  type OnChangeFn,
-  flexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useReactTable,
-} from "@tanstack/react-table";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+} from "lucide-react";
 import { cn } from "cn";
 import {
   Table,
@@ -25,29 +27,7 @@ import {
 import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 
-export interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
-  data: TData[];
-  isLoading?: boolean;
-  loadingRowCount?: number;
-  emptyState?: React.ReactNode;
-  emptyMessage?: string;
-  className?: string;
-  // Controlled pagination
-  pageCount?: number;
-  rowCount?: number;
-  pagination?: PaginationState;
-  onPaginationChange?: OnChangeFn<PaginationState>;
-  manualPagination?: boolean;
-  // Controlled sorting
-  sorting?: SortingState;
-  onSortingChange?: OnChangeFn<SortingState>;
-  manualSorting?: boolean;
-  // Row click
-  onRowClick?: (row: TData) => void;
-  // Header / Footer slot
-  hidePagination?: boolean;
-}
+export type { DataTableProps } from "../types/dataTable";
 
 export function DataTable<TData, TValue>({
   columns,
@@ -57,6 +37,11 @@ export function DataTable<TData, TValue>({
   emptyState,
   emptyMessage = "No results found.",
   className,
+  tableClassName,
+  cellClassName,
+  bare = false,
+  enableColumnResizing = false,
+  getRowId,
   pageCount,
   rowCount,
   pagination,
@@ -67,46 +52,88 @@ export function DataTable<TData, TValue>({
   manualSorting = false,
   onRowClick,
   hidePagination = false,
+  groupBy,
 }: DataTableProps<TData, TValue>) {
-  const [internalSorting, setInternalSorting] = React.useState<SortingState>([]);
-  const [internalPagination, setInternalPagination] = React.useState<PaginationState>({
-    pageIndex: 0,
-    pageSize: 10,
-  });
-
-  const isSortingControlled = sorting !== undefined && onSortingChange !== undefined;
-  const activeSorting = isSortingControlled ? sorting : internalSorting;
-  const activeSetSorting = isSortingControlled ? onSortingChange : setInternalSorting;
-
-  const isPaginationControlled = pagination !== undefined && onPaginationChange !== undefined;
-  const activePagination = isPaginationControlled ? pagination : internalPagination;
-  const activeSetPagination = isPaginationControlled ? onPaginationChange : setInternalPagination;
-
-  const table = useReactTable({
-    data,
+  const table = useDataTable({
     columns,
+    data,
     pageCount,
     rowCount,
-    state: {
-      sorting: activeSorting,
-      pagination: activePagination,
-    },
+    pagination,
+    onPaginationChange,
     manualPagination,
+    sorting,
+    onSortingChange,
     manualSorting,
-    onSortingChange: activeSetSorting,
-    onPaginationChange: activeSetPagination,
-    getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: manualPagination ? undefined : getPaginationRowModel(),
-    getSortedRowModel: manualSorting ? undefined : getSortedRowModel(),
+    getRowId,
+    enableColumnResizing,
   });
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fitted = useRef(false);
+  useEffect(() => {
+    if (!enableColumnResizing || !containerRef.current) return;
+    const fit = (width: number) => {
+      if (width <= 0 || fitted.current) return;
+      fitted.current = true;
+      const columns = table.getVisibleLeafColumns();
+      const total = table.getTotalSize();
+      if (width <= total) return;
+      table.setColumnSizing((previous) =>
+        Object.keys(previous).length
+          ? previous
+          : Object.fromEntries(
+              columns.map((column) => [
+                column.id,
+                Math.min(
+                  column.columnDef.maxSize ?? 640,
+                  Math.round((column.getSize() * width) / total)
+                ),
+              ])
+            )
+      );
+    };
+    fit(containerRef.current.clientWidth);
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) =>
+      fit(entries[0].contentRect.width)
+    );
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [enableColumnResizing, table]);
+
   return (
-    <div className={cn("w-full space-y-3", className)}>
-      <div className="rounded-xl border border-[#e2e8f0] bg-white overflow-hidden shadow-2xs">
-        <Table className="w-full text-[13px]">
-          <TableHeader className="bg-[#f8fafc] border-b border-[#e2e8f0]">
+    <div className={cn("w-full min-w-0 space-y-3", className)}>
+      <div
+        ref={containerRef}
+        className={cn(
+          "overflow-hidden",
+          !bare && "border-border bg-card rounded-xl border shadow-2xs"
+        )}
+      >
+        <Table
+          className={cn(
+            "w-full text-sm",
+            tableClassName,
+            enableColumnResizing && "min-w-0 table-fixed"
+          )}
+          style={
+            enableColumnResizing ? { width: table.getTotalSize() } : undefined
+          }
+        >
+          {enableColumnResizing ? (
+            <colgroup>
+              {table.getVisibleLeafColumns().map((column) => (
+                <col key={column.id} style={{ width: column.getSize() }} />
+              ))}
+            </colgroup>
+          ) : null}
+          <TableHeader className="border-border bg-background border-b">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="hover:bg-transparent border-[#e2e8f0]">
+              <TableRow
+                key={headerGroup.id}
+                className="border-border hover:bg-transparent"
+              >
                 {headerGroup.headers.map((header) => {
                   const canSort = header.column.getCanSort();
                   const isSorted = header.column.getIsSorted();
@@ -114,26 +141,124 @@ export function DataTable<TData, TValue>({
                   return (
                     <TableHead
                       key={header.id}
-                      className="text-[#64748b] text-[11px] font-bold uppercase tracking-wider py-3 px-4"
-                    >
-                      {header.isPlaceholder ? null : canSort ? (
-                        <button
-                          type="button"
-                          onClick={header.column.getToggleSortingHandler()}
-                          className="flex items-center gap-1.5 hover:text-[#0f172a] transition-colors -ml-1 px-1 py-0.5 rounded cursor-pointer select-none"
-                        >
-                          <span>{flexRender(header.column.columnDef.header, header.getContext())}</span>
-                          {isSorted === "asc" ? (
-                            <ArrowUp className="size-3 text-[#07595d]" />
-                          ) : isSorted === "desc" ? (
-                            <ArrowDown className="size-3 text-[#07595d]" />
-                          ) : (
-                            <ArrowUpDown className="size-3 opacity-40 hover:opacity-100" />
-                          )}
-                        </button>
-                      ) : (
-                        flexRender(header.column.columnDef.header, header.getContext())
+                      className={cn(
+                        "text-muted-foreground relative px-4 py-3 text-xs",
+                        enableColumnResizing && "overflow-hidden",
+                        enableColumnResizing
+                          ? "font-medium whitespace-nowrap"
+                          : "font-bold tracking-wider uppercase"
                       )}
+                    >
+                      <div className="flex min-w-0 items-center gap-1.5 pr-2">
+                        {enableColumnResizing &&
+                        !header.isPlaceholder &&
+                        header.column.getCanResize() ? (
+                          <button
+                            type="button"
+                            role="separator"
+                            aria-orientation="vertical"
+                            aria-label={
+                              "Resize " +
+                              (typeof header.column.columnDef.header ===
+                              "string"
+                                ? header.column.columnDef.header
+                                : header.column.id) +
+                              " column"
+                            }
+                            aria-valuenow={header.column.getSize()}
+                            aria-valuemin={
+                              header.column.columnDef.minSize ?? 80
+                            }
+                            aria-valuemax={
+                              header.column.columnDef.maxSize ?? 640
+                            }
+                            title="Slide to resize; double-click to reset"
+                            className={cn(
+                              "hover:after:bg-primary focus-visible:ring-ring after:bg-border absolute inset-y-0 right-0 z-10 w-3 cursor-col-resize touch-none select-none after:absolute after:inset-y-0 after:right-0 after:w-px focus-visible:ring-2",
+                              header.column.getIsResizing() &&
+                                "after:bg-primary"
+                            )}
+                            onMouseDown={(event) => {
+                              event.stopPropagation();
+                              header.getResizeHandler()(event);
+                            }}
+                            onTouchStart={(event) => {
+                              event.stopPropagation();
+                              header.getResizeHandler()(event);
+                            }}
+                            onClick={(event) => event.stopPropagation()}
+                            onDoubleClick={() => header.column.resetSize()}
+                            onKeyDown={(event) => {
+                              const size = header.column.getSize(),
+                                min = header.column.columnDef.minSize ?? 80,
+                                max = header.column.columnDef.maxSize ?? 640;
+                              const next =
+                                event.key === "ArrowLeft"
+                                  ? size - 16
+                                  : event.key === "ArrowRight"
+                                    ? size + 16
+                                    : event.key === "Home"
+                                      ? min
+                                      : event.key === "End"
+                                        ? max
+                                        : null;
+                              if (next === null) return;
+                              event.preventDefault();
+                              event.stopPropagation();
+                              table.setColumnSizing((previous) => ({
+                                ...previous,
+                                [header.column.id]: Math.max(
+                                  min,
+                                  Math.min(max, next)
+                                ),
+                              }));
+                            }}
+                          />
+                        ) : null}
+                        {header.isPlaceholder ? null : canSort ? (
+                          <button
+                            type="button"
+                            onClick={header.column.getToggleSortingHandler()}
+                            className="hover:text-foreground -ml-1 flex min-w-0 cursor-pointer items-center gap-1.5 rounded px-1 py-0.5 transition-colors select-none"
+                          >
+                            <span
+                              className="truncate"
+                              title={
+                                typeof header.column.columnDef.header ===
+                                "string"
+                                  ? header.column.columnDef.header
+                                  : undefined
+                              }
+                            >
+                              {flexRender(
+                                header.column.columnDef.header,
+                                header.getContext()
+                              )}
+                            </span>
+                            {isSorted === "asc" ? (
+                              <ArrowUp className="text-primary size-3" />
+                            ) : isSorted === "desc" ? (
+                              <ArrowDown className="text-primary size-3" />
+                            ) : (
+                              <ArrowUpDown className="size-3 opacity-40 hover:opacity-100" />
+                            )}
+                          </button>
+                        ) : (
+                          <span
+                            className="min-w-0 truncate"
+                            title={
+                              typeof header.column.columnDef.header === "string"
+                                ? header.column.columnDef.header
+                                : undefined
+                            }
+                          >
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                          </span>
+                        )}
+                      </div>
                     </TableHead>
                   );
                 })}
@@ -141,58 +266,94 @@ export function DataTable<TData, TValue>({
             ))}
           </TableHeader>
 
-          <TableBody className="divide-y divide-[#e2e8f0]">
+          <TableBody className="divide-border divide-y">
             {isLoading ? (
               Array.from({ length: loadingRowCount }).map((_, rIdx) => (
-                <TableRow key={`skeleton-row-${rIdx}`} className="hover:bg-transparent">
+                <TableRow
+                  key={`skeleton-row-${rIdx}`}
+                  className="hover:bg-transparent"
+                >
                   {columns.map((_, cIdx) => (
-                    <TableCell key={`skeleton-cell-${cIdx}`} className="py-3.5 px-4">
-                      <Skeleton className="h-4 w-[75%] rounded bg-slate-100" />
+                    <TableCell
+                      key={`skeleton-cell-${cIdx}`}
+                      className="px-4 py-3.5"
+                    >
+                      <Skeleton className="bg-muted h-4 w-[75%] rounded" />
                     </TableCell>
                   ))}
                 </TableRow>
               ))
             ) : table.getRowModel().rows?.length ? (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  tabIndex={onRowClick ? 0 : undefined}
-                  role={onRowClick ? "button" : undefined}
-                  onClick={() => onRowClick?.(row.original)}
-                  onKeyDown={
-                    onRowClick
-                      ? (e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            onRowClick(row.original);
-                          }
-                        }
-                      : undefined
-                  }
-                  className={cn(
-                    "hover:bg-slate-50/70 transition-colors border-[#e2e8f0]",
-                    onRowClick && "cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#07595d]",
-                  )}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id} className="py-3 px-4 text-[#0f172a] align-middle">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  ))}
-                </TableRow>
-              ))
+              table.getRowModel().rows.map((row, index, rows) => {
+                const group = groupBy?.(row.original);
+                const previous =
+                  index > 0 ? groupBy?.(rows[index - 1].original) : undefined;
+                const startsGroup = group && group.key !== previous?.key;
+                return (
+                  <Fragment key={row.id}>
+                    {startsGroup ? (
+                      <TableRow className="bg-muted/60 hover:bg-muted/60">
+                        <TableCell
+                          colSpan={columns.length}
+                          className="text-foreground px-4 py-2 text-xs font-semibold"
+                        >
+                          {group.label}
+                        </TableCell>
+                      </TableRow>
+                    ) : null}
+                    <TableRow
+                      data-state={row.getIsSelected() && "selected"}
+                      tabIndex={onRowClick ? 0 : undefined}
+                      role={onRowClick ? "button" : undefined}
+                      onClick={() => onRowClick?.(row.original)}
+                      onKeyDown={
+                        onRowClick
+                          ? (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                onRowClick(row.original);
+                              }
+                            }
+                          : undefined
+                      }
+                      className={cn(
+                        "border-border hover:bg-muted/70 transition-colors",
+                        onRowClick &&
+                          "focus-visible:ring-primary focus-visible:ring-primary focus-visible:ring-offset-background cursor-pointer focus-visible:ring-1 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell) => (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            "text-foreground px-4 py-3 align-middle",
+                            enableColumnResizing && "overflow-hidden",
+                            cellClassName
+                          )}
+                        >
+                          {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                          )}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+                  </Fragment>
+                );
+              })
             ) : (
               <TableRow>
                 <TableCell
                   colSpan={columns.length}
-                  className="h-36 text-center text-[#64748b] py-8"
+                  className="text-muted-foreground h-36 py-8 text-center"
                 >
                   {emptyState ? (
                     emptyState
                   ) : (
                     <div className="flex flex-col items-center justify-center gap-1.5">
-                      <p className="text-[13px] font-medium text-[#475569]">{emptyMessage}</p>
+                      <p className="text-muted-foreground text-sm font-medium">
+                        {emptyMessage}
+                      </p>
                     </div>
                   )}
                 </TableCell>
@@ -204,27 +365,39 @@ export function DataTable<TData, TValue>({
 
       {/* Pagination Controls */}
       {!hidePagination && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-1 py-1 text-[12px] text-[#64748b]">
+        <div className="text-muted-foreground flex flex-col items-center justify-between gap-3 px-1 py-1 text-xs sm:flex-row">
           <div className="flex items-center gap-2">
             {(() => {
               const totalEntries = manualPagination
-                ? (rowCount !== undefined
-                    ? rowCount
-                    : (pageCount || 1) * table.getState().pagination.pageSize)
+                ? rowCount !== undefined
+                  ? rowCount
+                  : (pageCount || 1) * table.getState().pagination.pageSize
                 : data.length;
               const startEntry =
-                table.getState().pagination.pageIndex * table.getState().pagination.pageSize +
+                table.getState().pagination.pageIndex *
+                  table.getState().pagination.pageSize +
                 (table.getRowModel().rows.length > 0 ? 1 : 0);
               const endEntry = Math.min(
-                (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-                totalEntries,
+                (table.getState().pagination.pageIndex + 1) *
+                  table.getState().pagination.pageSize,
+                totalEntries
               );
 
               return (
                 <span>
-                  Showing <span className="font-semibold text-[#0f172a]">{startEntry}</span> to{" "}
-                  <span className="font-semibold text-[#0f172a]">{endEntry}</span> of{" "}
-                  <span className="font-semibold text-[#0f172a]">{totalEntries}</span> entries
+                  Showing{" "}
+                  <span className="text-foreground font-semibold">
+                    {startEntry}
+                  </span>{" "}
+                  to{" "}
+                  <span className="text-foreground font-semibold">
+                    {endEntry}
+                  </span>{" "}
+                  of{" "}
+                  <span className="text-foreground font-semibold">
+                    {totalEntries}
+                  </span>{" "}
+                  entries
                 </span>
               );
             })()}
@@ -236,7 +409,7 @@ export function DataTable<TData, TValue>({
               size="sm"
               onClick={() => table.setPageIndex(0)}
               disabled={!table.getCanPreviousPage()}
-              className="h-8 w-8 p-0 border-[#e2e8f0] text-[#475569] hover:bg-slate-50 disabled:opacity-40"
+              className="border-border text-muted-foreground hover:bg-muted h-8 w-8 p-0 disabled:opacity-40"
               title="First page"
             >
               <ChevronsLeft className="size-3.5" />
@@ -246,13 +419,13 @@ export function DataTable<TData, TValue>({
               size="sm"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
-              className="h-8 px-2.5 text-[12px] border-[#e2e8f0] text-[#475569] hover:bg-slate-50 disabled:opacity-40"
+              className="border-border text-muted-foreground hover:bg-muted h-8 px-2.5 text-xs disabled:opacity-40"
             >
-              <ChevronLeft className="size-3.5 mr-1" />
+              <ChevronLeft className="mr-1 size-3.5" />
               Previous
             </Button>
 
-            <span className="px-2 font-medium text-[#0f172a]">
+            <span className="text-foreground px-2 font-medium">
               Page {table.getState().pagination.pageIndex + 1} of{" "}
               {table.getPageCount() || 1}
             </span>
@@ -262,17 +435,17 @@ export function DataTable<TData, TValue>({
               size="sm"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
-              className="h-8 px-2.5 text-[12px] border-[#e2e8f0] text-[#475569] hover:bg-slate-50 disabled:opacity-40"
+              className="border-border text-muted-foreground hover:bg-muted h-8 px-2.5 text-xs disabled:opacity-40"
             >
               Next
-              <ChevronRight className="size-3.5 ml-1" />
+              <ChevronRight className="ml-1 size-3.5" />
             </Button>
             <Button
               variant="outline"
               size="sm"
               onClick={() => table.setPageIndex(table.getPageCount() - 1)}
               disabled={!table.getCanNextPage()}
-              className="h-8 w-8 p-0 border-[#e2e8f0] text-[#475569] hover:bg-slate-50 disabled:opacity-40"
+              className="border-border text-muted-foreground hover:bg-muted h-8 w-8 p-0 disabled:opacity-40"
               title="Last page"
             >
               <ChevronsRight className="size-3.5" />
@@ -282,4 +455,17 @@ export function DataTable<TData, TValue>({
       )}
     </div>
   );
+}
+
+export function createDisplayColumns(
+  headers: readonly (readonly [string, string, number?, number?])[]
+): ColumnDef<DisplayTableRow>[] {
+  return headers.map(([id, header, size, minSize], index) => ({
+    id,
+    header,
+    enableSorting: false,
+    ...(size === undefined ? {} : { size }),
+    ...(minSize === undefined ? {} : { minSize }),
+    cell: ({ row }) => row.original.cells[index],
+  }));
 }

@@ -1,40 +1,49 @@
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import type { LocationFieldsProps } from "../types/ambulance-booking-form";
+import { AppText as Text } from "@startup/mobile-ui";
+import { Input, Loader } from "@startup/mobile-ui";
+import { Pressable, StyleSheet, View } from "react-native";
 import { MapPin, Search, X } from "lucide-react-native";
 import { fontFamilies, shadows } from "@startup/design-tokens";
 
 export function LocationFields({
   destination,
+  pickupAddress,
+  locating,
   onChange,
   onFocus,
   onCurrentLocationPress,
-}: {
-  destination: string;
-  onChange: (value: string) => void;
-  onFocus: () => void;
-  onCurrentLocationPress: () => void;
-}) {
+}: LocationFieldsProps) {
   return (
     <View style={styles.locations}>
       <Pressable
         onPress={onCurrentLocationPress}
-        style={({ pressed }) => [styles.locationCard, pressed && styles.pressed]}
+        style={({ pressed }) => [
+          styles.locationCard,
+          pressed && styles.pressed,
+        ]}
         accessibilityRole="button"
         accessibilityLabel="Current location, tap to set pickup on map"
       >
         <View style={styles.pickupDot} />
-        <Text style={styles.locationText}>Current Location</Text>
-        <MapPin color="#008877" size={19} />
+        <Text
+          variant="body"
+          style={styles.locationText}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {pickupAddress || "Current Location"}
+        </Text>
+        {locating ? (
+          <Loader theme="patient" size="small" />
+        ) : (
+          <MapPin color="#008877" size={19} />
+        )}
       </Pressable>
 
       <View style={styles.locationCard}>
         <View style={styles.dropDot} />
-        <TextInput
+        <Input
+          variant="unstyled"
           value={destination}
           onChangeText={onChange}
           onFocus={onFocus}
@@ -58,8 +67,7 @@ const styles = StyleSheet.create({
   pressed: { opacity: 0.72 },
   locations: {
     paddingHorizontal: 16,
-    marginTop: -25,
-    zIndex: 2,
+    marginTop: 12,
     position: "relative",
     gap: 12,
   },

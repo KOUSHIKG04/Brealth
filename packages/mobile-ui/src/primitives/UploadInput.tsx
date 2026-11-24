@@ -1,30 +1,11 @@
+import { AppText as Text } from "./AppText";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type PressableProps,
-  type StyleProp,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Upload } from "lucide-react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
+import type { UploadInputProps } from "../types/uploadInput";
 
-export type UploadInputProps = Omit<
-  PressableProps,
-  "children" | "style" | "disabled"
-> & {
-  label?: string;
-  value?: string;
-  placeholder?: string;
-  error?: string;
-  disabled?: boolean;
-  style?: PressableProps["style"];
-  containerStyle?: StyleProp<ViewStyle>;
-  labelStyle?: StyleProp<TextStyle>;
-};
+export type { UploadInputProps } from "../types/uploadInput";
 
 export function UploadInput({
   label,
@@ -42,7 +23,11 @@ export function UploadInput({
   const theme = useMobileTheme();
   return (
     <View style={containerStyle}>
-      {label ? <Text style={[styles.label, labelStyle]}>{label}</Text> : null}
+      {label ? (
+        <Text variant="label" style={[styles.label, labelStyle]}>
+          {label}
+        </Text>
+      ) : null}
 
       <Pressable
         {...props}
@@ -61,6 +46,7 @@ export function UploadInput({
       >
         <Upload color={theme.primary} size={20} strokeWidth={2} />
         <Text
+          variant="label"
           numberOfLines={1}
           style={[
             styles.value,
@@ -72,7 +58,11 @@ export function UploadInput({
         </Text>
       </Pressable>
 
-      {error ? <Text style={styles.error}>{error}</Text> : null}
+      {error ? (
+        <Text variant="label" style={styles.error}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }

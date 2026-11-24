@@ -1,12 +1,14 @@
 import type { DoctorCardProps } from "../components/DoctorCard";
 import type { ConsultationType } from "../../appointments/types/appointment";
 import type { PatientScreenProps } from "../../../types/screen";
-import type { ProfileTab } from "../utils/doctorProfileConstants";
+import type { ProfileTab } from "./booking-calendar";
+import type { ClinicSlot, ClinicTimeBoardEntry } from "@startup/contracts";
 
 export type BookingSelection = {
   date: string;
   time: string;
   patient: string;
+  patientId: string;
   reason: string;
   consultationType: ConsultationType;
   address?: string;
@@ -29,20 +31,44 @@ export type ProfileTabsProps = {
 };
 
 export type HomeVisitAddressProps = {
-  address: string;
-  onAddressChange: (address: string) => void;
   onConfirm: () => void;
   verifiedAddress: string;
 };
 
 export type AboutDoctorProps = {
   doctorName: string;
+  bio: string | null;
+  facilityName: string;
+  facilityAddress: string;
+  distanceMeters: number | null;
+  languages: string[];
+  onBack: () => void;
   onGoToSlots: () => void;
 };
 
 export type BookSlotsProps = {
+  homeLocationReady?: boolean;
+  timeZone?: string;
   address?: string;
   consultationType: ConsultationType;
   onBookAppointment: (selection: BookingSelection) => void;
   onGoToAbout: () => void;
+  slots: Pick<
+    ClinicSlot,
+    | "window_id"
+    | "starts_at"
+    | "fee_minor"
+    | "currency"
+    | "daily_bookings_remaining"
+  >[];
+  /** In-person times the app cannot book, shown with a label. */
+  unavailableTimes?: Pick<
+    ClinicTimeBoardEntry,
+    "window_id" | "starts_at" | "status"
+  >[];
+  patientOptions: { id: string; label: string; verified: boolean }[];
+  loading?: boolean;
+  error?: string | null;
+  busy?: boolean;
+  openingConfirmation?: boolean;
 };

@@ -1,5 +1,8 @@
-import { useRef, useState } from "react";
-import { Image, Linking, TextInput, View } from "react-native";
+import { pinDigitIndices } from "../utils/homeVisitConstants";
+import { useHomeVisit } from "../hooks/useHomeVisit";
+import { Input } from "@startup/mobile-ui";
+
+import { Image, Linking, View } from "react-native";
 import { router } from "expo-router";
 import { Button } from "@startup/mobile-ui";
 import { MessageCircle, Navigation, Phone } from "lucide-react-native";
@@ -9,16 +12,14 @@ import {
   Heading,
   Label,
   MissingPatient,
-  palette,
   Panel,
-  ui,
 } from "../../../components/DoctorScreen";
-import { useVisit, visitRoute } from "../utils/consultation";
+import { palette, ui } from "../../../components/theme";
+import { visitRoute } from "../utils/consultationRoutes";
+
 export function HomeVisitScreen() {
-  const { patient, appointment } = useVisit();
-  const [pin, setPin] = useState(["", "", "", ""]);
-  const [error, setError] = useState("");
-  const inputs = useRef<(TextInput | null)[]>([]);
+  const { patient, appointment, pin, setPin, setError, inputs } =
+    useHomeVisit();
   if (!patient || !appointment) return <MissingPatient />;
   const navigate = async () => {
     try {
@@ -30,14 +31,10 @@ export function HomeVisitScreen() {
     }
   };
   return (
-    <DoctorScreen
-      title="Home visit"
-      subtitle={`Appointment – ${appointment.date || "Today"}, ${appointment.time || "5:30 PM"}`}
-      bottomNav={false}
-    >
+    <DoctorScreen title="Home visit" bottomNav={false}>
       <Image
         source={require("../../../../assets/figma/map.png")}
-        accessibilityLabel="Reference map showing the home visit area in Bengaluru"
+        alt="Reference map showing the home visit area in Bengaluru"
         style={{ width: "100%", height: 216, borderRadius: 14, marginTop: 6 }}
         resizeMode="cover"
       />
@@ -66,28 +63,20 @@ export function HomeVisitScreen() {
           leftIcon={<Navigation size={16} color="white" />}
           onPress={() => void navigate()}
           style={{ flex: 1, paddingHorizontal: 6 }}
-          labelStyle={{ fontSize: 12 }}
         />
       </View>
       <Panel style={{ marginTop: 16, gap: 0 }}>
         <Heading>{patient.name}</Heading>
-        <Label style={{ fontSize: 12, lineHeight: 18 }}>
-          {patient.address}
-        </Label>
+        <Label variant="caption">{patient.address}</Label>
       </Panel>
       <View style={{ gap: 18, alignItems: "center", paddingVertical: 30 }}>
-        <Heading
-          style={{
-            fontSize: 18,
-            fontFamily: fontFamilies.regular,
-            color: palette.text,
-          }}
-        >
+        <Heading variant="sectionHeading" style={{ color: palette.text }}>
           Enter Patient’s PIN to Proceed
         </Heading>
         <View style={ui.row}>
-          {[0, 1, 2, 3].map((index) => (
-            <TextInput
+          {pinDigitIndices.map((index) => (
+            <Input
+              variant="unstyled"
               key={index}
               ref={(ref) => {
                 inputs.current[index] = ref;
@@ -131,11 +120,10 @@ export function HomeVisitScreen() {
             />
           ))}
         </View>
-        <Label muted style={{ fontSize: 12 }}>
+        <Label variant="caption" muted>
           Demo PIN: {patient.pin}
         </Label>
       </View>
-      {!!error && <Label style={ui.error}>{error}</Label>}
       <Button
         theme="doctor"
         label="Start Consultation"

@@ -1,15 +1,15 @@
-import type { ReactNode } from "react";
-import { StyleSheet, Text, type StyleProp, type TextStyle } from "react-native";
+import type { SectionTitleProps } from "../types/ambulance-booking-form";
+import { AppText as Text } from "@startup/mobile-ui";
+
+import { StyleSheet } from "react-native";
 import { fontFamilies } from "@startup/design-tokens";
 
-export function SectionTitle({
-  children,
-  style,
-}: {
-  children: ReactNode;
-  style?: StyleProp<TextStyle>;
-}) {
-  return <Text style={[styles.sectionTitle, style]}>{children}</Text>;
+export function SectionTitle({ children, style }: SectionTitleProps) {
+  return (
+    <Text variant="sectionHeading" style={[styles.sectionTitle, style]}>
+      {children}
+    </Text>
+  );
 }
 
 const styles = StyleSheet.create({

@@ -1,0 +1,152 @@
+import { userErrorMessage } from "@startup/contracts";
+import { Button } from "@startup/mobile-ui";
+import { Input } from "@startup/mobile-ui";
+import { AppText as Text, useToastFeedback } from "@startup/mobile-ui";
+import { useEffect, useRef, useState } from "react";
+import { Pressable, StyleSheet, TextInput, View } from "react-native";
+import { router, useLocalSearchParams } from "expo-router";
+import { sendPhoneOtp, verifyPhoneOtp } from "@startup/data-access";
+import { colors, fontFamilies } from "@startup/design-tokens";
+import { mobileSession, supabase } from "../../services/supabase";
+
+export default function DriverVerifyOtp() {
+  const { phone } = useLocalSearchParams<{ phone: string }>();
+  const [code, setCode] = useState("");
+  const [resending, setResending] = useState(false);
+  const [seconds, setSeconds] = useState(30);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useToastFeedback({ error });
+  const input = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (seconds <= 0) return;
+    const timer = setTimeout(() => setSeconds((current) => current - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [seconds]);
+
+  async function verify(value: string) {
+    if (!supabase || !phone || value.length !== 6 || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      await verifyPhoneOtp(supabase, phone, value);
+      await mobileSession.refresh();
+      const auth = mobileSession.getSnapshot();
+      if (auth.loading || auth.error || !auth.session) return;
+      router.replace(auth.profile?.driver ? "/(app)" : "/onboarding");
+    } catch (cause) {
+      setError(userErrorMessage(cause, "Incorrect code. Try again."));
+      setCode("");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function resend() {
+    if (!supabase || !phone || seconds > 0 || busy || resending) return;
+    setResending(true);
+    try {
+      await sendPhoneOtp(supabase, phone);
+      setSeconds(30);
+      setError("");
+    } catch (cause) {
+      setError(userErrorMessage(cause, "Could not resend the code."));
+    } finally {
+      setResending(false);
+    }
+  }
+
+  return (
+    <View style={styles.screen}>
+      <Pressable accessibilityRole="button" onPress={() => router.back()}>
+        <Text variant="body" style={styles.back}>
+          ‹ Back
+        </Text>
+      </Pressable>
+      <View style={styles.content}>
+        <Text variant="screenTitle" style={styles.title}>
+          Verify OTP
+        </Text>
+        <Text variant="label" style={styles.phone}>
+          {phone}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Enter six-digit code"
+          onPress={() => input.current?.focus()}
+          style={styles.digits}
+        >
+          {Array.from({ length: 6 }, (_, index) => (
+            <View key={index} style={styles.digit}>
+              <Text variant="screenTitle" style={styles.digitText}>
+                {code[index] ?? ""}
+              </Text>
+            </View>
+          ))}
+          <Input
+            variant="unstyled"
+            ref={input}
+            accessibilityLabel="Six-digit verification code"
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
+            maxLength={6}
+            value={code}
+            onChangeText={(value) => {
+              const digits = value.replace(/\D/g, "").slice(0, 6);
+              setCode(digits);
+              if (digits.length === 6) void verify(digits);
+            }}
+            style={styles.hiddenInput}
+          />
+        </Pressable>
+
+        <Button
+          loading={resending}
+          label="Resend OTP"
+          variant="ghost"
+          labelStyle={styles.resendText}
+          accessibilityRole="button"
+          disabled={seconds > 0 || busy || resending}
+          onPress={() => void resend()}
+          style={styles.resend}
+        >
+          <Text variant="bodySmall" style={styles.resendText}>
+            Resend OTP{" "}
+            {seconds > 0 ? `in 00:${String(seconds).padStart(2, "0")}` : "now"}
+          </Text>
+        </Button>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: "white", padding: 24, paddingTop: 58 },
+  back: { color: colors.driver.primary },
+  content: { alignItems: "center", paddingTop: 24 },
+  title: { color: colors.driver.text },
+  phone: { color: colors.driver.primary, marginTop: 7 },
+  digits: {
+    flexDirection: "row",
+    width: "100%",
+    maxWidth: 320,
+    justifyContent: "space-between",
+    marginTop: 36,
+  },
+  digit: {
+    width: 42,
+    height: 48,
+    borderWidth: 1,
+    borderColor: "#BACFD0",
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  digitText: { fontFamily: fontFamilies.medium, fontSize: 23 },
+  hiddenInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
+  resend: { marginTop: 25, padding: 8 },
+  resendText: { color: colors.driver.primary, fontSize: 14 },
+  error: { color: colors.danger, marginTop: 15 },
+});

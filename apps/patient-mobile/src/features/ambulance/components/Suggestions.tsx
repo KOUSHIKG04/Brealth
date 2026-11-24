@@ -1,50 +1,54 @@
+import type { SuggestionsProps } from "../types/suggestions";
+import { AppText as Text } from "@startup/mobile-ui";
+
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Clock3, Heart, MapPin } from "lucide-react-native";
-import { colors, fontFamilies } from "@startup/design-tokens";
-import { hospitalSuggestions } from "../utils/ambulanceConstants";
+import { colors, fontFamilies, surfaces } from "@startup/design-tokens";
 
 export function Suggestions({
   query,
   onSelect,
   onClose,
-}: {
-  query?: string;
-  onSelect: (name: string) => void;
-  onClose?: () => void;
-}) {
-  const [favorite, setFavorite] = useState<string>("Victoria Hospital");
+  hospitals,
+}: SuggestionsProps) {
+  const [favorite, setFavorite] = useState<string>("");
 
-  const filtered = hospitalSuggestions.filter(([name, address]) => {
+  const filtered = hospitals.filter((hospital) => {
+    if ("source" in hospital) return true;
+    const { name, address } = hospital;
     if (!query || !query.trim()) return true;
     const q = query.toLowerCase();
     return name.toLowerCase().includes(q) || address.toLowerCase().includes(q);
   });
 
-  const list = filtered.length > 0 ? filtered : hospitalSuggestions;
+  const list = filtered.slice(0, 10);
 
   return (
     <View style={styles.suggestionsContainer}>
       <View style={styles.suggestionsHeader}>
-        <Text style={styles.suggestionsHeaderTitle}>
+        <Text variant="screenTitle" style={styles.suggestionsHeaderTitle}>
           {query && query.trim()
             ? `Results for "${query}"`
             : "Nearby Hospitals & Clinics"}
         </Text>
         {onClose ? (
           <Pressable onPress={onClose} hitSlop={10}>
-            <Text style={styles.suggestionsCloseBtn}>Done</Text>
+            <Text variant="body" style={styles.suggestionsCloseBtn}>
+              Done
+            </Text>
           </Pressable>
         ) : null}
       </View>
 
       <View style={styles.suggestionsList}>
-        {list.map(([name, address]) => {
+        {list.map((hospital) => {
+          const { id, name, address, distance_meters } = hospital;
           const isFav = favorite === name;
           return (
             <Pressable
-              key={name}
-              onPress={() => onSelect(name)}
+              key={id}
+              onPress={() => onSelect(hospital)}
               style={({ pressed }) => [
                 styles.suggestionCard,
                 pressed && styles.pressed,
@@ -54,16 +58,49 @@ export function Suggestions({
                 <MapPin color="#087F78" size={20} />
               </View>
               <View style={styles.suggestionCopy}>
-                <Text numberOfLines={1} style={styles.suggestionName}>
+                <Text
+                  variant="body"
+                  numberOfLines={1}
+                  style={styles.suggestionName}
+                >
                   {name}
                 </Text>
-                <Text numberOfLines={1} style={styles.suggestionAddress}>
+                <Text
+                  variant="body"
+                  numberOfLines={1}
+                  style={styles.suggestionAddress}
+                >
                   {address}
                 </Text>
+                {"source" in hospital ? (
+                  <Text
+                    variant="caption"
+                    style={{
+                      color: "#5E5E5E",
+                      fontFamily: fontFamilies.regular,
+                      fontSize: 12,
+                    }}
+                  >
+                    Google Maps
+                  </Text>
+                ) : null}
+                {"source" in hospital
+                  ? hospital.attributions.map((a) => (
+                      <Text
+                        variant="caption"
+                        key={a.provider}
+                        style={{ color: "#5E5E5E", fontSize: 12 }}
+                      >
+                        {a.provider}
+                      </Text>
+                    ))
+                  : null}
                 <View style={styles.suggestionMetaRow}>
                   <Clock3 color="#087F78" size={12} />
-                  <Text style={styles.suggestionMetaText}>
-                    Open 24/7 • 4 min away
+                  <Text variant="body" style={styles.suggestionMetaText}>
+                    {distance_meters === null
+                      ? "Distance unavailable"
+                      : `${(distance_meters / 1000).toFixed(1)} km away`}
                   </Text>
                 </View>
               </View>
@@ -113,6 +150,7 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   suggestionCard: {
+    ...surfaces.card,
     flexDirection: "row",
     alignItems: "center",
     gap: 14,
@@ -120,8 +158,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
   },
   suggestionPin: {
     width: 42,

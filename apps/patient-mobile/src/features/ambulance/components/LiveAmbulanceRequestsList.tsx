@@ -1,0 +1,133 @@
+import type { LiveAmbulanceRequestsListProps } from "../types/live-ambulance-requests-list";
+import { AppText as Text } from "@startup/mobile-ui";
+import { StyleSheet, View } from "react-native";
+import { Button, Loader, useToastFeedback } from "@startup/mobile-ui";
+import { router } from "expo-router";
+
+export function LiveAmbulanceRequestsList({
+  bookings,
+  isLoading,
+  error,
+  onRefresh,
+  activeBookingId,
+  trackingData,
+  pinVisible,
+  isPinLoading,
+  pinData,
+  isRefreshPending,
+  onRefreshDispatch,
+  isCancelPending,
+  onCancel,
+}: LiveAmbulanceRequestsListProps) {
+  useToastFeedback({
+    error: error ? "Could not load your ambulance requests." : "",
+  });
+  return (
+    <>
+      <Text variant="cardHeading" style={styles.title}>
+        My requests
+      </Text>
+      <Button label="Refresh status" variant="outline" onPress={onRefresh} />
+      {isLoading ? <Loader theme="patient" style={{ minHeight: 44 }} /> : null}
+      {bookings?.map((booking) => (
+        <View key={booking.id} style={styles.card}>
+          <Text variant="body" style={styles.name}>
+            {booking.public_code} · {booking.status}
+          </Text>
+          <Text variant="body">
+            {booking.capability_code} · {booking.pickup_address} →{" "}
+            {booking.destination_address}
+          </Text>
+          {booking.driver_name ? (
+            <Text variant="body">
+              Driver: {booking.driver_name} · {booking.vehicle_registration}
+            </Text>
+          ) : null}
+          {booking.trip_status ? (
+            <Text variant="body">Trip: {booking.trip_status}</Text>
+          ) : null}
+          {booking.trip_status === "completed" ? (
+            <Button
+              theme="patient"
+              label="View fare & payment"
+              variant="outline"
+              onPress={() =>
+                router.push({
+                  pathname: "/ambulance/payment/[id]",
+                  params: { id: booking.id },
+                })
+              }
+            />
+          ) : null}
+          {booking.id === activeBookingId && booking.status === "assigned" ? (
+            trackingData ? (
+              <Text variant="body">
+                Driver location: {trackingData.latitude.toFixed(5)},{" "}
+                {trackingData.longitude.toFixed(5)} · updated{" "}
+                {new Date(trackingData.received_at).toLocaleTimeString()}
+              </Text>
+            ) : (
+              <Text variant="body">Waiting for a current driver location.</Text>
+            )
+          ) : null}
+          {booking.id === activeBookingId && pinVisible ? (
+            <View style={styles.card}>
+              <Text variant="body" style={styles.subtitle}>
+                Your completion PIN
+              </Text>
+              {isPinLoading ? (
+                <Loader theme="patient" style={{ minHeight: 36 }} />
+              ) : null}
+              {pinData ? (
+                <Text
+                  variant="body"
+                  accessibilityLabel="Four-digit completion PIN"
+                  style={styles.pin}
+                >
+                  {pinData}
+                </Text>
+              ) : null}
+              <Text variant="body">
+                Give this PIN to the driver only when you reach your
+                destination.
+              </Text>
+            </View>
+          ) : null}
+          {booking.status === "searching" ? (
+            <View style={styles.options}>
+              <Button
+                loading={isRefreshPending}
+                label="Search again"
+                variant="outline"
+                disabled={isRefreshPending}
+                onPress={() => onRefreshDispatch(booking.id)}
+              />
+              <Button
+                loading={isCancelPending}
+                label="Cancel request"
+                variant="outline"
+                disabled={isCancelPending}
+                onPress={() => onCancel(booking)}
+              />
+            </View>
+          ) : null}
+        </View>
+      ))}
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  title: { fontSize: 22, fontWeight: "700" },
+  subtitle: { fontSize: 18, fontWeight: "600" },
+  options: { flexDirection: "row", gap: 8 },
+  card: {
+    padding: 16,
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#D8E4E8",
+  },
+  name: { fontSize: 17, fontWeight: "600" },
+  pin: { fontSize: 30, letterSpacing: 8, fontWeight: "700" },
+});

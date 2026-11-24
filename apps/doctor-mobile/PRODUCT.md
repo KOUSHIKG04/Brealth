@@ -12,7 +12,7 @@ Doctors manage appointments, look up patients, conduct clinic, online and home v
 
 ## Capabilities and constraints
 
-The user confirmed local demo data and working screen flows. No backend, patient messaging service, video service, authentication or clinical signing service is connected. Demo state lasts for the app session. Onboarding and login are outside this request.
+The app uses the shared Supabase backend through `@startup/data-access`: phone sign-in, practices, schedules with conflict review and approval requests, appointments, the hybrid clinic queue, live online consultations and notifications. No clinical signing service is connected. Deployment and native-device verification status lives in `ARCHITECTURE.md`.
 
 ## Brand commitments
 
@@ -26,4 +26,4 @@ Figma file JPyiy9pnS8Ywy9SlSyGUqu: Home 746:594; appointments 746:499; notes 760
 
 ## Open decisions
 
-Production integration, identity reconciliation (Home says Ananya; Profile says Priya), authentication and real clinical workflows remain undecided. Preserve the supplied per-screen demo copy.
+Clinical signing and regulated prescription workflows remain undecided. Do not imply them in UI copy.

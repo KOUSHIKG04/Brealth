@@ -1,49 +1,31 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  BackHandler,
-  Image,
-  Keyboard,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { useFindDoctor } from "../hooks/useFindDoctor";
+import { getDoctorResultsRoute } from "../utils/doctorRoutes";
+import { AppText as Text } from "@startup/mobile-ui";
+
+import { Animated, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router, type Href } from "expo-router";
+
 import { ChevronLeft, Mic, X } from "lucide-react-native";
 import {
   colors,
   fontFamilies,
   gradients,
   radius,
-  shadows,
   spacing,
 } from "@startup/design-tokens";
+import { FadedScrollView, SafeAreaView, SearchInput } from "@startup/mobile-ui";
+import { COLLAPSE_DISTANCE } from "../../../utils/headerConstants";
+
 import {
-  Button,
-  Chip,
-  FadedScrollView,
-  SafeAreaView,
-  SearchInput,
-} from "@startup/mobile-ui";
-import {
-  COLLAPSE_DISTANCE,
-  getHeaderAnimationStyles,
-} from "../../../utils/headerConstants";
-import type { ConsultationType } from "../../appointments/types/appointment";
-import {
-  COLLAPSED_HEADER_H,
   CONTENT_TOP,
   EXPANDED_HEADER_HEIGHT,
   SEARCH_END_TOP_OFFSET,
   SEARCH_OVERLAP,
-  categories,
-  getDoctorResultsRoute,
-  symptoms,
 } from "../utils/findDoctorConstants";
+import { FindDoctorCategories } from "../components/FindDoctorCategories";
+import { FindDoctorSearchList } from "../components/FindDoctorSearchList";
+import { BookingGuideLink } from "../components/BookingGuideLink";
 
 import type { FindDoctorScreenProps } from "../types/find-doctor";
 
@@ -51,82 +33,32 @@ export function FindDoctorScreen({
   consultationType,
   onBackPress,
 }: FindDoctorScreenProps) {
-  const [selectedSymptom, setSelectedSymptom] = useState<string>();
-  const [selectedCategory, setSelectedCategory] = useState("fever");
-  const [showAllCategories, setShowAllCategories] = useState(false);
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchInputRef = useRef<TextInput>(null);
-
-  const { top: topInset } = useSafeAreaInsets();
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const searchEndTop = topInset + SEARCH_END_TOP_OFFSET;
-  const { collapsedHeight, expandedHeaderStyle, searchStyle } =
-    getHeaderAnimationStyles(scrollY, topInset, {
-      expandedHeight: EXPANDED_HEADER_HEIGHT,
-      searchOverlap: SEARCH_OVERLAP,
-      collapsedHeight: COLLAPSED_HEADER_H,
-      searchEndTop,
-    });
-
-  const handleOpenSearch = () => {
-    if (isSearchActive) return;
-    setIsSearchActive(true);
-    Animated.timing(scrollY, {
-      toValue: COLLAPSE_DISTANCE,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
+  const {
+    refresh,
+    isSearchActive,
+    searchQuery,
+    setSearchQuery,
+    searchPlaceholder,
+    recentSearches,
+    rememberSearch,
+    clearRecentSearches,
+    searchInputRef,
+    scrollY,
+    collapsedHeight,
+    expandedHeaderStyle,
+    searchStyle,
+    handleOpenSearch,
+    handleCloseSearch,
+    handleBack,
+    doctorMatches,
+    filteredCategories,
+    searchActivePaddingTop,
+  } = useFindDoctor({ consultationType, onBackPress });
+  const openResults = (term: string) => {
+    rememberSearch(term);
+    if (isSearchActive) handleCloseSearch();
+    router.push(getDoctorResultsRoute(term, consultationType));
   };
-
-  const handleCloseSearch = () => {
-    Keyboard.dismiss();
-    searchInputRef.current?.blur();
-    setIsSearchActive(false);
-    setSearchQuery("");
-    Animated.timing(scrollY, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleBack = () => {
-    if (isSearchActive) {
-      handleCloseSearch();
-      return;
-    }
-    if (onBackPress) {
-      onBackPress();
-      return;
-    }
-    router.back();
-  };
-
-  useEffect(() => {
-    if (!isSearchActive) return;
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      handleCloseSearch();
-      return true;
-    });
-    return () => sub.remove();
-  }, [isSearchActive]);
-
-  const visibleCategories = showAllCategories
-    ? categories
-    : categories.slice(0, 8);
-
-  const trimmedQuery = searchQuery.trim().toLowerCase();
-  const filteredCategories = trimmedQuery
-    ? categories.filter(
-        (c) =>
-          c.label.toLowerCase().includes(trimmedQuery) ||
-          c.key.toLowerCase().includes(trimmedQuery)
-      )
-    : categories;
-
-  const searchActivePaddingTop = collapsedHeight + 8;
-
   return (
     <View style={styles.screen}>
       <LinearGradient
@@ -150,7 +82,9 @@ export function FindDoctorScreen({
         />
         <SafeAreaView edges={["top"]} style={styles.safeArea}>
           <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerTitle}>What are you feeling?</Text>
+            <Text variant="screenTitle" style={styles.headerTitle}>
+              What are you feeling?
+            </Text>
           </View>
         </SafeAreaView>
       </Animated.View>
@@ -204,7 +138,7 @@ export function FindDoctorScreen({
         >
           <SearchInput
             ref={searchInputRef}
-            accessibilityLabel="Describe what you're feeling"
+            accessibilityLabel="Search by symptoms or speciality"
             containerStyle={styles.search}
             iconSize={18}
             inputStyle={styles.searchInput}
@@ -212,13 +146,10 @@ export function FindDoctorScreen({
             onFocus={handleOpenSearch}
             onSubmitEditing={() => {
               if (searchQuery.trim()) {
-                handleCloseSearch();
-                router.push(
-                  getDoctorResultsRoute(searchQuery.trim(), consultationType)
-                );
+                openResults(searchQuery.trim());
               }
             }}
-            placeholder="Describe what you're feeling..."
+            placeholder={searchPlaceholder}
             placeholderTextColor={colors.patient.muted}
             returnKeyType="search"
             value={searchQuery}
@@ -249,6 +180,9 @@ export function FindDoctorScreen({
       </Animated.View>
 
       <FadedScrollView
+        onRefresh={refresh}
+        refreshTheme="patient"
+        refreshOffset={collapsedHeight}
         contentContainerStyle={[
           styles.content,
           isSearchActive && { paddingTop: searchActivePaddingTop },
@@ -271,152 +205,39 @@ export function FindDoctorScreen({
       >
         {!isSearchActive ? (
           <>
-            <View style={styles.section}>
-              <Text style={styles.symptomsTitle}>Most searched symptoms</Text>
-              <View style={styles.chipList}>
-                {symptoms.map((symptom) => {
-                  const selected = selectedSymptom === symptom;
-                  return (
-                    <Chip
-                      key={symptom}
-                      label={symptom}
-                      onPress={() => {
-                        setSelectedSymptom(selected ? undefined : symptom);
-                        router.push(
-                          getDoctorResultsRoute(symptom, consultationType)
-                        );
-                      }}
-                      style={[
-                        styles.chip,
-                        selected ? styles.selectedChip : undefined,
-                      ]}
-                      labelStyle={[
-                        styles.chipLabel,
-                        selected ? styles.selectedChipLabel : undefined,
-                      ]}
-                    />
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Browse by categories</Text>
-              <View style={styles.categoryGrid}>
-                {visibleCategories.map((category) => (
-                  <Pressable
-                    key={category.key}
-                    accessibilityRole="button"
-                    accessibilityLabel={category.label.replace("\n", " ")}
-                    onPress={() => {
-                      setSelectedCategory(category.key);
-                      router.push(
-                        getDoctorResultsRoute(
-                          category.label.replace("\n", " "),
-                          consultationType
-                        )
-                      );
-                    }}
-                    style={({ pressed }) => [
-                      styles.categoryItem,
-                      pressed && styles.categoryItemPressed,
-                    ]}
-                  >
-                    <Image
-                      source={category.image}
-                      style={[
-                        styles.categoryImage,
-                        category.imageScale
-                          ? { transform: [{ scale: category.imageScale }] }
-                          : undefined,
-                      ]}
-                      resizeMode="contain"
-                    />
-                    <Text numberOfLines={2} style={styles.categoryLabel}>
-                      {category.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-
-              <Button
-                variant="outline"
-                label={showAllCategories ? "Show Less" : "Show All Categories"}
-                accessibilityLabel={
-                  showAllCategories
-                    ? "Show less categories"
-                    : "Show all categories"
-                }
-                onPress={() => setShowAllCategories((prev) => !prev)}
-                style={styles.showAllButton}
-              />
-            </View>
+            <BookingGuideLink
+              onPress={() =>
+                router.push({
+                  pathname: "/learn-booking",
+                  params: { consultationType },
+                } as Href)
+              }
+            />
+            <FindDoctorCategories
+              onSelectCategory={(_key, label) => {
+                openResults(label);
+              }}
+            />
           </>
         ) : (
-          <View style={styles.searchActiveList}>
-            {filteredCategories.length > 0 ? (
-              filteredCategories.map((category) => (
-                <Pressable
-                  key={category.key}
-                  accessibilityRole="button"
-                  accessibilityLabel={category.label.replace("\n", " ")}
-                  onPress={() => {
-                    setSelectedCategory(category.key);
-                    handleCloseSearch();
-                    router.push(
-                      getDoctorResultsRoute(
-                        category.label.replace("\n", " "),
-                        consultationType
-                      )
-                    );
-                  }}
-                  style={({ pressed }) => [
-                    styles.categoryRow,
-                    pressed && styles.categoryRowPressed,
-                  ]}
-                >
-                  <Image
-                    source={category.image}
-                    style={[
-                      styles.categoryRowImage,
-                      category.imageScale
-                        ? { transform: [{ scale: category.imageScale }] }
-                        : undefined,
-                    ]}
-                    resizeMode="contain"
-                  />
-                  <View style={styles.categoryRowContent}>
-                    <Text style={styles.categoryRowTitle}>
-                      {category.label.replace("\n", " ")}
-                    </Text>
-                    <Text style={styles.categoryRowSubtitle}>Speciality</Text>
-                  </View>
-                </Pressable>
-              ))
-            ) : (
-              <View style={styles.emptyResults}>
-                <Text style={styles.emptyText}>
-                  No categories found for "{searchQuery}".
-                </Text>
-                <Pressable
-                  onPress={() => {
-                    handleCloseSearch();
-                    router.push(
-                      getDoctorResultsRoute(
-                        searchQuery.trim(),
-                        consultationType
-                      )
-                    );
-                  }}
-                  style={styles.searchAnywayButton}
-                >
-                  <Text style={styles.searchAnywayText}>
-                    Search for "{searchQuery}"
-                  </Text>
-                </Pressable>
-              </View>
-            )}
-          </View>
+          <FindDoctorSearchList
+            filteredCategories={filteredCategories}
+            doctorMatches={doctorMatches}
+            searchQuery={searchQuery}
+            recentSearches={recentSearches}
+            onSelectSymptom={openResults}
+            onSelectRecent={openResults}
+            onClearRecentSearches={clearRecentSearches}
+            onSelectDoctor={(name) => {
+              openResults(name);
+            }}
+            onSelectCategory={(_key, label) => {
+              openResults(label);
+            }}
+            onSearchAnyway={(query) => {
+              openResults(query);
+            }}
+          />
         )}
       </FadedScrollView>
     </View>

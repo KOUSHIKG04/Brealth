@@ -1,0 +1,92 @@
+# Optional LOCAL Supabase CLI configuration. Hosted setup is in README.md.
+# project_id is a local namespace, not your hosted project ref or credentials.
+project_id = "clinzo"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+# Supabase CLI is the sole application migration runner.
+[db.migrations]
+enabled = true
+schema_paths = []
+
+[db.seed]
+enabled = false
+sql_paths = []
+
+[studio]
+enabled = true
+port = 54323
+
+[auth]
+enabled = true
+site_url = "http://localhost:3000"
+additional_redirect_urls = []
+jwt_expiry = 3600
+
+[storage]
+enabled = true
+
+[edge_runtime]
+enabled = true
+
+[functions.reserve-appointment]
+enabled = false
+
+[functions.dispatch-ambulance]
+enabled = false
+
+[functions.process-payment]
+enabled = true
+verify_jwt = true
+
+[functions.send-notification]
+enabled = true
+verify_jwt = false
+
+[functions.online-video-token]
+enabled = true
+verify_jwt = true
+
+[functions.ambulance-hospitals]
+enabled = true
+verify_jwt = true
+
+[functions.search-map-places]
+enabled = true
+verify_jwt = true
+
+[functions.resolve-map-address]
+  enabled = true
+  verify_jwt = true
+
+[functions.razorpay-webhook]
+enabled = true
+verify_jwt = false
+import_map = "./functions/razorpay-webhook/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/razorpay-webhook/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/razorpay-webhook/*.html" ]
+
+[functions.payment-reconcile]
+enabled = true
+verify_jwt = false
+import_map = "./functions/payment-reconcile/deno.json"
+# Uncomment to specify a custom file path to the entrypoint.
+# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
+entrypoint = "./functions/payment-reconcile/index.ts"
+# Specifies static files to be bundled with the function. Supports glob patterns.
+# For example, if you want to serve static HTML pages in your function:
+# static_files = [ "./functions/payment-reconcile/*.html" ]

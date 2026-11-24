@@ -26,7 +26,22 @@
     },
     "plugins": [
       "expo-router",
-      "expo-localization"
+      "expo-notifications",
+      [
+        "expo-image-picker",
+        { "photosPermission": "Allow Clinzo to select a profile photo." }
+      ],
+      "expo-maps",
+      "expo-localization",
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc",
+      "expo-sharing",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Clinzo to use your location to show nearby doctors and clinics."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

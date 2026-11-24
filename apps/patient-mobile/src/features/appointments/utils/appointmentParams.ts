@@ -1,9 +1,9 @@
-import type { Appointment } from "../types/appointment";
-import { parseConsultationType } from "./consultationFlow";
+import type { AppointmentParams } from "../types/appointment-params";
 
-export type AppointmentParams = Partial<
-  Record<keyof Appointment, string | string[]>
->;
+export type { AppointmentParams } from "../types/appointment-params";
+
+import type { Appointment } from "../types/appointment";
+import { parseConsultationType } from "./consultation";
 
 function first(value?: string | string[]) {
   return Array.isArray(value) ? value[0] : value;
@@ -12,9 +12,11 @@ function first(value?: string | string[]) {
 export function appointmentFromParams(params: AppointmentParams): Appointment {
   return {
     id: first(params.id) ?? "#APT20260820",
+    backendId: first(params.backendId),
+    practiceId: first(params.practiceId),
+    serviceId: first(params.serviceId),
     doctorName: first(params.doctorName) ?? "Dr. Ananya Sharma",
-    qualification:
-      first(params.qualification) ?? "MBBS, MD (General Medicine)",
+    qualification: first(params.qualification) ?? "MBBS, MD (General Medicine)",
     specialty: first(params.specialty) ?? "General Physician",
     consultationType: parseConsultationType(params.consultationType),
     date: first(params.date) ?? "20 Aug 2026",

@@ -1,63 +1,88 @@
-import { Modal, StyleSheet, Text, View } from "react-native";
-import { router } from "expo-router";
+import { userErrorMessage } from "@startup/contracts";
+import type { LogoutModalProps } from "../types/logout-modal";
+import { AppText as Text } from "@startup/mobile-ui";
+import { useToastFeedback } from "@startup/mobile-ui";
+import { useState } from "react";
+import { StyleSheet, View } from "react-native";
+import { useQueryClient } from "@tanstack/react-query";
 import { LogOut } from "lucide-react-native";
 import { colors, fontFamilies, radius } from "@startup/design-tokens";
-import { Button } from "@startup/mobile-ui";
+import { Button, ModalSurface } from "@startup/mobile-ui";
+import { mobileSession, supabase } from "../../../services/supabase";
+import { signOutWithPushCleanup } from "../../notifications/services/deviceNotifications";
 
-export function LogoutModal({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
+export function LogoutModal({ visible, onClose }: LogoutModalProps) {
+  const queryClient = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  useToastFeedback({ error });
+
+  async function signOut() {
+    if (!supabase) {
+      setError("Supabase is not configured on this device.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    try {
+      const { error: signOutError } = (await signOutWithPushCleanup())!;
+      if (signOutError) throw signOutError;
+      queryClient.clear();
+      await mobileSession.refresh();
+      onClose();
+    } catch (cause) {
+      setError(
+        userErrorMessage(cause, "Could not sign out. Please try again.")
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <Modal
+    <ModalSurface
       visible={visible}
-      animationType="fade"
-      transparent
-      onRequestClose={onClose}
+      onClose={onClose}
+      contentStyle={styles.modalCard}
     >
-      <View style={styles.modalBackdrop}>
-        <View style={styles.modalCard}>
-          <View style={styles.logoutModalHero}>
-            <View style={styles.logoutModalIconWrap}>
-              <LogOut color="#DC2626" size={26} />
-            </View>
-            <Text style={styles.logoutModalTitle}>Log Out</Text>
-            <Text style={styles.logoutModalSub}>
-              Are you sure you want to log out of your Clinzo patient account?
-            </Text>
-          </View>
-
-          <View style={styles.logoutActions}>
-            <Button
-              label="Cancel"
-              variant="secondary"
-              onPress={onClose}
-              style={styles.logoutCancelBtn}
-            />
-            <Button
-              label="Log Out"
-              variant="primary"
-              onPress={() => {
-                onClose();
-                router.replace("/login");
-              }}
-              style={styles.logoutConfirmBtn}
-              labelStyle={styles.logoutConfirmLabel}
-            />
-          </View>
+      <View style={styles.logoutModalHero}>
+        <View style={styles.logoutModalIconWrap}>
+          <LogOut color="#DC2626" size={26} />
         </View>
+        <Text variant="cardHeading" style={styles.logoutModalTitle}>
+          Log Out
+        </Text>
+        <Text variant="body" style={styles.logoutModalSub}>
+          Are you sure you want to log out of your Clinzo patient account?
+        </Text>
       </View>
-    </Modal>
+
+      <View style={styles.logoutActions}>
+        <Button
+          label="Cancel"
+          variant="secondary"
+          onPress={onClose}
+          disabled={busy}
+          style={styles.logoutCancelBtn}
+        />
+        <Button
+          loading={busy}
+          label={busy ? "Signing out…" : "Log Out"}
+          variant="primary"
+          onPress={() => void signOut()}
+          disabled={busy}
+          style={styles.logoutConfirmBtn}
+          labelStyle={styles.logoutConfirmLabel}
+        />
+      </View>
+    </ModalSurface>
   );
 }
 
 const styles = StyleSheet.create({
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(12, 36, 52, 0.45)",
+    backgroundColor: colors.ui.overlay,
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 20,
@@ -100,6 +125,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
     lineHeight: 18,
+  },
+  error: {
+    color: colors.danger,
+    fontFamily: fontFamilies.regular,
+    fontSize: 13,
+    textAlign: "center",
   },
   logoutActions: {
     flexDirection: "row",

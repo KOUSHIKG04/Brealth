@@ -1,18 +1,18 @@
+import { splitBottomNavItems } from "../utils/bottomNavItems";
+import { AppText as Text } from "../primitives/AppText";
+import { useReadableTypography } from "../theme/MobileTypographyProvider";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   StyleSheet,
   View,
-  Text,
   TouchableOpacity,
-  type ViewStyle,
   type LayoutChangeEvent,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, fontFamilies, radius } from "@startup/design-tokens";
-import type { LucideIcon } from "lucide-react-native";
 import { SOSButton } from "./SOSButton";
 import { getNotchedBarPath } from "../utils/notchedBarPath";
 import {
@@ -23,25 +23,10 @@ import {
   BOTTOM_NAV_BAR_SHADOW,
   BOTTOM_NAV_BAR_SOS_SIZE,
   BOTTOM_NAV_BAR_WIDTH_TOLERANCE,
-  splitBottomNavItems,
-} from "../utils/bottomNavBarConfig";
+} from "../utils/bottomNavBarConstants";
+import type { NavItem, BottomNavBarProps } from "../types/bottomNavBar";
 
-export type NavItem = {
-  key: string;
-  label: string;
-  icon?: LucideIcon;
-  badge?: number | string;
-};
-
-export type BottomNavBarProps = {
-  items: NavItem[];
-  activeTab: string;
-  onTabChange: (key: string) => void;
-  showSOS?: boolean;
-  onSOSPress?: () => void;
-  renderCenterButton?: () => React.ReactNode;
-  style?: ViewStyle;
-};
+export type { NavItem, BottomNavBarProps } from "../types/bottomNavBar";
 
 export function BottomNavBar({
   items,
@@ -176,6 +161,7 @@ type TabButtonProps = {
 function TabButton({ item, isActive, onPress }: TabButtonProps) {
   const Icon = item.icon;
   const theme = useMobileTheme();
+  const readable = useReadableTypography();
 
   return (
     <TouchableOpacity
@@ -207,13 +193,27 @@ function TabButton({ item, isActive, onPress }: TabButtonProps) {
           />
         )}
         {item.badge !== undefined && (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{item.badge}</Text>
+          <View
+            style={[
+              styles.badge,
+              readable && {
+                minWidth: 20,
+                minHeight: 20,
+                height: undefined,
+                paddingVertical: 2,
+                borderRadius: 10,
+              },
+            ]}
+          >
+            <Text variant="labelSmall" style={styles.badgeText}>
+              {item.badge}
+            </Text>
           </View>
         )}
       </View>
 
       <Text
+        variant="labelSmall"
         numberOfLines={1}
         ellipsizeMode="tail"
         style={[

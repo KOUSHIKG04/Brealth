@@ -1,34 +1,18 @@
+import { AppText as Text } from "./AppText";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import type { ReactNode } from "react";
+import { useRef } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
-  Text,
-  type PressableProps,
-  type StyleProp,
   type TextStyle,
   type ViewStyle,
 } from "react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { appThemeColors, type AppTheme } from "../utils/appTheme";
+import type { ButtonVariant, ButtonProps } from "../types/button";
 
-export type ButtonVariant =
-  "primary" | "secondary" | "outline" | "ghost" | "danger";
-
-export type ButtonProps = Omit<
-  PressableProps,
-  "children" | "style" | "disabled"
-> & {
-  label?: string;
-  children?: ReactNode;
-  variant?: ButtonVariant;
-  theme?: AppTheme;
-  disabled?: boolean;
-  style?: PressableProps["style"];
-  labelStyle?: StyleProp<TextStyle>;
-  leftIcon?: ReactNode;
-  rightIcon?: ReactNode;
-};
+export type { ButtonVariant, ButtonProps } from "../types/button";
 
 type ButtonPalette = {
   container: ViewStyle;
@@ -41,50 +25,127 @@ export function Button({
   variant = "primary",
   theme,
   disabled = false,
+  loading = false,
   style,
   labelStyle,
   leftIcon,
   rightIcon,
   accessibilityLabel = label,
   accessibilityState,
+  onLayout,
   ...props
 }: ButtonProps) {
   const themeColors = useMobileTheme(theme);
   const palette = getButtonPalette(variant, themeColors);
+  const raised =
+    variant === "primary" || variant === "secondary" || variant === "danger";
+  const idleSize = useRef<{ width: number; height: number } | null>(null);
 
   return (
     <Pressable
       {...props}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
-      accessibilityState={{ ...accessibilityState, disabled }}
-      disabled={disabled}
-      style={(state) => [
-        styles.button,
-        palette.container,
-        state.pressed && !disabled ? styles.pressed : undefined,
-        disabled ? styles.disabled : undefined,
-        typeof style === "function" ? style(state) : style,
-      ]}
+      accessibilityState={{
+        ...accessibilityState,
+        disabled: disabled || loading,
+        busy: loading || accessibilityState?.busy,
+      }}
+      disabled={disabled || loading}
+      onLayout={(event) => {
+        if (!loading) {
+          const { width, height } = event.nativeEvent.layout;
+          idleSize.current = { width, height };
+        }
+        onLayout?.(event);
+      }}
+      style={(state) => {
+        const callerStyle = typeof style === "function" ? style(state) : style;
+        const layout = StyleSheet.flatten(callerStyle);
+        const widthControlled =
+          layout?.width !== undefined ||
+          (typeof layout?.flex === "number" && layout.flex > 0) ||
+          (typeof layout?.flexGrow === "number" && layout.flexGrow > 0);
+        return [
+          styles.button,
+          palette.container,
+          raised
+            ? {
+                boxShadow: [
+                  {
+                    offsetX: 0,
+                    offsetY: state.pressed ? 1 : 3,
+                    blurRadius: state.pressed ? 2 : 6,
+                    color: "rgba(0, 0, 0, 0.20)",
+                  },
+                  {
+                    offsetX: 0,
+                    offsetY: 0,
+                    spreadDistance: 1,
+                    color: palette.container.backgroundColor,
+                  },
+                  {
+                    offsetX: 0,
+                    offsetY: 0,
+                    spreadDistance: 1,
+                    color: "rgba(255, 255, 255, 0.40)",
+                    inset: true,
+                  },
+                  {
+                    offsetX: 0,
+                    offsetY: state.pressed ? 1 : 0,
+                    blurRadius: 6,
+                    spreadDistance: 2,
+                    color: state.pressed
+                      ? "rgba(0, 0, 0, 0.12)"
+                      : "rgba(255, 255, 255, 0.24)",
+                    inset: true,
+                  },
+                ],
+              }
+            : undefined,
+          state.pressed && !disabled && !loading ? styles.pressed : undefined,
+          disabled && !loading ? styles.disabled : undefined,
+          loading && idleSize.current
+            ? {
+                minWidth: widthControlled ? undefined : idleSize.current.width,
+                minHeight: idleSize.current.height,
+              }
+            : undefined,
+          callerStyle,
+          loading ? styles.loading : undefined,
+        ];
+      }}
     >
-      {children ?? (
-        <>
-          {leftIcon}
-          {label ? (
-            <Text
-              numberOfLines={1}
-              style={[
-                styles.label,
-                palette.label,
-                disabled ? styles.disabledLabel : undefined,
-                labelStyle,
-              ]}
-            >
-              {label}
-            </Text>
-          ) : null}
-          {rightIcon}
-        </>
+      {loading ? (
+        <ActivityIndicator
+          size="small"
+          color={StyleSheet.flatten(labelStyle)?.color ?? palette.label.color}
+        />
+      ) : (
+        (children ?? (
+          <>
+            {leftIcon}
+            {label ? (
+              <Text
+                variant="button"
+                numberOfLines={1}
+                style={[
+                  styles.label,
+                  themeColors === appThemeColors.doctor
+                    ? styles.doctorLabel
+                    : undefined,
+                  palette.label,
+                  disabled ? styles.disabledLabel : undefined,
+                  labelStyle,
+                ]}
+              >
+                {label}
+              </Text>
+            ) : null}
+            {rightIcon}
+          </>
+        ))
       )}
     </Pressable>
   );
@@ -142,9 +203,14 @@ const styles = StyleSheet.create({
   pressed: {
     opacity: 0.82,
   },
+  loading: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
   disabled: {
     backgroundColor: colors.disabledBackground,
     borderWidth: 0,
+    boxShadow: "none",
   },
   label: {
     fontFamily: fontFamilies.semibold,
@@ -154,5 +220,9 @@ const styles = StyleSheet.create({
   },
   disabledLabel: {
     color: colors.disabledText,
+  },
+  doctorLabel: {
+    fontSize: 16,
+    lineHeight: 22,
   },
 });

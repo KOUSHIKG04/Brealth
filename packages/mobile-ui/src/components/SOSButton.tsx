@@ -1,22 +1,11 @@
-import React, { useState } from "react";
-import {
-  StyleSheet,
-  View,
-  Text,
-  Pressable,
-  type ViewStyle,
-} from "react-native";
+import { AppText as Text } from "../primitives/AppText";
+import { useState } from "react";
+import { StyleSheet, View, Pressable } from "react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import { getSOSButtonDimensions } from "../utils/sosButtonDimensions";
+import type { SOSButtonProps } from "../types/sosButton";
 
-export type SOSButtonProps = {
-  onLongPress?: () => void;
-  onPress?: () => void;
-  size?: number;
-  isFullRed?: boolean;
-  className?: string;
-  style?: ViewStyle;
-};
+export type { SOSButtonProps } from "../types/sosButton";
 
 export function SOSButton({
   onLongPress,
@@ -72,7 +61,9 @@ export function SOSButton({
         ]}
       />
 
-      <Text style={isRed ? styles.textWhite : styles.textRed}>SOS</Text>
+      <Text variant="button" style={isRed ? styles.textWhite : styles.textRed}>
+        SOS
+      </Text>
     </Pressable>
   );
 }

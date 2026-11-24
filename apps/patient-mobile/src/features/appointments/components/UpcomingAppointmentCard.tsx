@@ -1,5 +1,14 @@
-import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import type { AppointmentDetailProps } from "../types/upcoming-appointment-card";
+
+export type { AppointmentDetailProps } from "../types/upcoming-appointment-card";
+
+import type { UpcomingAppointmentCardProps } from "../types/upcoming-appointment";
+
+export type { UpcomingAppointmentCardProps } from "../types/upcoming-appointment";
+
+import { AppText as Text } from "@startup/mobile-ui";
+
+import { StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import {
   CalendarDays,
@@ -18,36 +27,29 @@ import {
   CardHeader,
   CardSeparator,
   CardTitle,
+  SectionHeader,
 } from "@startup/mobile-ui";
-import SectionHeader from "../../../components/SectionHeader";
 import { router } from "expo-router";
 
-export type UpcomingAppointmentCardProps = {
-  doctorName?: string;
-  specialization?: string;
-  date?: string;
-  time?: string;
-  onCardPress?: () => void;
-  onReschedulePress?: () => void;
-  onViewProfilePress?: () => void;
-};
-
 export default function UpcomingAppointmentCard({
-  doctorName = "Dr. Ananya Sharma",
-  specialization = "General Physician",
-  date = "Aug 18, Sunday",
-  time = "8:30 PM – 9:00 PM",
+  showHeader = true,
+  doctorName,
+  specialization = "In-person (OPD)",
+  date,
+  time,
   onCardPress,
   onReschedulePress,
   onViewProfilePress,
 }: UpcomingAppointmentCardProps) {
   return (
     <View style={styles.appointmentSection}>
-      <SectionHeader
-        title="Upcoming Appointments"
-        seeAllText="View all"
-        onSeeAllPress={() => router.push("/appointments")}
-      />
+      {showHeader ? (
+        <SectionHeader
+          title="Upcoming Appointments"
+          seeAllText="View all"
+          onSeeAllPress={() => router.push("/appointments")}
+        />
+      ) : null}
       <Card
         accessibilityLabel={`Upcoming appointment with ${doctorName} on ${date} at ${time}`}
         backgroundColor={gradients.patientBanner.colors[1]}
@@ -106,36 +108,36 @@ export default function UpcomingAppointmentCard({
           />
         </CardContent>
 
-        <CardFooter gap={14} style={styles.cardFooter}>
-          <Button
-            hitSlop={4}
-            label="Re-schedule"
-            onPress={onReschedulePress}
-            style={styles.actionButton}
-            labelStyle={styles.actionLabel}
-            theme="patient"
-            variant="secondary"
-          />
-          <Button
-            hitSlop={4}
-            label="View Profile"
-            onPress={onViewProfilePress}
-            style={styles.actionButton}
-            labelStyle={styles.actionLabel}
-            theme="patient"
-            variant="secondary"
-          />
-        </CardFooter>
+        {onReschedulePress || onViewProfilePress ? (
+          <CardFooter gap={14} style={styles.cardFooter}>
+            {onReschedulePress ? (
+              <Button
+                hitSlop={4}
+                label="Re-schedule"
+                onPress={onReschedulePress}
+                style={styles.actionButton}
+                labelStyle={styles.actionLabel}
+                theme="patient"
+                variant="secondary"
+              />
+            ) : null}
+            {onViewProfilePress ? (
+              <Button
+                hitSlop={4}
+                label="View Profile"
+                onPress={onViewProfilePress}
+                style={styles.actionButton}
+                labelStyle={styles.actionLabel}
+                theme="patient"
+                variant="secondary"
+              />
+            ) : null}
+          </CardFooter>
+        ) : null}
       </Card>
     </View>
   );
 }
-
-type AppointmentDetailProps = {
-  icon: ReactNode;
-  label: string;
-  value: string;
-};
 
 function AppointmentDetail({ icon, label, value }: AppointmentDetailProps) {
   return (
@@ -144,6 +146,7 @@ function AppointmentDetail({ icon, label, value }: AppointmentDetailProps) {
       <View style={styles.detailText}>
         {/* <Text style={styles.detailLabel}>{label}</Text> */}
         <Text
+          variant="bodyEmphasis"
           adjustsFontSizeToFit
           minimumFontScale={0.86}
           numberOfLines={1}
@@ -262,6 +265,6 @@ const styles = StyleSheet.create({
   appointmentSection: {
     gap: 10,
     marginTop: 10,
-    marginBottom:10
+    marginBottom: 10,
   },
 });

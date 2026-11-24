@@ -1,31 +1,10 @@
+import { AppText as Text } from "./AppText";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type PressableProps,
-  type StyleProp,
-  type TextStyle,
-} from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
-import { type AppTheme } from "../utils/appTheme";
+import type { ChipVariant, ChipProps } from "../types/chip";
 
-export type ChipVariant = "default" | "radio";
-
-export type ChipProps = Omit<
-  PressableProps,
-  "children" | "style" | "disabled"
-> & {
-  label: string;
-  variant?: ChipVariant;
-  selected?: boolean;
-  theme?: AppTheme;
-  radioPosition?: "left" | "right";
-  disabled?: boolean;
-  style?: PressableProps["style"];
-  labelStyle?: StyleProp<TextStyle>;
-};
+export type { ChipVariant, ChipProps } from "../types/chip";
 
 export function Chip({
   label,
@@ -102,6 +81,7 @@ export function Chip({
     >
       {isRadio && radioPosition === "left" && renderRadioIndicator()}
       <Text
+        variant="label"
         numberOfLines={1}
         style={[
           styles.label,

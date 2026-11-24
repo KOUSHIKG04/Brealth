@@ -1,30 +1,18 @@
+import { AppText as Text } from "./AppText";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  type PressableProps,
-  type StyleProp,
-  type TextStyle,
-} from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
+import type { TimeSlotProps } from "../types/timeSlot";
 
-export type TimeSlotProps = Omit<
-  PressableProps,
-  "children" | "style" | "disabled"
-> & {
-  time: string;
-  disabled?: boolean;
-  style?: PressableProps["style"];
-  textStyle?: StyleProp<TextStyle>;
-};
+export type { TimeSlotProps } from "../types/timeSlot";
 
 export function TimeSlot({
   time,
+  caption,
   disabled = false,
   style,
   textStyle,
-  accessibilityLabel = time,
+  accessibilityLabel = caption ? `${time}, ${caption}` : time,
   accessibilityRole,
   accessibilityState,
   onPress,
@@ -48,6 +36,7 @@ export function TimeSlot({
       ]}
     >
       <Text
+        variant="label"
         numberOfLines={1}
         style={[
           styles.text,
@@ -58,6 +47,19 @@ export function TimeSlot({
       >
         {time}
       </Text>
+      {caption ? (
+        <Text
+          variant="caption"
+          numberOfLines={1}
+          style={[
+            styles.caption,
+            { color: theme.textMuted },
+            disabled ? styles.disabledText : undefined,
+          ]}
+        >
+          {caption}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -80,6 +82,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "400",
     lineHeight: 16,
+    textAlign: "center",
+  },
+  caption: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 10,
+    lineHeight: 14,
     textAlign: "center",
   },
   pressed: {

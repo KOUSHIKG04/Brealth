@@ -1,139 +1,60 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  Animated,
-  BackHandler,
-  Keyboard,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { useHomeScreen } from "../hooks/useHomeScreen";
+import type { HomeScreenProps } from "../types/home-screen";
+
+import { AppText as Text } from "@startup/mobile-ui";
+
+import { Animated, Pressable, StyleSheet, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { router, type Href } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Bell, ChevronLeft, Search, X } from "lucide-react-native";
+
+import { router } from "expo-router";
+
+import { Bell, ChevronDown, ChevronLeft, MapPin, X } from "lucide-react-native";
 import {
   colors,
   fontFamilies,
   gradients,
   shadows,
 } from "@startup/design-tokens";
-import {
-  FadedScrollView,
-  IconLabel,
-  SafeAreaView,
-  SearchInput,
-} from "@startup/mobile-ui";
-import { homeActions } from "../utils/HomeActions";
-import AmbulanceBanner from "../components/AmbulanceBanner";
-import UpcomingAppointmentCard from "../../appointments/components/UpcomingAppointmentCard";
-import PopularServices from "../components/PopularServices";
-import { NotificationDrawer } from "../../../components/NotificationDrawer";
-import { useTypewriterPlaceholder } from "../../../hooks/useTypewriterPlaceholder";
+import { FadedScrollView, SafeAreaView, SearchInput } from "@startup/mobile-ui";
+import { HomeSearchResults } from "../components/HomeSearchResults";
+import { HomeFeedContent } from "../components/HomeFeedContent";
+import { NotificationDrawer } from "../../notifications/components/NotificationDrawer";
+
+import { locationHeadline } from "../../locations/utils/locationDisplay";
+
 import {
   COLLAPSE_DISTANCE,
   CONTENT_TOP,
   EXPANDED_HEADER_HEIGHT,
   SEARCH_HEIGHT,
   SEARCH_OVERLAP,
-  getHeaderAnimationStyles,
 } from "../../../utils/headerConstants";
 
-function getFindDoctorRoute(consultationType: string) {
-  return {
-    pathname: "/find-doctor",
-    params: { consultationType },
-  } as unknown as Href;
-}
-
-const ALL_SPECIALITIES = [
-  "General Physician",
-  "Dermatologist",
-  "Cardiologist",
-  "Pediatrician",
-  "Orthopedic",
-  "Gynecologist",
-  "ENT Specialist",
-  "Neurologist",
-  "Dentist",
-] as const;
-
-export function HomeScreen({
-  onNotificationPress,
-}: {
-  onNotificationPress?: () => void;
-} = {}) {
-  const { top: topInset } = useSafeAreaInsets();
-  const scrollY = useRef(new Animated.Value(0)).current;
-  const searchInputRef = useRef<TextInput>(null);
-  const [isSearchActive, setIsSearchActive] = useState(false);
-  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const searchPlaceholder = useTypewriterPlaceholder();
-
-  const { collapsedHeight, expandedHeaderStyle, searchStyle } =
-    getHeaderAnimationStyles(scrollY, topInset);
-
-  // Intercept Android hardware back press so hitting back navigation
-  // returns to the home page instead of exiting the app
-  useEffect(() => {
-    if (!isSearchActive) return;
-
-    const onBackPress = () => {
-      handleCloseSearch();
-      return true; // prevent exiting the app
-    };
-
-    const backHandlerSubscription = BackHandler.addEventListener(
-      "hardwareBackPress",
-      onBackPress
-    );
-
-    return () => backHandlerSubscription.remove();
-  }, [isSearchActive]);
-
-  const handleOpenSearch = () => {
-    if (isSearchActive) return;
-    setIsSearchActive(true);
-    Animated.timing(scrollY, {
-      toValue: COLLAPSE_DISTANCE,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleCloseSearch = () => {
-    Keyboard.dismiss();
-    searchInputRef.current?.blur();
-    setIsSearchActive(false);
-    setSearchQuery("");
-    Animated.timing(scrollY, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const handleSelectItem = (term: string) => {
-    Keyboard.dismiss();
-    router.push({
-      pathname: "/doctor-results",
-      params: { symptom: term, consultationType: "Clinic Visit" },
-    } as unknown as Href);
-  };
-
-  // Live filtered results when user is typing
-  const trimmedQuery = searchQuery.trim().toLowerCase();
-  const liveResults = trimmedQuery
-    ? ALL_SPECIALITIES.filter((title) =>
-        title.toLowerCase().includes(trimmedQuery)
-      ).map((title) => ({ title, type: "Speciality" as const }))
-    : [];
-
-  // 4px below the collapsed search bar for search content
-  const searchActivePaddingTop = topInset + 68 + 4;
-
+export function HomeScreen({ onNotificationPress }: HomeScreenProps = {}) {
+  const {
+    refresh,
+    greeting,
+    selectedLocation,
+    scrollY,
+    searchInputRef,
+    isSearchActive,
+    isNotificationOpen,
+    setIsNotificationOpen,
+    searchQuery,
+    setSearchQuery,
+    searchPlaceholder,
+    appointments,
+    upcoming,
+    collapsedHeight,
+    expandedHeaderStyle,
+    searchStyle,
+    handleCloseSearch,
+    handleOpenSearch,
+    handleSelectItem,
+    trimmedQuery,
+    liveResults,
+    searchActivePaddingTop,
+  } = useHomeScreen({ onNotificationPress });
   return (
     <View style={styles.screen}>
       <LinearGradient
@@ -145,10 +66,11 @@ export function HomeScreen({
       />
 
       <Animated.View
-        pointerEvents="none"
+        pointerEvents="box-none"
         style={[styles.expandedHeader, expandedHeaderStyle]}
       >
         <LinearGradient
+          pointerEvents="none"
           colors={gradients.patientBanner.colors}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -156,12 +78,34 @@ export function HomeScreen({
         />
         <SafeAreaView edges={["top"]} style={styles.safeArea}>
           <View style={styles.headerRow}>
-            <Text style={styles.greeting}>Good Morning 👋</Text>
+            <Text variant="sectionHeading" style={styles.greeting}>
+              {greeting}
+            </Text>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`Selected location: ${locationHeadline(selectedLocation)}. Change location`}
+              onPress={() => router.push("/select-location")}
+              style={styles.locationButton}
+            >
+              <MapPin color={colors.white} size={15} strokeWidth={2} />
+              <Text
+                variant="body"
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={styles.locationText}
+              >
+                {locationHeadline(selectedLocation)}
+              </Text>
+              <ChevronDown color={colors.white} size={15} />
+            </Pressable>
           </View>
         </SafeAreaView>
       </Animated.View>
 
       <FadedScrollView
+        onRefresh={isSearchActive ? undefined : refresh}
+        refreshTheme="patient"
+        refreshOffset={CONTENT_TOP}
         contentContainerStyle={[
           styles.content,
           isSearchActive && { paddingTop: searchActivePaddingTop },
@@ -183,86 +127,19 @@ export function HomeScreen({
         {isSearchActive ? (
           <View style={styles.searchActiveContent}>
             {trimmedQuery ? (
-              <View style={styles.liveResultsContainer}>
-                {liveResults.length > 0 ? (
-                  liveResults.map((item) => (
-                    <Pressable
-                      key={item.title}
-                      accessibilityLabel={`${item.title}, ${item.type}`}
-                      accessibilityRole="button"
-                      onPress={() => handleSelectItem(item.title)}
-                      style={({ pressed }) => [
-                        styles.liveResultRow,
-                        pressed && styles.rowPressed,
-                      ]}
-                    >
-                      <Search
-                        color="#9ca3af"
-                        size={18}
-                        strokeWidth={1.8}
-                        style={styles.rowIcon}
-                      />
-                      <View style={styles.rowContent}>
-                        <Text style={styles.itemTitle}>{item.title}</Text>
-                        <Text style={styles.itemSubtitle}>{item.type}</Text>
-                      </View>
-                    </Pressable>
-                  ))
-                ) : (
-                  <View style={styles.emptyResults}>
-                    <Text style={styles.emptyText}>
-                      No results found for "{searchQuery}".
-                    </Text>
-                    <Pressable
-                      onPress={() => handleSelectItem(searchQuery.trim())}
-                      style={styles.searchAnywayButton}
-                    >
-                      <Text style={styles.searchAnywayText}>
-                        Search for "{searchQuery}"
-                      </Text>
-                    </Pressable>
-                  </View>
-                )}
-              </View>
+              <HomeSearchResults
+                liveResults={liveResults}
+                searchQuery={searchQuery}
+                onSelectItem={handleSelectItem}
+              />
             ) : null}
           </View>
         ) : (
-          <>
-            <View style={styles.actionsRow}>
-              {homeActions.map((action) => (
-                <IconLabel
-                  key={action.key}
-                  icon={action.icon}
-                  label={action.label}
-                  backgroundColor={colors.patient.primary}
-                  iconColor={colors.patient.surface}
-                  onPress={
-                    action.consultationType
-                      ? () =>
-                          router.push(
-                            getFindDoctorRoute(action.consultationType!)
-                          )
-                      : undefined
-                  }
-                  surfaceSize={52}
-                  surfaceRadius={16}
-                  iconSize={24}
-                  labelWidth={76}
-                  gap={8}
-                  labelNumberOfLines={2}
-                  labelStyle={styles.actionLabel}
-                />
-              ))}
-            </View>
-
-            <View style={styles.ambulanceBanner}>
-              <AmbulanceBanner
-                onBookPress={() => router.push("/ambulance" as unknown as Href)}
-              />
-            </View>
-            <UpcomingAppointmentCard />
-            <PopularServices />
-          </>
+          <HomeFeedContent
+            upcoming={upcoming}
+            isLoading={appointments.isLoading}
+            isError={appointments.isError}
+          />
         )}
       </FadedScrollView>
 
@@ -399,10 +276,10 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
   headerRow: {
-    height: 48,
+    height: 70,
     marginTop: 18,
-    flexDirection: "row",
-    alignItems: "center",
+    justifyContent: "center",
+    alignItems: "flex-start",
     paddingHorizontal: 24,
   },
   greeting: {
@@ -411,6 +288,19 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: "600",
     lineHeight: 34,
+  },
+  locationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    maxWidth: "75%",
+    minHeight: 26,
+  },
+  locationText: {
+    color: colors.white,
+    fontFamily: fontFamilies.medium,
+    fontSize: 13,
+    flexShrink: 1,
   },
   fixedHeaderSafeArea: {
     position: "absolute",

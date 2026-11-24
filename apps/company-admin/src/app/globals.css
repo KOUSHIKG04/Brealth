@@ -1,0 +1,18 @@
+@import "tailwindcss";
+@import "@startup/web-ui/styles/theme.css";
+@import "tw-animate-css";
+
+@source "../../../../packages/web-ui/src";
+
+@theme inline {
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

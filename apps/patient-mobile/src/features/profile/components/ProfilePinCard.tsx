@@ -1,57 +1,43 @@
-import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { CheckCircle2, ChevronDown, Lock } from "lucide-react-native";
-import { colors, fontFamilies, radius } from "@startup/design-tokens";
-import { Button, Card, Input } from "@startup/mobile-ui";
+import { useProfilePin } from "../hooks/useProfilePin";
+import { AppText as Text } from "@startup/mobile-ui";
+
+import { Pressable, StyleSheet, View } from "react-native";
+import { ChevronDown, Lock } from "lucide-react-native";
+import { colors, fontFamilies, radius, surfaces } from "@startup/design-tokens";
+import { Button, Card, Input, Loader } from "@startup/mobile-ui";
+
+const pinPositions = ["first", "second", "third", "fourth"] as const;
 
 export function ProfilePinCard() {
-  const [showPin, setShowPin] = useState(false);
-  const [pin, setPin] = useState(["", "", "", ""]);
-  const [pinSaved, setPinSaved] = useState(false);
-
-  const updatePin = (index: number, value: string) => {
-    setPinSaved(false);
-    setPin((current) =>
-      current.map((digit, digitIndex) =>
-        digitIndex === index ? value.replace(/\D/g, "").slice(-1) : digit
-      )
-    );
-  };
-
-  const handleSavePin = () => {
-    if (pin.every((digit) => digit.length === 1)) {
-      setPinSaved(true);
-      setTimeout(() => {
-        setShowPin(false);
-        setPinSaved(false);
-      }, 1400);
-    }
-  };
-
+  const { showPin, setShowPin, pin, setPin, loading, unavailable, digits } =
+    useProfilePin();
   return (
     <Card
       variant="outlined"
       borderRadius={radius.md}
-      borderWidth={1}
-      borderColor="#E0E5EB"
       backgroundColor={colors.white}
       padding={16}
       gap={showPin ? 14 : 0}
-      style={styles.cardNoShadow}
+      style={styles.cardSurface}
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Set Security PIN"
-        onPress={() => setShowPin((value) => !value)}
+        accessibilityLabel="Verification PIN"
+        onPress={() => {
+          setPin(null);
+          setShowPin((value) => !value);
+        }}
         style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
       >
         <View style={styles.iconCircle}>
           <Lock color={colors.patient.primaryDark} size={18} />
         </View>
         <View style={styles.copyCol}>
-          <Text style={styles.rowTitle}>Set Security PIN</Text>
-          <Text style={styles.rowSubtitle}>
-            Quick 4-digit verification passcode
+          <Text variant="cardHeading" style={styles.rowTitle}>
+            Verification PIN
+          </Text>
+          <Text variant="cardHeading" style={styles.rowSubtitle}>
+            Your 4-digit service completion passcode
           </Text>
         </View>
         <ChevronDown
@@ -64,41 +50,38 @@ export function ProfilePinCard() {
       {showPin ? (
         <View style={styles.expandedSection}>
           <View style={styles.divider} />
-          <Text style={styles.pinInstructions}>
-            Enter a 4-digit security PIN for quick authorization and sensitive
-            actions.
+          <Text variant="body" style={styles.pinInstructions}>
+            Share this PIN only when an active service is ready to be completed.
           </Text>
           <View style={styles.pinRow}>
-            {pin.map((digit, index) => (
+            {pinPositions.map((position, index) => (
               <Input
-                key={index}
+                key={position}
                 accessibilityLabel={`PIN digit ${index + 1}`}
                 containerStyle={styles.pinContainer}
-                keyboardType="number-pad"
-                maxLength={1}
-                onChangeText={(value) => updatePin(index, value)}
-                secureTextEntry
+                editable={false}
                 style={styles.pinInput}
-                value={digit}
+                value={digits[index]}
               />
             ))}
           </View>
-
-          {pinSaved ? (
-            <View style={styles.savedBanner}>
-              <CheckCircle2 color="#059669" size={16} />
-              <Text style={styles.savedText}>PIN Saved Successfully</Text>
-            </View>
-          ) : (
-            <Button
-              disabled={pin.some((digit) => !digit)}
-              label="Save PIN"
-              onPress={handleSavePin}
-              style={styles.savePinButton}
-              labelStyle={styles.savePinLabel}
-              variant="secondary"
-            />
-          )}
+          {loading ? (
+            <Loader theme="patient" style={{ minHeight: 32 }} />
+          ) : null}
+          {unavailable ? (
+            <Text variant="body" style={styles.pinInstructions}>
+              Your PIN is available during an active trip. Home-visit PIN
+              display will be enabled when that workflow is connected.
+            </Text>
+          ) : null}
+          <Button
+            disabled={!pin}
+            label="Done"
+            onPress={() => setShowPin(false)}
+            style={styles.savePinButton}
+            labelStyle={styles.savePinLabel}
+            variant="secondary"
+          />
         </View>
       ) : null}
     </Card>
@@ -106,9 +89,8 @@ export function ProfilePinCard() {
 }
 
 const styles = StyleSheet.create({
-  cardNoShadow: {
-    elevation: 0,
-    shadowOpacity: 0,
+  cardSurface: {
+    ...surfaces.card,
   },
   actionRow: {
     minHeight: 46,
@@ -183,21 +165,5 @@ const styles = StyleSheet.create({
   },
   savePinLabel: {
     fontSize: 13,
-  },
-  savedBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: radius.md,
-    backgroundColor: "#ECFDF5",
-    borderWidth: 1,
-    borderColor: "#A7F3D0",
-  },
-  savedText: {
-    color: "#059669",
-    fontFamily: fontFamilies.bold,
-    fontSize: 12,
   },
 });

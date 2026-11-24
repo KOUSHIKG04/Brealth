@@ -1,18 +1,49 @@
-node_modules
+# Dependencies
+node_modules/
+scripts/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
+# Environment files and credentials
 .env
 .env.*
-
 !.env.example
+*.pem
 
-.turbo
+# Build and framework output
+.next/
+out/
+build/
+dist/
+.turbo/
+.expo/
+.vercel/
+.impeccable/
 
-.next
+# Test output (test source files remain visible to Git)
+coverage/
+test-results/
+playwright-report/
 
-.expo
+# Local documentation and planning notes
+# Already tracked files remain tracked.
+docs/
+plans/
 
-dist
+# TypeScript generated files
+*.tsbuildinfo
+next-env.d.ts
 
-scripts
+# Debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
 
-tests
+# Operating system files
+.DS_Store

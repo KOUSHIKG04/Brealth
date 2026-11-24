@@ -1,0 +1,334 @@
+"use server";
+
+import { userErrorMessage } from "@startup/contracts";
+import { revalidatePath } from "next/cache";
+import {
+  clinicCheckinTokenSchema,
+  clinicTransitionSchema,
+  portalNextWalkInBookingSchema,
+  setClinicAutoConfirmLimitSchema,
+  uuidSchema,
+} from "@startup/contracts";
+import {
+  preparePortalNextWalkInAppointment,
+  getPortalWalkInPaymentPolicy,
+  listMyPractices,
+  getPortalClinicDay,
+  redeemClinicCheckinToken,
+  setClinicAutoConfirmLimit,
+  transitionClinicAppointment,
+  listClinicAppointments,
+  listMyPracticeAppointments,
+  listAppointmentRescheduleOptions,
+  rescheduleAppointment,
+  resolveAppointmentAttendance,
+  decideAppointmentRecovery,
+} from "@startup/data-access";
+import {
+  rescheduleAppointmentSchema,
+  attendanceOutcomeSchema,
+  recoveryDecisionSchema,
+} from "@startup/contracts";
+
+export async function loadPortalRecoverySlots(appointmentId: string) {
+  await requireApprovedFacility();
+  const client = await createClient();
+  const item = (await listClinicAppointments(client)).find(
+    (item) => item.id === uuidSchema.parse(appointmentId)
+  );
+  if (!item?.recovery?.can_manage) throw new Error("Practice access required.");
+  return listAppointmentRescheduleOptions(client, item.id);
+}
+
+export async function changePortalAppointmentRecovery(
+  kind: "reschedule" | "attendance" | "decision",
+  input: unknown
+): Promise<{ error: string | null }> {
+  await requireApprovedFacility();
+  const client = await createClient();
+  try {
+    if (kind === "reschedule") {
+      const parsed = rescheduleAppointmentSchema.parse(input);
+      const item = (await listClinicAppointments(client)).find(
+        (item) => item.id === parsed.appointmentId
+      );
+      if (!item?.recovery?.can_manage)
+        return { error: "Practice access required." };
+      await rescheduleAppointment(client, parsed);
+    } else if (kind === "attendance")
+      await resolveAppointmentAttendance(
+        client,
+        attendanceOutcomeSchema.parse(input)
+      );
+    else if (kind === "decision")
+      await decideAppointmentRecovery(
+        client,
+        recoveryDecisionSchema.parse(input)
+      );
+    else return { error: "Invalid recovery action." };
+    revalidatePath("/appointments");
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    return { error: null };
+  } catch (error) {
+    return {
+      error: userErrorMessage(
+        error,
+        "Could not update this appointment. Refresh and retry."
+      ),
+    };
+  }
+}
+
+import { createClient } from "@/lib/supabase/server";
+import { requireApprovedFacility } from "@/server/auth/facilityAccess";
+
+export async function loadPortalWalkInPractices() {
+  await requireApprovedFacility();
+  const client = await createClient();
+  return (await listMyPractices(client))
+    .filter((practice) => practice.verified)
+    .map((practice) => ({
+      practiceId: practice.practice_id,
+      doctorName: practice.doctor_name,
+      facilityName: practice.facility_name,
+    }));
+}
+
+export async function loadPortalWalkInSlots(
+  practiceId: string,
+  localDay?: string
+) {
+  const parsed = uuidSchema.safeParse(practiceId);
+  if (!parsed.success) throw new Error("Choose a doctor.");
+  await requireApprovedFacility();
+  const client = await createClient();
+  const practices = await listMyPractices(client);
+  if (!practices.some((p) => p.practice_id === parsed.data && p.verified))
+    throw new Error("Practice access required.");
+  const [day, payment] = await Promise.all([
+    getPortalClinicDay(client, parsed.data, localDay),
+    getPortalWalkInPaymentPolicy(client, parsed.data),
+  ]);
+  return {
+    ...day,
+    payment,
+    slots: day.slots.map((slot) => ({
+      windowId: slot.window_id,
+      practiceServiceId: slot.practice_service_id,
+      startsAt: slot.starts_at,
+      endsAt: slot.ends_at,
+      timezone: slot.timezone,
+      feeMinor: slot.fee_minor,
+      currency: slot.currency,
+      state: slot.state,
+    })),
+  };
+}
+
+/** Registers a walk-in today; the server gives the next free time in order. */
+export async function createPortalWalkInAppointment(input: unknown): Promise<{
+  error: string | null;
+  appointmentId?: string;
+  requiresPayment?: boolean;
+  status?: string;
+  startsAt?: string;
+}> {
+  const parsed = portalNextWalkInBookingSchema.safeParse(input);
+  if (!parsed.success)
+    return {
+      error:
+        "Enter a patient name and choose a doctor with clinic hours today.",
+    };
+  await requireApprovedFacility();
+  const client = await createClient();
+  const { data: claims, error: authError } = await client.auth.getClaims();
+  if (authError || !claims)
+    return { error: "Your session expired. Sign in again." };
+  try {
+    const booking = await preparePortalNextWalkInAppointment(
+      client,
+      parsed.data
+    );
+    revalidatePath("/appointments");
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    return {
+      error: null,
+      appointmentId: booking.appointment_id,
+      requiresPayment: booking.requires_payment,
+      status: booking.status,
+      startsAt: booking.starts_at,
+    };
+  } catch (error) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String(error.code)
+        : null;
+    const message =
+      typeof error === "object" && error !== null && "message" in error
+        ? String(error.message)
+        : "";
+    if (message.includes("No free time left today"))
+      return {
+        error:
+          "No free time is left today. Every clinic time is booked or has passed.",
+      };
+    if (code === "23514")
+      return {
+        error:
+          "The walk-in limit for today is reached. Update the limits in Doctor Schedules.",
+      };
+    if (code === "22023")
+      return {
+        error:
+          "No clinic time is available for this walk-in. Refresh and try again.",
+      };
+    if (code === "42501")
+      return { error: "You do not have access to book this doctor." };
+    if (code === "PT409")
+      return {
+        error:
+          "Payment terms or this reservation changed. Refresh the form and try again.",
+      };
+    return {
+      error:
+        "Could not create the appointment. Check your connection and try again.",
+    };
+  }
+}
+
+export async function changePortalAppointment(
+  input: unknown
+): Promise<{ error: string | null }> {
+  const parsed = clinicTransitionSchema.safeParse(input);
+  if (
+    !parsed.success ||
+    ![
+      "approve",
+      "reject",
+      "check_in",
+      "call",
+      "hold",
+      "resume",
+      "no_show",
+      "cancel",
+    ].includes(parsed.data.action)
+  ) {
+    return { error: "Invalid appointment action." };
+  }
+
+  const client = await createClient();
+
+  const { data: claims, error: authError } = await client.auth.getClaims();
+
+  if (authError || !claims)
+    return { error: "Your session expired. Sign in again." };
+
+  try {
+    await transitionClinicAppointment(client, parsed.data);
+    revalidatePath("/appointments");
+    revalidatePath("/");
+    revalidatePath("/dashboard");
+    return { error: null };
+  } catch (error) {
+    const code =
+      typeof error === "object" && error !== null && "code" in error
+        ? String(error.code)
+        : null;
+    if (code === "PT409" || code === "40001")
+      return { error: "This appointment changed. Refresh and try again." };
+    if (code === "42501")
+      return { error: "You do not have access to this appointment or action." };
+    if (code === "22023" && parsed.data.action === "approve")
+      return {
+        error:
+          "This request has expired or its appointment slot has started. Refresh to see current requests.",
+      };
+    return {
+      error: "Could not update this appointment. Refresh and try again.",
+    };
+  }
+}
+
+export async function finishPortalWalkInBooking(
+  appointmentId: string,
+  checkIn: boolean
+) {
+  await requireApprovedFacility();
+  const client = await createClient();
+  const id = uuidSchema.parse(appointmentId);
+  const item = (await listMyPracticeAppointments(client)).find(
+    (item) => item.id === id
+  );
+  if (
+    !item ||
+    item.source !== "reception_walk_in" ||
+    item.status !== "confirmed" ||
+    item.confirmation_payment_pending
+  )
+    throw new Error(
+      "Payment has not confirmed this appointment. Refresh payment status before retrying."
+    );
+  let checkedIn =
+    item.queue_state !== "awaiting_arrival" && item.queue_state !== null;
+  if (checkIn && !checkedIn) {
+    try {
+      await transitionClinicAppointment(client, {
+        appointmentId: id,
+        expectedVersion: Number(item.row_version),
+        action: "check_in",
+      });
+      checkedIn = true;
+    } catch {
+      // Payment remains successful when arrival needs reception review.
+    }
+  }
+  revalidatePath("/appointments");
+  revalidatePath("/transactions");
+  revalidatePath("/dashboard");
+  revalidatePath("/");
+  return { checkedIn };
+}
+
+export async function redeemPortalCheckinToken(
+  token: string
+): Promise<{ error: string | null }> {
+  if (!clinicCheckinTokenSchema.safeParse(token).success)
+    return { error: "Scan a valid clinic check-in QR code." };
+  const client = await createClient();
+  const { data: claims, error: authError } = await client.auth.getClaims();
+  if (authError || !claims)
+    return { error: "Your session expired. Sign in again." };
+  try {
+    await redeemClinicCheckinToken(client, token);
+    revalidatePath("/appointments");
+    return { error: null };
+  } catch {
+    return {
+      error:
+        "This QR code expired, was already used, or is for another practice. Ask the patient to refresh it.",
+    };
+  }
+}
+
+export async function changePortalAutoConfirmLimit(
+  input: unknown
+): Promise<{ error: string | null }> {
+  const parsed = setClinicAutoConfirmLimitSchema.safeParse(input);
+  if (!parsed.success) return { error: "Enter a valid auto-confirm limit." };
+  const client = await createClient();
+  const { data: claims, error: authError } = await client.auth.getClaims();
+  if (authError || !claims)
+    return { error: "Your session expired. Sign in again." };
+  try {
+    await setClinicAutoConfirmLimit(client, parsed.data);
+    revalidatePath("/appointments");
+    return { error: null };
+  } catch {
+    return {
+      error:
+        "Could not update this session. Refresh and check your practice access.",
+    };
+  }
+}

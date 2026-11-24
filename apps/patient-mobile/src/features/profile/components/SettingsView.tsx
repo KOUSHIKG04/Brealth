@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { Pressable, StyleSheet, Switch, Text, View } from "react-native";
+import { useProfileSettings } from "../hooks/useProfileSettings";
+import type { SettingsViewProps } from "../types/settings-view";
+import { AppText as Text } from "@startup/mobile-ui";
+
+import { Pressable, StyleSheet, Switch, View } from "react-native";
 import {
   ChevronRight,
   LogOut,
@@ -7,24 +10,30 @@ import {
   Moon,
   ShieldCheck,
 } from "lucide-react-native";
-import { colors, fontFamilies, radius, spacing } from "@startup/design-tokens";
+import {
+  colors,
+  fontFamilies,
+  radius,
+  spacing,
+  surfaces,
+} from "@startup/design-tokens";
 import { Card, FadedScrollView, Header } from "@startup/mobile-ui";
 import { HelpModal } from "./HelpModal";
 import { LogoutModal } from "./LogoutModal";
 import { PrivacyModal } from "./PrivacyModal";
 
-export function SettingsView({ onBack }: { onBack: () => void }) {
-  const [helpOpen, setHelpOpen] = useState(false);
-  const [privacyOpen, setPrivacyOpen] = useState(false);
-  const [logoutOpen, setLogoutOpen] = useState(false);
-
+export function SettingsView({ onBack }: SettingsViewProps) {
+  const {
+    helpOpen,
+    setHelpOpen,
+    privacyOpen,
+    setPrivacyOpen,
+    logoutOpen,
+    setLogoutOpen,
+  } = useProfileSettings({ onBack });
   return (
     <View style={styles.screen}>
-      <Header
-        title="Settings"
-        app="patient"
-        onBackPress={onBack}
-      />
+      <Header title="Settings" app="patient" onBackPress={onBack} />
       <FadedScrollView
         contentContainerStyle={styles.content}
         keyboardShouldPersistTaps="handled"
@@ -34,27 +43,29 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
         <Card
           variant="outlined"
           borderRadius={radius.md}
-          borderWidth={1}
-          borderColor="#E0E5EB"
           backgroundColor={colors.white}
           padding={16}
-          style={styles.cardNoShadow}
+          style={styles.cardSurface}
         >
-          <View style={styles.settingItemRow}>
+          <View style={[styles.settingItemRow, styles.disabledRow]}>
             <View style={styles.iconCircle}>
-              <Moon color={colors.patient.primaryDark} size={18} />
+              <Moon color="#64748B" size={18} />
             </View>
             <View style={styles.copyCol}>
-              <Text style={styles.rowTitle}>Dark Mode</Text>
-              <Text style={styles.rowSubtitle}>
+              <Text
+                variant="cardHeading"
+                style={[styles.rowTitle, styles.disabledTitle]}
+              >
+                Dark Mode
+              </Text>
+              <Text variant="cardHeading" style={styles.rowSubtitle}>
                 System default • Dark mode coming soon
               </Text>
             </View>
             <View style={styles.themeToggleArea}>
-              <View style={styles.disabledPill}>
-                <Text style={styles.disabledPillText}>Disabled</Text>
-              </View>
               <Switch
+                accessibilityLabel="Dark Mode"
+                accessibilityHint="Dark mode is not available yet."
                 disabled={true}
                 value={false}
                 trackColor={{ false: "#E2E8F0", true: "#087F78" }}
@@ -68,24 +79,27 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
         <Card
           variant="outlined"
           borderRadius={radius.md}
-          borderWidth={1}
-          borderColor="#E0E5EB"
           backgroundColor={colors.white}
           padding={16}
-          style={styles.cardNoShadow}
+          style={styles.cardSurface}
         >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Help and Support"
             onPress={() => setHelpOpen(true)}
-            style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.actionRow,
+              pressed && styles.pressed,
+            ]}
           >
             <View style={styles.iconCircle}>
               <MessageCircle color={colors.patient.primaryDark} size={18} />
             </View>
             <View style={styles.copyCol}>
-              <Text style={styles.rowTitle}>Help and Support</Text>
-              <Text style={styles.rowSubtitle}>
+              <Text variant="cardHeading" style={styles.rowTitle}>
+                Help and Support
+              </Text>
+              <Text variant="cardHeading" style={styles.rowSubtitle}>
                 FAQs, 24/7 helpline & contact care
               </Text>
             </View>
@@ -97,24 +111,27 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
         <Card
           variant="outlined"
           borderRadius={radius.md}
-          borderWidth={1}
-          borderColor="#E0E5EB"
           backgroundColor={colors.white}
           padding={16}
-          style={styles.cardNoShadow}
+          style={styles.cardSurface}
         >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Privacy Policy"
             onPress={() => setPrivacyOpen(true)}
-            style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.actionRow,
+              pressed && styles.pressed,
+            ]}
           >
             <View style={styles.iconCircle}>
               <ShieldCheck color={colors.patient.primaryDark} size={18} />
             </View>
             <View style={styles.copyCol}>
-              <Text style={styles.rowTitle}>Privacy Policy</Text>
-              <Text style={styles.rowSubtitle}>
+              <Text variant="cardHeading" style={styles.rowTitle}>
+                Privacy Policy
+              </Text>
+              <Text variant="cardHeading" style={styles.rowSubtitle}>
                 Data protection, HIPAA & security terms
               </Text>
             </View>
@@ -126,24 +143,27 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
         <Card
           variant="outlined"
           borderRadius={radius.md}
-          borderWidth={1}
-          borderColor="#E0E5EB"
           backgroundColor={colors.white}
           padding={16}
-          style={styles.cardNoShadow}
+          style={styles.cardSurface}
         >
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Log Out"
             onPress={() => setLogoutOpen(true)}
-            style={({ pressed }) => [styles.actionRow, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.actionRow,
+              pressed && styles.pressed,
+            ]}
           >
             <View style={styles.logoutIconCircle}>
               <LogOut color="#DC2626" size={18} />
             </View>
             <View style={styles.copyCol}>
-              <Text style={styles.logoutItemTitle}>Log Out</Text>
-              <Text style={styles.rowSubtitle}>
+              <Text variant="cardHeading" style={styles.logoutItemTitle}>
+                Log Out
+              </Text>
+              <Text variant="cardHeading" style={styles.rowSubtitle}>
                 Sign out of your Clinzo patient account
               </Text>
             </View>
@@ -153,7 +173,10 @@ export function SettingsView({ onBack }: { onBack: () => void }) {
       </FadedScrollView>
 
       <HelpModal visible={helpOpen} onClose={() => setHelpOpen(false)} />
-      <PrivacyModal visible={privacyOpen} onClose={() => setPrivacyOpen(false)} />
+      <PrivacyModal
+        visible={privacyOpen}
+        onClose={() => setPrivacyOpen(false)}
+      />
       <LogoutModal visible={logoutOpen} onClose={() => setLogoutOpen(false)} />
     </View>
   );
@@ -167,11 +190,13 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     paddingBottom: 60,
   },
-  cardNoShadow: {
-    elevation: 0,
-    shadowOpacity: 0,
+  cardSurface: {
+    ...surfaces.card,
+    overflow: "hidden",
   },
   actionRow: {
+    borderRadius: 12,
+    overflow: "hidden",
     minHeight: 46,
     flexDirection: "row",
     alignItems: "center",
@@ -205,15 +230,15 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.medium,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   logoutItemTitle: {
     color: "#DC2626",
-    fontFamily: fontFamilies.bold,
+    fontFamily: fontFamilies.medium,
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   rowSubtitle: {
     color: colors.patient.textSecondary,
@@ -225,16 +250,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  disabledPill: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    backgroundColor: "#F1F5F9",
-  },
-  disabledPillText: {
-    color: "#64748B",
-    fontFamily: fontFamilies.medium,
-    fontSize: 10,
-  },
+  disabledRow: { opacity: 0.55 },
+  disabledTitle: { color: "#64748B" },
   pressed: { opacity: 0.72 },
 });

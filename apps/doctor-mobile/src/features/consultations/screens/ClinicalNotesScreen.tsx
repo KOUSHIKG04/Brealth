@@ -1,33 +1,139 @@
-import { useState } from "react";
+import { useClinicalNotes } from "../hooks/useClinicalNotes";
+
 import { View } from "react-native";
 import { router } from "expo-router";
 import { FileText } from "lucide-react-native";
-import { Button, TextArea } from "@startup/mobile-ui";
+
+import { Button, Input, Loader, TextArea } from "@startup/mobile-ui";
 import {
   DoctorScreen,
   Heading,
   Label,
   MissingPatient,
-  palette,
-  ui,
+  Panel,
 } from "../../../components/DoctorScreen";
-import { useVisit, visitRoute } from "../utils/consultation";
-import { useDoctorStore } from "../../../stores/useDoctorStore";
+import { palette, ui } from "../../../components/theme";
+import { ConsultationForm } from "../../clinic/components/ConsultationForm";
+import { ConsultationRecord } from "../../clinic/components/ConsultationRecord";
+import { visitRoute } from "../utils/consultationRoutes";
+
 import { createConsultation } from "../../../data/demo";
+
 export function ClinicalNotesScreen() {
-  const { patient, appointment } = useVisit();
-  const visits = useDoctorStore((s) => s.consultations);
-  const update = useDoctorStore((s) => s.updateConsultation);
-  const complete = useDoctorStore((s) => s.complete);
-  const [confirm, setConfirm] = useState(false);
+  const {
+    isLiveAppointment,
+    appointmentsQuery,
+    liveAppointment,
+    assessment,
+    setAssessment,
+    completeMessage,
+    completeMutation,
+    patient,
+    appointment,
+    visits,
+    update,
+    complete,
+    confirm,
+    setConfirm,
+  } = useClinicalNotes();
+  if (isLiveAppointment && liveAppointment) {
+    if (liveAppointment.status === "completed" && liveAppointment.can_consult)
+      return (
+        <ConsultationRecord
+          appointmentId={liveAppointment.id}
+          patientName={liveAppointment.patient_name}
+          timezone={liveAppointment.timezone}
+        />
+      );
+    if (
+      liveAppointment.status === "in_consultation" &&
+      liveAppointment.can_consult
+    ) {
+      return (
+        <ConsultationForm
+          appointmentId={liveAppointment.id}
+          patientName={liveAppointment.patient_name}
+          timezone={liveAppointment.timezone}
+          completing={completeMutation.isPending}
+          assessmentStep={
+            <>
+              <Input
+                label="Assessment"
+                value={assessment}
+                onChangeText={setAssessment}
+                multiline
+                maxLength={10000}
+                disabled={completeMutation.isPending}
+              />
+              <Button
+                loading={completeMutation.isPending}
+                theme="doctor"
+                label="Sign and complete"
+                disabled={completeMutation.isPending || !assessment.trim()}
+                onPress={() => completeMutation.mutate()}
+              />
+              {completeMessage ? (
+                <Label
+                  variant="label"
+                  style={
+                    completeMessage.startsWith("Could") ? ui.error : ui.success
+                  }
+                >
+                  {completeMessage}
+                </Label>
+              ) : null}
+            </>
+          }
+        />
+      );
+    }
+    return (
+      <DoctorScreen title={liveAppointment.patient_name}>
+        {liveAppointment.status === "completed" ? (
+          <Panel style={{ marginTop: 16 }}>
+            <Label style={ui.success}>
+              This consultation has been completed and signed.
+            </Label>
+          </Panel>
+        ) : (
+          <Label>Start this consultation from the appointment page.</Label>
+        )}
+        {completeMessage ? (
+          <Label
+            variant="label"
+            style={completeMessage.startsWith("Could") ? ui.error : ui.success}
+          >
+            {completeMessage}
+          </Label>
+        ) : null}
+      </DoctorScreen>
+    );
+  }
+
+  if (isLiveAppointment) {
+    return (
+      <DoctorScreen title="Consultation details">
+        <Panel>
+          {appointmentsQuery.isLoading ? (
+            <Loader theme="doctor" style={{ minHeight: 72 }} />
+          ) : (
+            <Label muted>
+              {appointmentsQuery.isError
+                ? "Could not load this consultation. Try again."
+                : "This consultation is unavailable for your account."}
+            </Label>
+          )}
+        </Panel>
+      </DoctorScreen>
+    );
+  }
+
   if (!patient || !appointment) return <MissingPatient />;
   const visit = visits[appointment.id] ?? createConsultation(patient.id);
+
   return (
-    <DoctorScreen
-      title={patient.name}
-      subtitle={`${patient.gender}, ${patient.age} • Blood: ${patient.blood}`}
-    >
-      <Heading style={{ fontSize: 13 }}>Recorded Vitals</Heading>
+    <DoctorScreen title={patient.name}>
+      <Heading variant="label">Recorded Vitals</Heading>
       <View style={ui.row}>
         {[
           [patient.bp, "BP (mmHg)"],
@@ -46,14 +152,12 @@ export function ClinicalNotesScreen() {
             }}
           >
             <Heading
-              style={{
-                fontSize: 20,
-                color: index === 1 ? palette.text : palette.accent,
-              }}
+              variant="sectionHeading"
+              style={{ color: index === 1 ? palette.text : palette.accent }}
             >
               {value}
             </Heading>
-            <Label muted style={{ fontSize: 11 }}>
+            <Label variant="caption" muted>
               {label}
             </Label>
           </View>

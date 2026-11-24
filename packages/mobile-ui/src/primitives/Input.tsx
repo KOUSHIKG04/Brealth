@@ -1,28 +1,19 @@
+import { AppText as Text, AppTextInput } from "./AppText";
 import { useMobileTheme } from "../theme/MobileThemeProvider";
-import {
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-  type StyleProp,
-  type TextInputProps,
-  type TextStyle,
-  type ViewStyle,
-} from "react-native";
+import { useReadableTypography } from "../theme/MobileTypographyProvider";
+import { StyleSheet, View } from "react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
+import type { InputProps } from "../types/input";
 
-export type InputProps = TextInputProps & {
-  label?: string;
-  error?: string;
-  disabled?: boolean;
-  containerStyle?: StyleProp<ViewStyle>;
-  labelStyle?: StyleProp<TextStyle>;
-  errorStyle?: StyleProp<TextStyle>;
-};
+export type { InputProps } from "../types/input";
 
 export function Input({
+  ref,
+  variant = "outlined",
   label,
+  prefix,
   error,
+  invalid = false,
   disabled = false,
   editable = true,
   containerStyle,
@@ -35,46 +26,96 @@ export function Input({
   ...props
 }: InputProps) {
   const theme = useMobileTheme();
+  const readable = useReadableTypography();
+  const input = (
+    <AppTextInput
+      {...props}
+      ref={ref}
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ ...accessibilityState, disabled }}
+      editable={!disabled && editable}
+      placeholderTextColor={
+        placeholderTextColor ??
+        (variant === "outlined" ? theme.placeholder : undefined)
+      }
+      style={[
+        variant === "outlined" ? styles.input : undefined,
+        variant === "outlined"
+          ? {
+              backgroundColor: theme.surface,
+              color: theme.text,
+              borderColor: theme.border,
+            }
+          : undefined,
+        disabled ? styles.inputDisabled : undefined,
+        style,
+        readable && variant === "outlined" && { minHeight: 52 },
+        prefix ? styles.prefixedInput : undefined,
+        error || invalid ? styles.inputError : undefined,
+      ]}
+    />
+  );
+  // A chat composer, search row or hidden OTP field must remain in its parent's
+  // layout; labels and form containers are added only when actually requested.
+  const control = prefix ? (
+    <View style={styles.prefixContainer}>
+      {input}
+      <View pointerEvents="none" style={styles.prefixArea}>
+        <Text variant="body" style={[styles.prefixText, { color: theme.text }]}>
+          {prefix}
+        </Text>
+        <View
+          style={[styles.prefixDivider, { backgroundColor: theme.border }]}
+        />
+      </View>
+    </View>
+  ) : (
+    input
+  );
+  if (variant === "unstyled" && !label && !error) return control;
   return (
     <View style={[styles.container, containerStyle]}>
       {label ? (
-        <Text style={[styles.label, { color: theme.text }, labelStyle]}>
+        <Text
+          variant="label"
+          style={[styles.label, { color: theme.text }, labelStyle]}
+        >
           {label}
         </Text>
       ) : null}
 
-      <TextInput
-        {...props}
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ ...accessibilityState, disabled }}
-        editable={!disabled && editable}
-        placeholderTextColor={placeholderTextColor ?? theme.placeholder}
-        style={[
-          styles.input,
-          {
-            backgroundColor: theme.surface,
-            color: theme.text,
-            borderColor: theme.border,
-          },
-          error ? styles.inputError : undefined,
-          disabled ? styles.inputDisabled : undefined,
-          style,
-        ]}
-      />
+      {control}
 
-      {error ? <Text style={[styles.error, errorStyle]}>{error}</Text> : null}
+      {error ? (
+        <Text variant="caption" style={[styles.error, errorStyle]}>
+          {error}
+        </Text>
+      ) : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  prefixContainer: { position: "relative" },
+  prefixedInput: { paddingLeft: 70 },
+  prefixArea: {
+    position: "absolute",
+    left: 16,
+    top: 0,
+    bottom: 0,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  prefixText: { fontFamily: fontFamilies.medium, fontSize: 15 },
+  prefixDivider: { width: 1, height: 22 },
   label: {
     marginBottom: 4,
     color: colors.textPrimary,
-    fontFamily: fontFamilies.semibold,
-    fontSize: 11,
-    fontWeight: "600",
-    lineHeight: 14,
+    fontFamily: fontFamilies.medium,
+    fontSize: 14,
+    fontWeight: "500",
+    lineHeight: 20,
   },
   container: {
     width: "100%",
@@ -89,8 +130,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     color: colors.textPrimary,
     fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 16,
+    lineHeight: 24,
   },
   inputError: {
     borderColor: colors.danger,

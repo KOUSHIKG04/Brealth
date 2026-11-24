@@ -1,24 +1,24 @@
+import type { AppointmentDetailsCardProps } from "../types/appointments";
+import { consultationTypeLabels } from "../utils/consultationConstants";
+import { AppText as Text } from "@startup/mobile-ui";
 import type { ReactNode } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, View } from "react-native";
 import {
   Building2,
   CalendarClock,
   CalendarDays,
+  CreditCard,
   Hash,
   MapPin,
   Stethoscope,
 } from "lucide-react-native";
-import { colors, fontFamilies, radius } from "@startup/design-tokens";
+import { colors, fontFamilies, radius, surfaces } from "@startup/design-tokens";
 import { Accordion, Chip } from "@startup/mobile-ui";
-import type { Appointment } from "../types/appointment";
 
 export default function AppointmentDetailsCard({
   appointment,
   defaultOpen = true,
-}: {
-  appointment: Appointment;
-  defaultOpen?: boolean;
-}) {
+}: AppointmentDetailsCardProps) {
   return (
     <Accordion
       title="Appointment Details"
@@ -38,7 +38,7 @@ export default function AppointmentDetailsCard({
         label="Consultation Type"
         value={
           <Chip
-            label={appointment.consultationType}
+            label={consultationTypeLabels[appointment.consultationType]}
             style={styles.typeChip}
             labelStyle={styles.typeChipLabel}
           />
@@ -47,7 +47,7 @@ export default function AppointmentDetailsCard({
       <DetailRow
         icon={<Hash size={17} color={colors.textSecondary} />}
         label="Appointment ID"
-        value={appointment.id}
+        value={appointment.id.slice(-8)}
       />
       <DetailRow
         icon={<CalendarClock size={17} color={colors.textSecondary} />}
@@ -63,6 +63,11 @@ export default function AppointmentDetailsCard({
         icon={<MapPin size={17} color={colors.textSecondary} />}
         label="Location"
         value={appointment.location}
+      />
+      <DetailRow
+        icon={<CreditCard size={17} color={colors.textSecondary} />}
+        label="Consultation Fee"
+        value={appointment.fee}
         last
       />
     </Accordion>
@@ -84,10 +89,12 @@ function DetailRow({
     <View style={[styles.row, last && styles.lastRow]}>
       <View style={styles.labelGroup}>
         {icon}
-        <Text style={styles.label}>{label}</Text>
+        <Text variant="label" style={styles.label}>
+          {label}
+        </Text>
       </View>
       {typeof value === "string" ? (
-        <Text numberOfLines={2} style={styles.value}>
+        <Text variant="bodyEmphasis" numberOfLines={2} style={styles.value}>
           {value}
         </Text>
       ) : (
@@ -99,10 +106,9 @@ function DetailRow({
 
 const styles = StyleSheet.create({
   card: {
+    ...surfaces.card,
     borderRadius: radius.md,
     backgroundColor: colors.white,
-    borderWidth: 1,
-    borderColor: "#E0E5EB",
   },
   header: {
     paddingHorizontal: 16,

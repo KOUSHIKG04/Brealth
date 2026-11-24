@@ -1,0 +1,65 @@
+import { userErrorMessage } from "@startup/contracts";
+import type { LiveOnlineConsultationProps } from "../types/live-online-consultation";
+import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AudioSession } from "@livekit/react-native";
+import {
+  getOnlineVideoToken,
+  startOnlineAppointment,
+} from "@startup/data-access";
+import { useToast, useToastFeedback } from "@startup/mobile-ui";
+import { useOnlineVisit } from "./useOnlineVisit";
+import { supabase } from "../../../services/supabase";
+
+export function useLiveOnlineConsultation({
+  appointmentId,
+  initialChat,
+}: LiveOnlineConsultationProps) {
+  const { showToast } = useToast();
+  const live = useOnlineVisit(appointmentId);
+  const queryClient = useQueryClient();
+  const start = useMutation({
+    mutationFn: () => startOnlineAppointment(supabase!, appointmentId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["doctor-clinic-appointments"],
+      });
+    },
+  });
+  const token = useQuery({
+    queryKey: ["online-video-token", appointmentId],
+    queryFn: () => getOnlineVideoToken(supabase!, appointmentId),
+    enabled: Boolean(
+      live.appointment &&
+      live.appointment.status === "in_consultation" &&
+      supabase
+    ),
+    staleTime: 5 * 60 * 1000,
+  });
+  useToastFeedback({
+    error: start.isError
+      ? start.error &&
+        typeof start.error === "object" &&
+        "message" in start.error &&
+        String(start.error.message).includes("Pay the consultation fee")
+        ? "Awaiting patient payment. Ask the patient to pay in Appointment Details before starting."
+        : "Could not start consultation. Check its payment, scheduled time and status."
+      : userErrorMessage(token.error, ""),
+  });
+  useEffect(() => {
+    if (!token.data) return;
+    void AudioSession.startAudioSession().catch(() =>
+      showToast({
+        title: "Audio unavailable",
+        message: "Check microphone permissions.",
+        type: "error",
+      })
+    );
+    return () => {
+      void AudioSession.stopAudioSession().catch(() => undefined);
+    };
+  }, [token.data, showToast]);
+  const appointment = live.appointment;
+
+  return { showToast, live, start, token, appointment };
+}

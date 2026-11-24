@@ -1,319 +1,318 @@
-import { useState } from "react";
-import { Pressable, Switch, View } from "react-native";
+import { ProfileDetail } from "../components/ProfileDetail";
+import { styles } from "../components/ProfileScreen.styles";
+import { useDoctorProfile } from "../hooks/useDoctorProfile";
+import { rows } from "../utils/profileConstants";
+
+import { StatusBar } from "expo-status-bar";
+
+import { Image, Pressable, View } from "react-native";
 import { router } from "expo-router";
 import {
-  Bell,
   Building,
   ChevronRight,
-  CircleHelp,
-  DollarSign,
-  LogOut,
-  Star,
+  User,
+  Mail,
+  MapPin,
+  Phone,
+  Pencil,
+  GraduationCap,
+  BadgeCheck,
 } from "lucide-react-native";
-import { Button, Input } from "@startup/mobile-ui";
 import {
-  DoctorScreen,
-  Heading,
-  Label,
-  palette,
-  Panel,
-  ui,
-} from "../../../components/DoctorScreen";
-import { useDoctorStore } from "../../../stores/useDoctorStore";
-const rows = [
-  {
-    title: "My Ratings & Reviews",
-    icon: Star,
-    color: "#F59E0B",
-    background: "#FFF8E5",
-  },
-  {
-    title: "Earnings & Payouts",
-    icon: DollarSign,
-    color: "#FF7800",
-    background: "#FFF3E2",
-  },
-  {
-    title: "Hospital Settings",
-    icon: Building,
-    color: "#7565FF",
-    background: "#F3F1FF",
-  },
-  {
-    title: "Notification Preferences",
-    icon: Bell,
-    color: "#005E64",
-    background: "#EFFFF9",
-  },
-  {
-    title: "Help & Support",
-    icon: CircleHelp,
-    color: "#71818F",
-    background: "#F5F5F7",
-  },
-];
+  AppText as Text,
+  Accordion,
+  Button,
+  Card,
+  Chip,
+  FadedScrollView,
+  Header,
+  Skeleton,
+} from "@startup/mobile-ui";
+import { doctorLanguageName } from "@startup/contracts";
+
+import { palette, ui } from "../../../components/theme";
+
 export function ProfileScreen() {
-  const [section, setSection] = useState<string | null>(null);
-  const [logout, setLogout] = useState(false);
-  const [hospital, setHospital] = useState("Apollo Hospitals");
-  const [hospitalDraft, setHospitalDraft] = useState(hospital);
-  const notifications = useDoctorStore((s) => s.notifications);
-  const setNotifications = useDoctorStore((s) => s.setNotifications);
-  const reset = useDoctorStore((s) => s.reset);
+  const {
+    refresh,
+    insets,
+    session,
+    profile,
+    personalAddress,
+    profilePhotoUrl,
+    name,
+    initials,
+  } = useDoctorProfile();
   return (
-    <DoctorScreen
-      title="My Profile"
-      background="#F5F5F5"
-      contentStyle={{ paddingTop: 0 }}
-    >
-      <View
-        style={{
-          backgroundColor: palette.chart,
-          marginHorizontal: -16,
-          paddingHorizontal: 20,
-          paddingBottom: 20,
-          borderBottomLeftRadius: 14,
-          borderBottomRightRadius: 14,
-          gap: 20,
-        }}
-      >
-        <View style={ui.row}>
-          <View
-            style={{
-              width: 80,
-              height: 80,
-              borderRadius: 40,
-              backgroundColor: palette.text,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            <Heading style={{ fontSize: 30, color: "#087F78" }}>P</Heading>
-          </View>
-          <View style={ui.flex}>
-            <Heading style={{ fontSize: 18, color: palette.text }}>
-              Dr. Priya Sharma
-            </Heading>
-            <Label>General Physician</Label>
-            <Label muted style={{ fontSize: 12 }}>
-              MBBS, MD (Internal Medicine)
-            </Label>
-          </View>
-        </View>
-        <View style={ui.row}>
-          {[
-            ["12 Yrs", "Experience"],
-            ["0", "Patients Seen"],
-            ["₹0.0k", "Earnings"],
-          ].map(([value, label]) => (
-            <View
-              key={label}
-              style={{
-                flex: 1,
-                alignItems: "center",
-                backgroundColor: "#BED9D8",
-                padding: 9,
-                borderRadius: 10,
-              }}
-            >
-              <Heading style={{ color: palette.text }}>{value}</Heading>
-              <Label style={{ fontSize: 10 }}>{label}</Label>
-            </View>
-          ))}
-        </View>
-      </View>
-      <View
-        style={{
-          borderRadius: 14,
-          overflow: "hidden",
-          backgroundColor: "white",
-        }}
-      >
-        {[
-          ["Hospital", hospital],
-          ["Registration No.", "KMC–DR–001"],
-          ["Phone", "1234567876"],
-        ].map(([title, value], index) => (
-          <View
-            key={title}
-            style={{
-              ...ui.between,
-              minHeight: 46,
-              paddingHorizontal: 16,
-              paddingVertical: 10,
-              borderBottomWidth: index < 2 ? 1 : 0,
-              borderBottomColor: "#EEF4F5",
-            }}
-          >
-            <Label muted style={{ fontSize: 13 }}>
-              {title}
-            </Label>
-            <Heading style={{ fontSize: 13, color: palette.text }}>
-              {value}
-            </Heading>
-          </View>
-        ))}
-      </View>
-      <View
-        style={{
-          borderRadius: 14,
-          overflow: "hidden",
-          backgroundColor: "white",
-        }}
-      >
-        {rows.map(({ title, icon: Icon, color, background }, index) => (
-          <Pressable
-            key={title}
-            accessibilityRole="button"
-            accessibilityLabel={title}
-            onPress={() => {
-              setSection(section === title ? null : title);
-              setLogout(false);
-            }}
-            style={({ pressed }) => [
-              {
-                ...ui.row,
-                minHeight: 64,
-                paddingHorizontal: 16,
-                borderBottomWidth: index < 4 ? 1 : 0,
-                borderBottomColor: "#EEF4F5",
-                opacity: pressed ? 0.65 : 1,
-              },
-            ]}
-          >
-            <View
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 9,
-                backgroundColor: background,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Icon color={color} size={21} />
-            </View>
-            <Label style={{ flex: 1 }}>{title}</Label>
-            {index === 0 && (
-              <View
-                style={{
-                  ...ui.row,
-                  gap: 3,
-                  backgroundColor: "#EAFBF4",
-                  paddingHorizontal: 8,
-                  borderRadius: 12,
-                }}
-              >
-                <Star size={13} color="#00B989" />
-                <Label style={{ color: "#00A77A", fontSize: 12 }}>4.9</Label>
-              </View>
-            )}
-            <ChevronRight color="#93A4B9" size={18} />
-          </Pressable>
-        ))}
-      </View>
-      {section && (
-        <Panel>
-          <Heading>{section}</Heading>
-          {section === "My Ratings & Reviews" && (
-            <Label muted>
-              4.9 is the Figma demo rating. No patient reviews are connected.
-            </Label>
-          )}
-          {section === "Earnings & Payouts" && (
-            <Label muted>
-              No payouts are connected in this demo. Profile earnings: ₹0.0k.
-            </Label>
-          )}
-          {section === "Hospital Settings" && (
-            <>
-              <Input
-                label="Hospital name"
-                accessibilityLabel="Hospital name"
-                value={hospitalDraft}
-                onChangeText={setHospitalDraft}
-                containerStyle={ui.field}
-              />
-              <Button
-                theme="doctor"
-                label="Save hospital"
-                disabled={!hospitalDraft.trim()}
-                onPress={() => {
-                  setHospital(hospitalDraft.trim());
-                  setSection(null);
-                }}
-              />
-              <Button
-                theme="doctor"
-                variant="secondary"
-                label="Manage schedule"
-                onPress={() => router.navigate("/schedule")}
-              />
-            </>
-          )}
-          {section === "Notification Preferences" && (
-            <View style={ui.between}>
-              <Label style={{ flex: 1 }}>
-                Appointment notifications (demo)
-              </Label>
-              <Switch
-                accessibilityLabel="Appointment notifications"
-                value={notifications}
-                onValueChange={setNotifications}
-                trackColor={{ false: "#D1D5DB", true: palette.primary }}
-              />
-            </View>
-          )}
-          {section === "Help & Support" && (
-            <Label muted>
-              Use Scan QR to look up CLZ-0001. Home visit PIN: 1234. Notes,
-              messages, and schedules are saved only for the current app
-              session.
-            </Label>
-          )}
-        </Panel>
-      )}
-      <Button
-        label="Logout"
-        variant="secondary"
-        leftIcon={<LogOut size={21} color={palette.danger} />}
-        labelStyle={{ color: palette.danger }}
-        style={{ backgroundColor: "#FFF1F3", marginTop: 20 }}
-        onPress={() => {
-          setLogout(true);
-          setSection(null);
-        }}
+    <View style={styles.screen}>
+      <StatusBar style="light" />
+      <Header
+        title="Profile"
+        app="doctor"
+        onBackPress={() =>
+          router.canGoBack() ? router.back() : router.navigate("/")
+        }
       />
-      {logout && (
-        <Panel>
-          <Heading>Reset the demo session?</Heading>
-          <Label>
-            There is no signed-in account. Resetting clears local notes,
-            prescriptions, messages, and schedule changes.
-          </Label>
-          <View style={ui.row}>
-            <Button
-              label="Cancel"
-              theme="doctor"
-              variant="secondary"
-              style={ui.flex}
-              onPress={() => setLogout(false)}
-            />
-            <Button
-              label="Reset demo"
-              theme="doctor"
-              style={ui.flex}
-              onPress={() => {
-                reset();
-                setLogout(false);
-                setHospital("Apollo Hospitals");
-                setHospitalDraft("Apollo Hospitals");
-                router.replace("/");
-              }}
-            />
+      <Card
+        theme="doctor"
+        variant="plain"
+        backgroundColor={palette.primary}
+        borderRadius={0}
+        padding={0}
+        gap={0}
+        style={styles.profileCard}
+      >
+        {profile.isLoading ? (
+          <View style={styles.identity}>
+            <Skeleton width={72} height={72} radius={36} />
+            <View style={styles.identityCopy}>
+              <Skeleton width="80%" height={24} />
+              <Skeleton width="70%" height={18} />
+            </View>
           </View>
-        </Panel>
-      )}
-    </DoctorScreen>
+        ) : (
+          <View style={styles.identity}>
+            <View style={styles.avatarShadow}>
+              <View style={styles.avatar}>
+                {profilePhotoUrl ? (
+                  <Image
+                    source={{ uri: profilePhotoUrl }}
+                    style={styles.photo}
+                  />
+                ) : (
+                  <Text variant="screenTitle" style={styles.initials}>
+                    {initials}
+                  </Text>
+                )}
+              </View>
+            </View>
+            <View style={styles.identityCopy}>
+              <Text variant="cardHeading" style={styles.name}>
+                {name}
+                {profile.data?.qualification ||
+                profile.data?.qualification_claim ? (
+                  <Text variant="caption" style={styles.qualification}>
+                    {" "}
+                    {profile.data.qualification ||
+                      profile.data.qualification_claim}
+                  </Text>
+                ) : null}
+              </Text>
+              <Text variant="bodySmall" style={styles.specialty}>
+                {profile.data?.specialties
+                  .map((item) => item.name)
+                  .join(", ") || "Specialty awaiting review"}
+              </Text>
+              <Text variant="bodySmall" style={styles.email} numberOfLines={1}>
+                {profile.data?.contact_email || session?.user.email || ""}
+              </Text>
+            </View>
+          </View>
+        )}
+      </Card>
+      <FadedScrollView
+        onRefresh={refresh}
+        refreshTheme="doctor"
+        edgeColor={palette.white}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: 125 + insets.bottom },
+        ]}
+      >
+        <Accordion
+          title="Personal details"
+          defaultOpen={false}
+          theme="doctor"
+          variant="outlined"
+          leftIcon={
+            <View style={[styles.actionIcon, styles.detailsIcon]}>
+              <User size={21} color={palette.white} />
+            </View>
+          }
+          style={[styles.cardSurface, styles.detailsAccordion]}
+          headerStyle={styles.detailsHeader}
+          titleStyle={styles.accordionTitle}
+          contentStyle={styles.detailsBody}
+          separatorColor={palette.border}
+          chevronColor={palette.muted}
+          chevronSize={24}
+        >
+          {profile.isLoading ? (
+            <View style={styles.details}>
+              <Skeleton width="70%" height={18} />
+              <Skeleton width="85%" height={18} />
+              <Skeleton width="60%" height={18} />
+            </View>
+          ) : (
+            <View style={styles.details}>
+              <ProfileDetail
+                icon={<Phone size={18} color={palette.primary} />}
+                label="Phone number"
+                value={
+                  profile.data?.contact_phone ||
+                  session?.user.phone ||
+                  "Not linked"
+                }
+              />
+              <ProfileDetail
+                icon={<Mail size={18} color={palette.primary} />}
+                label="Email"
+                value={
+                  profile.data?.contact_email ||
+                  session?.user.email ||
+                  "Not linked"
+                }
+              />
+              <ProfileDetail
+                icon={<MapPin size={18} color={palette.primary} />}
+                label="Personal address"
+                value={
+                  personalAddress.isError
+                    ? "Could not load address"
+                    : [
+                        personalAddress.data?.building,
+                        personalAddress.data?.street,
+                        personalAddress.data?.locality,
+                        personalAddress.data?.city,
+                        personalAddress.data?.state,
+                        personalAddress.data?.pincode,
+                      ]
+                        .filter(Boolean)
+                        .join(", ") || "Not added"
+                }
+              />
+              <ProfileDetail
+                icon={<GraduationCap size={18} color={palette.primary} />}
+                label="Qualifications"
+                value={
+                  profile.data?.qualification ||
+                  profile.data?.qualification_claim ||
+                  "Not added"
+                }
+              />
+              <ProfileDetail
+                icon={<BadgeCheck size={18} color={palette.primary} />}
+                label="Registration authority"
+                value={
+                  profile.data?.registration_authority || "Registration pending"
+                }
+              />
+              <ProfileDetail
+                icon={<BadgeCheck size={18} color={palette.primary} />}
+                label="Registration No."
+                value={profile.data?.registration_number || "—"}
+              />
+              <ProfileDetail
+                icon={<Building size={18} color={palette.primary} />}
+                label="Hospital / clinic"
+                value={
+                  profile.data?.facilities
+                    .map((item) => item.facility_name)
+                    .join(", ") || "No linked facility"
+                }
+              />
+              <ProfileDetail
+                icon={<MapPin size={18} color={palette.primary} />}
+                label="Practice address"
+                value={
+                  profile.data?.facilities
+                    .map((item) => item.address)
+                    .join("; ") || "Not added"
+                }
+              />
+              <ProfileDetail
+                icon={<User size={18} color={palette.primary} />}
+                label="About"
+                value={profile.data?.bio || "Not added"}
+              />
+              <View style={styles.details}>
+                <Text variant="caption" style={styles.contactLabel}>
+                  Languages
+                </Text>
+                {profile.data?.languages.length ? (
+                  <View style={ui.wrap}>
+                    {Array.from(
+                      new Set(profile.data.languages.map(doctorLanguageName))
+                    ).map((language) => (
+                      <Chip key={language} label={language} theme="doctor" />
+                    ))}
+                  </View>
+                ) : (
+                  <Text variant="label" style={styles.contactValue}>
+                    No languages added yet.
+                  </Text>
+                )}
+              </View>
+              {profile.isError ? (
+                <Button
+                  theme="doctor"
+                  label="Retry profile"
+                  variant="outline"
+                  loading={profile.isFetching}
+                  onPress={() => void profile.refetch()}
+                />
+              ) : null}
+            </View>
+          )}
+          <Button
+            theme="doctor"
+            label="Edit profile"
+            variant="outline"
+            leftIcon={<Pencil size={15} color={palette.primary} />}
+            onPress={() => router.push("/edit-profile")}
+            style={styles.editButton}
+            labelStyle={styles.editLabel}
+          />
+        </Accordion>
+        {rows
+          .filter((item) => item.title !== "Edit profile")
+          .map(({ title, icon: Icon }) => (
+            <Card
+              key={title}
+              theme="doctor"
+              variant="outlined"
+              borderRadius={14}
+              padding={0}
+              gap={0}
+              style={styles.cardSurface}
+            >
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={title}
+                onPress={() =>
+                  router.push(
+                    title === "Settings"
+                      ? "/settings"
+                      : title === "Hospital Settings"
+                        ? "/hospital-settings"
+                        : {
+                            pathname: "/profile-option",
+                            params: { option: title },
+                          }
+                  )
+                }
+                style={({ pressed }) => [
+                  styles.actionRow,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={styles.actionIcon}>
+                  <Icon size={21} color={palette.white} />
+                </View>
+                <Text variant="label" style={styles.actionTitle}>
+                  {title}
+                </Text>
+                <ChevronRight
+                  size={24}
+                  color={palette.muted}
+                  style={styles.trailingIcon}
+                />
+              </Pressable>
+            </Card>
+          ))}
+      </FadedScrollView>
+    </View>
   );
 }

@@ -1,12 +1,17 @@
-import type { ImageSourcePropType } from "react-native";
-import type { Href } from "expo-router";
-import type { ConsultationType } from "../../appointments/types/appointment";
+import type { DoctorCategory } from "../types/find-doctor";
+
+export type { DoctorCategory } from "../types/find-doctor";
+
 import { SEARCH_HEIGHT } from "../../../utils/headerConstants";
 
 export const EXPANDED_HEADER_HEIGHT = 147;
+
 export const SEARCH_OVERLAP = 24;
+
 export const COLLAPSED_HEADER_H = 74; // gives comfortable ~19px padding below search bar
+
 export const SEARCH_END_TOP_OFFSET = 11;
+
 export const CONTENT_TOP =
   EXPANDED_HEADER_HEIGHT - SEARCH_OVERLAP + SEARCH_HEIGHT + 14;
 
@@ -20,23 +25,6 @@ export const symptoms = [
   "Skin rash",
   "Breathing issue",
 ] as const;
-
-export function getDoctorResultsRoute(
-  symptom: string,
-  consultationType: ConsultationType
-) {
-  return {
-    pathname: "/doctor-results",
-    params: { symptom, consultationType },
-  } as unknown as Href;
-}
-
-export type DoctorCategory = {
-  key: string;
-  label: string;
-  image: ImageSourcePropType;
-  imageScale?: number;
-};
 
 export const categories: readonly DoctorCategory[] = [
   {

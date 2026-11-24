@@ -1,9 +1,11 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { AmbulanceOptionProps } from "../types/ambulance-booking-form";
+import { AppText as Text } from "@startup/mobile-ui";
+import { Pressable, StyleSheet, View } from "react-native";
 import { Activity, HeartPulse, Siren } from "lucide-react-native";
 import { colors, fontFamilies } from "@startup/design-tokens";
 import type { AmbulanceType } from "../utils/ambulanceConstants";
 
-export function getAmbulanceIcon(id: AmbulanceType["id"]) {
+function getAmbulanceIcon(id: AmbulanceType["id"]) {
   switch (id) {
     case "basic":
       return <Siren color="#008877" size={26} />;
@@ -20,11 +22,7 @@ export function AmbulanceOption({
   item,
   selected,
   onPress,
-}: {
-  item: AmbulanceType;
-  selected: boolean;
-  onPress: () => void;
-}) {
+}: AmbulanceOptionProps) {
   return (
     <Pressable
       onPress={onPress}
@@ -35,24 +33,32 @@ export function AmbulanceOption({
       ]}
     >
       <View
-        style={[
-          styles.ambulanceIcon,
-          selected && styles.ambulanceIconSelected,
-        ]}
+        style={[styles.ambulanceIcon, selected && styles.ambulanceIconSelected]}
       >
         {getAmbulanceIcon(item.id)}
       </View>
       <View style={styles.ambulanceCopy}>
-        <Text style={styles.ambulanceName}>{item.title}</Text>
-        <Text numberOfLines={1} style={styles.ambulanceDescription}>
+        <Text variant="body" style={styles.ambulanceName}>
+          {item.title}
+        </Text>
+        <Text
+          variant="body"
+          numberOfLines={1}
+          style={styles.ambulanceDescription}
+        >
           {item.description.replace("and", "&")}
         </Text>
       </View>
       <View style={styles.priceBlock}>
-        <Text style={[styles.price, selected && styles.selectedPrice]}>
-          ₹{item.fare}
+        <Text
+          variant="bodyEmphasis"
+          style={[styles.price, selected && styles.selectedPrice]}
+        >
+          {item.fare === null ? "Fare pending" : `₹${item.fare}`}
         </Text>
-        <Text style={styles.eta}>ETA {item.eta}</Text>
+        <Text variant="body" style={styles.eta}>
+          ETA {item.eta ?? "pending"}
+        </Text>
       </View>
     </Pressable>
   );
@@ -72,7 +78,7 @@ const styles = StyleSheet.create({
     borderColor: colors.borderDefault,
   },
   ambulanceSelected: {
-    borderColor: "#E8F5F4",
+    borderColor: colors.borderDefault,
     backgroundColor: "#E8F5F4",
   },
   ambulanceIcon: {

@@ -1,60 +1,67 @@
-import { StyleSheet, Text, View } from "react-native";
-import { colors, fontFamilies, radius } from "@startup/design-tokens";
-import { patientProfile } from "../utils/profileConstants";
+import type { ProfileStatsProps } from "../types/profile";
+import { AppText as Text } from "@startup/mobile-ui";
+import { StyleSheet, View } from "react-native";
+import { colors, fontFamilies, surfaces } from "@startup/design-tokens";
+import { useReadableTypography } from "@startup/mobile-ui";
 
-export function ProfileStats({
-  age = patientProfile.age,
-  blood = patientProfile.blood,
-  bookings = patientProfile.bookings,
-}: {
-  age?: string;
-  blood?: string;
-  bookings?: string;
-}) {
+export function ProfileStats({ age, blood }: ProfileStatsProps) {
   return (
     <View style={styles.stats}>
       <ProfileStat label="Age" value={age} />
-      <ProfileStat label="Blood" value={blood} />
-      <ProfileStat label="Bookings" value={bookings} />
+      <ProfileStat label="Blood group" value={blood} />
     </View>
   );
 }
 
 function ProfileStat({ label, value }: { label: string; value: string }) {
+  const readable = useReadableTypography();
   return (
-    <View style={styles.stat}>
-      <Text style={styles.statLabel}>{label}</Text>
-      <Text style={styles.statValue}>{value}</Text>
+    <View
+      style={[
+        styles.stat,
+        readable && { height: undefined, minHeight: 44, paddingVertical: 6 },
+      ]}
+    >
+      <Text
+        variant="label"
+        style={styles.label}
+        numberOfLines={readable ? 2 : 1}
+        adjustsFontSizeToFit={!readable}
+        minimumFontScale={0.9}
+      >
+        {label}:{" "}
+        <Text variant="body" style={styles.value}>
+          {value}
+        </Text>
+      </Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  stats: {
-    flexDirection: "row",
-    gap: 10,
-  },
+  stats: { flexDirection: "row", gap: 8 },
   stat: {
-    flex: 1,
-    alignItems: "center",
-    gap: 2,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: colors.patient.surfaceBorder,
-    borderRadius: radius.md,
-    backgroundColor: "#F0FAF9",
+    flexShrink: 1,
+    minWidth: 0,
+    height: 36,
+    borderRadius: 14,
+    backgroundColor: colors.white,
+    paddingHorizontal: 8,
+    paddingVertical: 0,
+    gap: 4,
+    justifyContent: "center",
+    ...surfaces.card,
   },
-  statLabel: {
-    color: colors.patient.primaryDark,
-    fontFamily: fontFamilies.medium,
-    fontSize: 9,
-    fontWeight: "500",
-    textTransform: "uppercase",
+  label: {
+    color: colors.patient.textSecondary,
+    fontFamily: fontFamilies.regular,
+    fontSize: 12,
+    lineHeight: 20,
   },
-  statValue: {
+  value: {
     color: colors.patient.text,
-    fontFamily: fontFamilies.bold,
-    fontSize: 15,
-    fontWeight: "700",
+    fontFamily: fontFamilies.semibold,
+    fontSize: 13,
+    lineHeight: 21,
   },
 });

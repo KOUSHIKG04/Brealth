@@ -1,0 +1,127 @@
+import { useVerifyOtp } from "../hooks/useVerifyOtp";
+import { Button } from "@startup/mobile-ui";
+import { AppText as Text, Input } from "@startup/mobile-ui";
+
+import { Pressable, StyleSheet, View } from "react-native";
+import { router } from "expo-router";
+import { colors, fontFamilies } from "@startup/design-tokens";
+
+import { OnboardingShell } from "../components/OnboardingShell";
+
+export default function VerifyOtpScreen() {
+  const {
+    phone,
+    code,
+    setCode,
+    resending,
+    seconds,
+    busy,
+    input,
+    verify,
+    resend,
+  } = useVerifyOtp();
+  return (
+    <OnboardingShell onBack={() => router.back()}>
+      <View style={styles.body}>
+        <Text variant="screenTitle" style={styles.title}>
+          Verify OTP
+        </Text>
+        <Text variant="bodySmall" style={styles.caption}>
+          Enter the 6-digit OTP sent to
+        </Text>
+        <Text variant="label" style={styles.phone}>
+          {phone}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Enter six-digit code"
+          onPress={() => input.current?.focus()}
+          style={styles.digits}
+        >
+          {Array.from({ length: 6 }, (_, index) => (
+            <View key={index} style={styles.digit}>
+              <Text variant="screenTitle" style={styles.digitText}>
+                {code[index] ?? ""}
+              </Text>
+            </View>
+          ))}
+          <Input
+            variant="unstyled"
+            ref={input}
+            accessibilityLabel="Six-digit verification code"
+            keyboardType="number-pad"
+            textContentType="oneTimeCode"
+            autoComplete="sms-otp"
+            maxLength={6}
+            value={code}
+            onChangeText={(value) => {
+              const digits = value.replace(/\D/g, "").slice(0, 6);
+              setCode(digits);
+              if (digits.length === 6) void verify(digits);
+            }}
+            style={styles.hiddenInput}
+          />
+        </Pressable>
+        <Button
+          loading={resending}
+          theme="doctor"
+          label="Resend OTP"
+          variant="ghost"
+          labelStyle={styles.resendText}
+          accessibilityRole="button"
+          accessibilityState={{ disabled: seconds > 0 || busy || resending }}
+          disabled={seconds > 0 || busy || resending}
+          onPress={() => void resend()}
+          style={styles.resend}
+        >
+          <Text variant="body" style={styles.resendText}>
+            Resend OTP{" "}
+            {seconds > 0 ? `in 00:${String(seconds).padStart(2, "0")}` : "now"}
+          </Text>
+        </Button>
+      </View>
+    </OnboardingShell>
+  );
+}
+
+const styles = StyleSheet.create({
+  body: { alignItems: "center", paddingTop: 24 },
+  title: { color: colors.black },
+  caption: { marginTop: 8, fontStyle: "italic" },
+  phone: {
+    marginTop: 8,
+    color: colors.patient.primaryDark,
+    fontStyle: "italic",
+  },
+  digits: {
+    width: "100%",
+    maxWidth: 316,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 37,
+  },
+  digit: {
+    width: 40,
+    height: 47,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#BDBDBD",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  digitText: { color: colors.black },
+  hiddenInput: { position: "absolute", width: 1, height: 1, opacity: 0 },
+  resend: { marginTop: 25, padding: 8 },
+  resendText: {
+    fontFamily: fontFamilies.regular,
+    fontSize: 16,
+    lineHeight: 22,
+    color: colors.patient.primaryDark,
+  },
+  error: {
+    marginTop: 12,
+    color: colors.danger,
+    textAlign: "center",
+    fontSize: 13,
+  },
+});

@@ -1,10 +1,11 @@
+import { StatusBar } from "expo-status-bar";
 import type { PropsWithChildren, ReactNode } from "react";
+import { useEffect } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
   StyleSheet,
-  Text,
   View,
   type StyleProp,
   type TextStyle,
@@ -12,39 +13,55 @@ import {
 } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { ChevronLeft } from "lucide-react-native";
-import { colors, fontFamilies } from "@startup/design-tokens";
-import { FadedScrollView, Button } from "@startup/mobile-ui";
+import {
+  AppText as Text,
+  FadedScrollView,
+  Button,
+  Header,
+  useKeyboardAwareScroll,
+  type AppTextProps,
+  type PullToRefreshProps,
+} from "@startup/mobile-ui";
+import { palette, ui } from "./theme";
 
-export const palette = {
-  ...colors.doctor,
-  white: colors.white,
-  muted: "#71818F",
-  card: "#0A8C84",
-  subtle: "#F2F7F7",
-  danger: colors.danger,
-};
+type TextRole = AppTextProps["variant"];
+
 export function Label({
   children,
   style,
   muted = false,
-}: PropsWithChildren<{ style?: StyleProp<TextStyle>; muted?: boolean }>) {
+  variant = "bodySmall",
+}: PropsWithChildren<{
+  style?: StyleProp<TextStyle>;
+  muted?: boolean;
+  variant?: TextRole;
+}>) {
   return (
-    <Text style={[ui.text, muted && { color: palette.muted }, style]}>
+    <Text
+      variant={variant}
+      style={[ui.text, muted && { color: palette.muted }, style]}
+    >
       {children}
     </Text>
   );
 }
+
 export function Heading({
   children,
   style,
-}: PropsWithChildren<{ style?: StyleProp<TextStyle> }>) {
+  variant = "cardHeading",
+}: PropsWithChildren<{ style?: StyleProp<TextStyle>; variant?: TextRole }>) {
   return (
-    <Text accessibilityRole="header" style={[ui.heading, style]}>
+    <Text
+      variant={variant}
+      accessibilityRole="header"
+      style={[ui.heading, style]}
+    >
       {children}
     </Text>
   );
 }
+
 export function IconButton({
   children,
   label,
@@ -74,73 +91,102 @@ export function IconButton({
     </Pressable>
   );
 }
+
 export function DoctorHeader({
   title,
-  subtitle,
   trailing,
+  onBackPress,
 }: {
   title: string;
-  subtitle?: string;
   trailing?: ReactNode;
+  onBackPress?: () => void;
 }) {
-  const insets = useSafeAreaInsets();
   return (
-    <View style={[ui.header, { paddingTop: insets.top + 16 }]}>
-      <IconButton
-        label="Go back"
-        onPress={() =>
-          router.canGoBack() ? router.back() : router.replace("/")
+    <>
+      <StatusBar style="light" />
+      <Header
+        title={title}
+        app="doctor"
+        rightAction={trailing}
+        onBackPress={
+          onBackPress ??
+          (() => (router.canGoBack() ? router.back() : router.replace("/")))
         }
-      >
-        <ChevronLeft size={26} color={palette.primary} />
-      </IconButton>
-      <View style={ui.flex}>
-        <Heading style={{ fontSize: 17 }}>{title}</Heading>
-        {subtitle && (
-          <Label muted style={{ fontSize: 12 }}>
-            {subtitle}
-          </Label>
-        )}
-      </View>
-      {trailing}
-    </View>
+      />
+    </>
   );
 }
+
 export function DoctorScreen({
   children,
   title,
-  subtitle,
   background = palette.white,
   bottomNav = true,
   contentStyle,
+  onBackPress,
+  scrollResetKey,
+  onRefresh,
+  footer,
 }: PropsWithChildren<{
   title: string;
-  subtitle?: string;
   background?: string;
   bottomNav?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  onBackPress?: () => void;
+  scrollResetKey?: number;
+  onRefresh?: PullToRefreshProps["onRefresh"];
+  /** Primary action kept visible below the scrolling content. */
+  footer?: ReactNode;
 }>) {
   const insets = useSafeAreaInsets();
+  const { scrollRef, keyboardInset, revealFocusedInput, onScroll } =
+    useKeyboardAwareScroll();
+  useEffect(() => {
+    if (scrollResetKey !== undefined)
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [scrollResetKey, scrollRef]);
   return (
     <KeyboardAvoidingView
       style={[ui.screen, { backgroundColor: background }]}
       behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
-      <DoctorHeader title={title} subtitle={subtitle} />
+      <DoctorHeader title={title} onBackPress={onBackPress} />
       <FadedScrollView
+        onRefresh={onRefresh}
+        refreshTheme="doctor"
+        ref={scrollRef}
         edgeColor={background}
         keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        onFocus={revealFocusedInput}
+        onLayout={revealFocusedInput}
+        onContentSizeChange={revealFocusedInput}
+        onScroll={onScroll}
         contentContainerStyle={[
           ui.content,
-          { paddingBottom: (bottomNav ? 125 : 24) + insets.bottom },
           contentStyle,
+          {
+            paddingBottom:
+              (bottomNav ? 125 : 24) + insets.bottom + keyboardInset,
+          },
         ]}
       >
         {children}
       </FadedScrollView>
+      {footer ? (
+        <View
+          style={[
+            styles.footer,
+            { paddingBottom: 12 + (keyboardInset ? 0 : insets.bottom) },
+          ]}
+        >
+          {footer}
+        </View>
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
+
 export function MissingPatient() {
   return (
     <DoctorScreen title="Patient not found">
@@ -156,12 +202,14 @@ export function MissingPatient() {
     </DoctorScreen>
   );
 }
+
 export function Panel({
   children,
   style,
 }: PropsWithChildren<{ style?: StyleProp<ViewStyle> }>) {
   return <View style={[ui.panel, style]}>{children}</View>;
 }
+
 export function Choice({
   label,
   selected,
@@ -184,81 +232,22 @@ export function Choice({
       ]}
     >
       <Label
-        style={{ fontSize: 12, color: selected ? palette.white : palette.dark }}
+        variant="label"
+        style={{ color: selected ? palette.white : palette.dark }}
       >
         {label}
       </Label>
     </Pressable>
   );
 }
-export const ui = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: palette.white },
-  content: { padding: 16, gap: 16, flexGrow: 1 },
-  flex: { flex: 1, minWidth: 0 },
-  row: { flexDirection: "row", alignItems: "center", gap: 10 },
-  between: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 10,
-  },
-  wrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  text: {
-    fontFamily: fontFamilies.regular,
-    fontSize: 14,
-    lineHeight: 20,
-    color: palette.text,
-  },
-  heading: {
-    fontFamily: fontFamilies.bold,
-    fontSize: 15,
-    lineHeight: 22,
-    color: palette.header,
-  },
-  header: {
-    backgroundColor: palette.chart,
+
+const styles = StyleSheet.create({
+  footer: {
+    gap: 8,
     paddingHorizontal: 16,
-    paddingBottom: 16,
-    minHeight: 96,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  iconButton: {
-    width: 44,
-    height: 44,
-    alignItems: "center",
-    justifyContent: "center",
-    borderRadius: 22,
-  },
-  panel: {
+    paddingTop: 12,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.border,
     backgroundColor: palette.white,
-    borderWidth: 1,
-    borderColor: palette.border,
-    borderRadius: 14,
-    padding: 16,
-    gap: 14,
   },
-  choice: {
-    minHeight: 40,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    borderRadius: 22,
-    backgroundColor: palette.surface,
-  },
-  divider: { height: 1, backgroundColor: palette.border },
-  error: {
-    color: palette.danger,
-    fontFamily: fontFamilies.medium,
-    fontSize: 13,
-    lineHeight: 19,
-  },
-  success: {
-    color: palette.dark,
-    backgroundColor: palette.surface,
-    padding: 12,
-    borderRadius: 10,
-  },
-  field: { maxWidth: "100%" },
 });

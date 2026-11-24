@@ -1,3 +1,9 @@
+import "../services/monitoring";
+import type { ErrorBoundaryProps } from "expo-router";
+import { ErrorFallback } from "@startup/mobile-ui";
+import { reportError } from "@startup/data-access";
+import { AppText as Text } from "@startup/mobile-ui";
+import { LiveUpdatesBridge } from "../services/LiveUpdatesBridge";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
 import { DefaultTheme, Stack, ThemeProvider } from "expo-router";
@@ -5,15 +11,38 @@ import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { colors } from "@startup/design-tokens";
 import {
-  albertSansFonts,
+  interFonts,
+  Loader,
   SafeAreaProvider,
   MobileThemeProvider,
+  MobileTypographyProvider,
+  ToastProvider,
+  useToast,
 } from "@startup/mobile-ui";
 import { QueryProvider } from "../providers/QueryProvider";
+import { Button } from "@startup/mobile-ui";
+import { mobileSession, useMobileSession } from "../services/supabase";
+import { signOutWithPushCleanup } from "../features/notifications/services/deviceNotifications";
+import { useDeviceNotifications } from "../features/notifications/hooks/useDeviceNotifications";
 
 void SplashScreen.preventAutoHideAsync();
 
+// Contains render crashes anywhere below the root, reports them once and
+// offers recovery instead of closing the app.
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    reportError(error, { source: "render-boundary" });
+  }, [error]);
+  return <ErrorFallback theme="patient" onRetry={retry} />;
+}
+
 export const unstable_settings = { initialRouteName: "(app)" };
+
+function DeviceNotificationsBridge({ identityId }: { identityId?: string }) {
+  const { showToast } = useToast();
+  useDeviceNotifications(identityId, showToast);
+  return null;
+}
 
 const navTheme = {
   ...DefaultTheme,
@@ -24,7 +53,8 @@ const navTheme = {
 };
 
 export default function RootLayout() {
-  const [fontsLoaded, fontError] = useFonts(albertSansFonts);
+  const [fontsLoaded, fontError] = useFonts(interFonts);
+  const auth = useMobileSession();
 
   useEffect(() => {
     if (fontsLoaded || fontError) {
@@ -39,28 +69,79 @@ export default function RootLayout() {
     return null;
   }
 
+  if (auth.loading)
+    return (
+      <View style={styles.root}>
+        <Loader theme="patient" size="large" style={{ flex: 1 }} />
+      </View>
+    );
+  if (auth.session && auth.error)
+    return (
+      <View
+        style={[
+          styles.root,
+          { justifyContent: "center", padding: 24, gap: 16 },
+        ]}
+      >
+        <Text variant="body" accessibilityRole="alert">
+          {auth.error}
+        </Text>
+        <Button label="Retry" onPress={() => void mobileSession.refresh()} />
+        <Button
+          label="Sign out"
+          variant="outline"
+          onPress={() => void signOutWithPushCleanup()}
+        />
+      </View>
+    );
+
   return (
     <MobileThemeProvider theme="patient">
-      <SafeAreaProvider>
-        <QueryProvider>
-          <ThemeProvider value={navTheme}>
-            <View style={styles.root}>
-              <Stack
-                screenOptions={{
-                  headerShown: false,
-                  animation: "fade",
-                  animationDuration: 350,
-                  freezeOnBlur: true,
-                  contentStyle: styles.scene,
-                }}
-              >
-                <Stack.Screen name="(app)" />
-                <Stack.Screen name="(auth)" />
-              </Stack>
-            </View>
-          </ThemeProvider>
-        </QueryProvider>
-      </SafeAreaProvider>
+      <MobileTypographyProvider enabled>
+        <SafeAreaProvider>
+          <ToastProvider>
+            <DeviceNotificationsBridge identityId={auth.profile?.identity_id} />
+            <QueryProvider>
+              <LiveUpdatesBridge identityId={auth.profile?.identity_id} />
+              <ThemeProvider value={navTheme}>
+                <View style={styles.root}>
+                  <Stack
+                    screenOptions={{
+                      headerShown: false,
+                      animation: "fade",
+                      animationDuration: 350,
+                      freezeOnBlur: true,
+                      contentStyle: styles.scene,
+                    }}
+                  >
+                    <Stack.Protected
+                      guard={Boolean(
+                        auth.session &&
+                        auth.profile?.patient_id &&
+                        auth.profile.patient_profile_complete
+                      )}
+                    >
+                      <Stack.Screen name="(app)" />
+                    </Stack.Protected>
+                    <Stack.Protected
+                      guard={
+                        !auth.session ||
+                        !auth.profile?.patient_id ||
+                        !auth.profile.patient_profile_complete
+                      }
+                    >
+                      <Stack.Screen
+                        name="(auth)"
+                        options={{ statusBarStyle: "dark" }}
+                      />
+                    </Stack.Protected>
+                  </Stack>
+                </View>
+              </ThemeProvider>
+            </QueryProvider>
+          </ToastProvider>
+        </SafeAreaProvider>
+      </MobileTypographyProvider>
     </MobileThemeProvider>
   );
 }

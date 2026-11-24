@@ -1,55 +1,39 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { useAmbulanceCompletion } from "../hooks/useAmbulanceCompletion";
+import type { AmbulanceCompletionProps } from "../types/ambulance-completion";
+import { experienceRatings } from "../utils/ambulanceCompletionConstants";
+import { AppText as Text } from "@startup/mobile-ui";
+
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 import {
   Ambulance,
   Building2,
   CheckCircle2,
   ClipboardList,
-  ReceiptText,
   ShieldCheck,
   UserRound,
 } from "lucide-react-native";
-import { colors, fontFamilies, radius, spacing } from "@startup/design-tokens";
+import {
+  colors,
+  fontFamilies,
+  radius,
+  spacing,
+  surfaces,
+} from "@startup/design-tokens";
 import { Button, Card } from "@startup/mobile-ui";
-import { ambulanceTrip } from "../utils/ambulanceConstants";
-
-const experienceRatings = [
-  { emoji: "😞", label: "Very poor" },
-  { emoji: "😐", label: "Okay" },
-  { emoji: "🙂", label: "Good" },
-  { emoji: "😊", label: "Great" },
-  { emoji: "😍", label: "Excellent" },
-] as const;
+import { AmbulancePayment } from "./AmbulancePayment";
 
 export function AmbulanceCompletion({
   onGoHome,
-}: {
-  onGoHome: () => void;
-}) {
-  const [rating, setRating] = useState<number>();
-  const [ratingSubmitted, setRatingSubmitted] = useState(false);
-  const ratingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (ratingTimerRef.current) clearTimeout(ratingTimerRef.current);
-    };
-  }, []);
-
-  const handleRatingSubmit = () => {
-    if (rating === undefined || ratingSubmitted) return;
-    setRatingSubmitted(true);
-    ratingTimerRef.current = setTimeout(() => {
-      onGoHome();
-    }, 2000);
-  };
-
+  booking,
+  onSubmitRating,
+}: AmbulanceCompletionProps) {
+  const {
+    rating,
+    setRating,
+    ratingSubmitted,
+    ratingPending,
+    handleRatingSubmit,
+  } = useAmbulanceCompletion({ onGoHome, booking, onSubmitRating });
   return (
     <ScrollView
       contentContainerStyle={styles.content}
@@ -65,17 +49,23 @@ export function AmbulanceCompletion({
                 <Ambulance color={colors.white} size={50} strokeWidth={1.8} />
               </View>
               <View style={styles.completionCheckBadge}>
-                <CheckCircle2 color={colors.white} size={32} strokeWidth={2.5} />
+                <CheckCircle2
+                  color={colors.white}
+                  size={32}
+                  strokeWidth={2.5}
+                />
               </View>
             </View>
           </View>
-          <Text style={styles.thankYouTitle}>Thank you!</Text>
-          <Text style={styles.completedTitle}>
+          <Text variant="cardHeading" style={styles.thankYouTitle}>
+            Thank you!
+          </Text>
+          <Text variant="cardHeading" style={styles.completedTitle}>
             Your Ambulance Journey is Completed
           </Text>
-          <Text style={styles.centeredDescription}>
-            Patient safely handed over to {ambulanceTrip.dropoff.split(",")[0]}{" "}
-            emergency care team.
+          <Text variant="body" style={styles.centeredDescription}>
+            Your trip to {booking.destination_address ?? "the destination"} is
+            complete.
           </Text>
         </View>
 
@@ -83,8 +73,6 @@ export function AmbulanceCompletion({
         <Card
           variant="outlined"
           borderRadius={radius.md}
-          borderWidth={1}
-          borderColor="#E0E5EB"
           backgroundColor={colors.white}
           gap={0}
           padding={0}
@@ -92,58 +80,64 @@ export function AmbulanceCompletion({
         >
           <View style={styles.summaryHeading}>
             <ClipboardList color={colors.patient.primaryDark} size={20} />
-            <Text style={styles.cardTitle}>Emergency Handover Summary</Text>
+            <Text variant="cardHeading" style={styles.cardTitle}>
+              Emergency Handover Summary
+            </Text>
           </View>
 
           <View style={styles.summaryRow}>
             <View style={styles.summaryLabel}>
               <Building2 color={colors.patient.primaryDark} size={18} />
-              <Text style={styles.secondaryText}>Hospital</Text>
+              <Text variant="body" style={styles.secondaryText}>
+                Hospital
+              </Text>
             </View>
-            <Text style={styles.summaryValue}>{ambulanceTrip.dropoff}</Text>
+            <Text variant="bodyEmphasis" style={styles.summaryValue}>
+              {booking.destination_address ?? "Destination unavailable"}
+            </Text>
           </View>
 
           <View style={styles.summaryRow}>
             <View style={styles.summaryLabel}>
               <UserRound color={colors.patient.primaryDark} size={18} />
-              <Text style={styles.secondaryText}>Paramedic</Text>
+              <Text variant="body" style={styles.secondaryText}>
+                Driver
+              </Text>
             </View>
-            <Text style={styles.summaryValue}>
-              {ambulanceTrip.driver} ({ambulanceTrip.vehicle})
+            <Text variant="bodyEmphasis" style={styles.summaryValue}>
+              {booking.driver_name ?? "Driver details unavailable"} (
+              {booking.vehicle_registration ?? "Vehicle unavailable"})
             </Text>
           </View>
 
           <View style={styles.summaryRow}>
             <View style={styles.summaryLabel}>
               <ShieldCheck color={colors.patient.primaryDark} size={18} />
-              <Text style={styles.secondaryText}>Service</Text>
+              <Text variant="body" style={styles.secondaryText}>
+                Service
+              </Text>
             </View>
-            <Text style={styles.summaryValue}>{ambulanceTrip.service}</Text>
-          </View>
-
-          <View style={styles.summaryRowLast}>
-            <View style={styles.summaryLabel}>
-              <ReceiptText color={colors.patient.primaryDark} size={18} />
-              <Text style={styles.secondaryText}>Total Fare</Text>
-            </View>
-            <Text style={styles.summaryValueTotal}>₹{ambulanceTrip.fare} (Paid)</Text>
+            <Text variant="bodyEmphasis" style={styles.summaryValue}>
+              {booking.capability_code}
+            </Text>
           </View>
         </Card>
       </View>
 
+      <AmbulancePayment bookingId={booking.id} />
       <View style={styles.bottomSection}>
         {/* Experience Rating Card matching CompletionView */}
         <Card
           variant="outlined"
           backgroundColor="#E8F8F4"
           borderRadius={radius.md}
-          borderWidth={1}
-          borderColor="#E0E5EB"
           gap={12}
           padding={16}
           style={styles.experienceCard}
         >
-          <Text style={styles.feedbackTitle}>How was your experience?</Text>
+          <Text variant="cardHeading" style={styles.feedbackTitle}>
+            How was your experience?
+          </Text>
           <View style={styles.ratingRow}>
             {experienceRatings.map((item, index) => (
               <Pressable
@@ -151,7 +145,7 @@ export function AmbulanceCompletion({
                 accessibilityLabel={item.label}
                 accessibilityRole="button"
                 accessibilityState={{ selected: rating === index }}
-                disabled={ratingSubmitted}
+                disabled={ratingSubmitted || ratingPending}
                 onPress={() => setRating(index)}
                 style={({ pressed }) => [
                   styles.ratingButton,
@@ -159,17 +153,22 @@ export function AmbulanceCompletion({
                   pressed ? styles.pressed : undefined,
                 ]}
               >
-                <Text style={styles.ratingEmoji}>{item.emoji}</Text>
+                <item.icon
+                  size={27}
+                  color={colors.patient.primaryDark}
+                  accessible={false}
+                />
               </Pressable>
             ))}
           </View>
 
           {!ratingSubmitted ? (
             <Button
+              loading={ratingPending}
               label="Submit"
               variant="outline"
-              disabled={rating === undefined}
-              onPress={handleRatingSubmit}
+              disabled={rating === undefined || ratingPending}
+              onPress={() => void handleRatingSubmit()}
               style={[
                 styles.experienceSubmitButton,
                 rating !== undefined && styles.experienceSubmitButtonActive,
@@ -183,8 +182,8 @@ export function AmbulanceCompletion({
                 size={16}
                 strokeWidth={2.4}
               />
-              <Text style={styles.ratingSubmittedText}>
-                Submitted • Returning home...
+              <Text variant="bodyEmphasis" style={styles.ratingSubmittedText}>
+                Submitted
               </Text>
             </View>
           )}
@@ -287,13 +286,10 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   summaryCard: {
-    borderWidth: 1,
-    borderColor: "#E0E5EB",
+    ...surfaces.card,
     borderRadius: radius.md,
     backgroundColor: colors.white,
     overflow: "hidden",
-    elevation: 0,
-    shadowOpacity: 0,
   },
   summaryHeading: {
     flexDirection: "row",
@@ -351,12 +347,9 @@ const styles = StyleSheet.create({
     textAlign: "right",
   },
   experienceCard: {
+    ...surfaces.card,
     backgroundColor: "#E8F8F4",
-    borderWidth: 1,
-    borderColor: "#E0E5EB",
     borderRadius: radius.md,
-    elevation: 0,
-    shadowOpacity: 0,
   },
   feedbackTitle: {
     color: colors.patient.text,
@@ -383,10 +376,6 @@ const styles = StyleSheet.create({
   selectedRating: {
     borderColor: colors.patient.primaryDark,
     backgroundColor: "#E8F8F4",
-  },
-  ratingEmoji: {
-    fontSize: 27,
-    lineHeight: 34,
   },
   pressed: {
     opacity: 0.72,
@@ -422,8 +411,7 @@ const styles = StyleSheet.create({
   goHomeButton: {
     minHeight: 52,
     borderRadius: radius.md,
-    elevation: 0,
-    shadowOpacity: 0,
+    boxShadow: "none",
   },
   goHomeButtonLabel: {
     fontSize: 15,

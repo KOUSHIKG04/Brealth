@@ -1,10 +1,7 @@
-import {
-  Image,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import type { PickupMapProps } from "../types/ambulance-booking-form";
+import { AppText as Text } from "@startup/mobile-ui";
+import { Input } from "@startup/mobile-ui";
+import { Image, StyleSheet, View } from "react-native";
 import { Search } from "lucide-react-native";
 import { fontFamilies, shadows } from "@startup/design-tokens";
 import { pickupMapImage } from "../utils/ambulanceConstants";
@@ -13,28 +10,37 @@ import { ActionButton } from "./ActionButton";
 export function PickupMap({
   destination,
   onConfirm,
-}: {
-  destination: string;
-  onConfirm: () => void;
-}) {
+  address,
+  onAddressChange,
+}: PickupMapProps) {
   return (
     <View style={styles.flex1}>
       <View style={styles.pickupMapFrame}>
         <Image
+          alt="Illustrative pickup area map; this is not your GPS location"
           source={pickupMapImage}
           resizeMode="stretch"
           style={styles.pickupMapImage}
         />
       </View>
       <View style={styles.pickupPanel}>
-        <Text style={styles.pickupTitle}>Confirm your pickup</Text>
+        <Text variant="cardHeading" style={styles.pickupTitle}>
+          Confirm your pickup
+        </Text>
         <View style={styles.pickupSearch}>
-          <Text numberOfLines={1} style={styles.pickupPlaceholder}>
+          <Text
+            variant="body"
+            numberOfLines={1}
+            style={styles.pickupPlaceholder}
+          >
             {destination || "Search hospital or clinic"}
           </Text>
           <Search color="#71818F" size={18} />
         </View>
-        <TextInput
+        <Input
+          variant="unstyled"
+          value={address}
+          onChangeText={onAddressChange}
           placeholder="Add Building , gate /Floor (Optional)"
           placeholderTextColor="#71818F"
           style={styles.buildingInput}
@@ -44,7 +50,7 @@ export function PickupMap({
           onPress={onConfirm}
           style={styles.confirmButton}
         />
-        <Text style={styles.mapCaption}>
+        <Text variant="caption" style={styles.mapCaption}>
           Map shown for illustration; GPS permission required.
         </Text>
       </View>

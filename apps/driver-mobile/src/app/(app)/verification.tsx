@@ -1,0 +1,40 @@
+import { useEffect } from "react";
+import { View } from "react-native";
+import { Loader } from "@startup/mobile-ui";
+import { router } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { listMyAmbulanceFleet } from "@startup/data-access";
+import { VerificationScreen } from "../../features/auth/screens/RegistrationScreens";
+import {
+  mobileSession,
+  supabase,
+  useMobileSession,
+} from "../../services/supabase";
+
+export default function DriverVerification() {
+  const { profile } = useMobileSession();
+  const fleet = useQuery({
+    queryKey: ["driver-fleet", profile?.driver?.id],
+    queryFn: () => listMyAmbulanceFleet(supabase!),
+    enabled: Boolean(supabase && profile?.driver?.id),
+  });
+
+  if (fleet.isLoading)
+    return (
+      <View style={{ flex: 1, justifyContent: "center" }}>
+        <Loader theme="driver" size="large" />
+      </View>
+    );
+
+  const verified =
+    profile?.driver?.status === "verified" &&
+    Boolean(fleet.data?.some((vehicle) => vehicle.ready_to_go_available));
+
+  return (
+    <VerificationScreen
+      verified={verified}
+      onBack={() => router.back()}
+      onDashboard={() => router.replace("/(app)/(tabs)/home")}
+    />
+  );
+}

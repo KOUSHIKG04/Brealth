@@ -1,27 +1,72 @@
+import { useEffect } from "react";
 import { View } from "react-native";
+import { AppText as Text, Loader } from "@startup/mobile-ui";
 import { router } from "expo-router";
-import { Button } from "@startup/mobile-ui";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getMyDriverRegistrationApplication,
+  getMyVerificationCase,
+} from "@startup/data-access";
 import { VerificationScreen } from "../../features/auth/screens/RegistrationScreens";
-import { useDriver } from "../../stores/driver";
-export default function VerificationRoute() {
-  const d = useDriver();
+import {
+  mobileSession,
+  supabase,
+  useMobileSession,
+} from "../../services/supabase";
+
+export default function DriverVerification() {
+  const { profile, session } = useMobileSession();
+
+  const application = useQuery({
+    queryKey: ["driver-registration-application"],
+    queryFn: () => getMyDriverRegistrationApplication(supabase!),
+    enabled: Boolean(session && supabase),
+    refetchOnMount: "always",
+  });
+
+  const review = useQuery({
+    queryKey: ["my-driver-verification", application.data?.id],
+    queryFn: () =>
+      getMyVerificationCase(supabase!, "driver", application.data!.id),
+    enabled: Boolean(supabase && application.data?.id),
+  });
+
+  if (application.isLoading)
+    return (
+      <View style={{ flex: 1, justifyContent: "center" }}>
+        <Loader theme="driver" size="large" />
+      </View>
+    );
+
+  if (application.error)
+    return (
+      <View style={{ padding: 24 }}>
+        <Text variant="bodySmall" accessibilityRole="alert">
+          Could not load verification status.
+        </Text>
+      </View>
+    );
+
   return (
-    <View style={{ flex: 1 }}>
-      <VerificationScreen
-        verified={d.verified}
-        onBack={() => router.back()}
-        onDashboard={() => router.replace("/home")}
-      />
-      {!d.verified && (
-        <View style={{ padding: 16 }}>
-          <Button
-            theme="driver"
-            variant="outline"
-            label="Preview verified state"
-            onPress={d.previewVerified}
-          />
-        </View>
-      )}
-    </View>
+    <VerificationScreen
+      verified={profile?.driver?.status === "verified"}
+      rejectionReason={
+        review.data?.documents
+          .filter((document) => document.status === "rejected")
+          .map(
+            (document) =>
+              `${document.kind.replaceAll("_", " ")}: ${document.rejection_reason}`
+          )
+          .join("\n") ?? null
+      }
+      onBack={() =>
+        router.push(
+          review.data?.status === "needs_resubmission"
+            ? "/documents"
+            : "/details"
+        )
+      }
+      onDashboard={() => router.replace("/(app)")}
+    />
   );
 }
